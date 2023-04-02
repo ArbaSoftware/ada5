@@ -1,0 +1,6 @@
+#With mod_rewrite
+
+RewriteEngine On
+
+RewriteRule ^store$ store.php [NC,L]
+RewriteRule ^store/(.*) store.php [NC,L]
