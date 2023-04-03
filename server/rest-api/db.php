@@ -6,4 +6,6 @@
         public function getIdentifyProviders();
         public function getInternalUser($mail, $passwordhash, $idpid);
         public function canRead($targettype, $targetid=null);
+        public function canCreate($targettype, $targetid=null);
+        public function createStore($name);
     }

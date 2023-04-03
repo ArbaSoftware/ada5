@@ -138,4 +138,42 @@
                 $conn->close();
             }
         }
+
+        public function canCreate($targettype, $targetid=null) {
+            try {
+                $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
+                if (is_null($targetid)) {
+                    $results = $conn->query("select level from grantedrights where (granteeid = 'everyone' or (granteeid = '" . $this->userId . "' and identityproviderid = '" . $this->identityProviderId . "')) and targettype = '" . $targettype . "' order by weight desc limit 1");
+                }
+                else {
+                    $results = $conn->query("select level from grantedrights where (granteeid = 'everyone' or (granteeid = '" . $this->userId . "' and identityproviderid = '" . $this->identityProviderId . "')) and targettype = '" . $targettype . "' and targetid='" . $targetid . "' order by weight desc limit 1");
+                }
+                if ($results->num_rows == 0)
+                    return false;
+                else {
+                    $rights = $conn->query("select level from rights where systemright='create'");
+                    if ($rights->num_rows == 1) 
+                        return intval($rights->fetch_object()->level) & intval($results->fetch_object()->level);
+                    else
+                        return false;
+                }
+            }
+            finally {
+                $conn->close();
+            }
+        }
+
+        public function createStore($name) {
+            try {
+                $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
+                $idquery = $conn->query("select UUID() newid from INFORMATION_SCHEMA.TABLES LIMIT 1");
+                $id = $idquery->fetch_object()->newid;
+                $conn->query("insert into stores (id, name) values ('" . $id . "','" . $name . "')");
+                $conn->query("insert into grantedrights (granteeid, identityproviderid, targetid, targettype, level, weight) (select granteeid, identityproviderid,'" . $id . "',targettype, level, weight from grantedrights where targettype = 'store' and targetid IS NULL)");
+                return $id;
+            }
+            finally {
+                $conn->close();
+            }
+        }
     }
