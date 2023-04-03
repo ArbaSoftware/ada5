@@ -1,0 +1,25 @@
+{
+	"id": "base",
+	"name": "Default classes and properties",
+	"classes": [
+		{
+			"name":"Folder",
+			"description": "Base folder class",
+			"folderclass": true,
+			"properties": [
+				{
+					"name": "Name",
+					"type": "string",
+					"required": true,
+					"multiple": false
+				}
+			],
+			"security": [
+				{
+					"grantee": "everyone",
+					"rights": ['read','update','delete','create']
+				}
+			]
+		}
+	]
+}
