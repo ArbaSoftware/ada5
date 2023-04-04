@@ -8,4 +8,5 @@
         public function canRead($targettype, $targetid=null);
         public function canCreate($targettype, $targetid=null);
         public function createStore($name);
+        public function createClass($storeid, $class);
     }

@@ -176,4 +176,17 @@
                 $conn->close();
             }
         }
+        public function createClass($storeid, $class) {
+            try {
+                $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
+                $idquery = $conn->query("select UUID() newid from INFORMATION_SCHEMA.TABLES LIMIT 1");
+                $id = $idquery->fetch_object()->newid;
+                $conn->query("insert into classes (id, name, creator, creatoridentityproviderid, folderclass, contentclass, storeid) values ('" . $id . "','" . $class->getName() . "','" . $this->userId . "','" . $this->identityProviderId . "'," . ($class->isFolderClass() ? '1' : '0') . "," . ($class->isDocumentClass() ? '1': '0') . ",'" . $storeid . "')");
+                return $id;
+            }
+            finally {
+                $conn->close();
+            }
+        }
+
     }

@@ -79,3 +79,87 @@
             return $this->identityproviderid;
         }
     }
+
+    class AdaClass {
+        private $id;
+        private $name;
+        private $isFolderClass = false;
+        private $isDocumentClass = false;
+        private $description;
+
+        public function __construct($id, $name) {
+            $this->id = $id;
+            $this->name = $name;
+        }
+
+        public function getId() {
+            return $this->id;
+        }
+
+        public function getName() {
+            return $this->name;
+        }
+
+        public function setDescription($description) {
+            $this->description = $description;
+        }
+
+        public function getDescription() {
+            return $this->description;
+        }
+
+        public function setIsFolderClass($value) {
+            $this->isFolderClass = $value;
+        }
+
+        public function isFolderClass() {
+            return $this->isFolderClass;
+        }
+
+        public function setIsDocumentClass($value) {
+            $this->isDocumentClass = $value;
+        }
+
+        public function isDocumentClass() {
+            return $this->isDocumentClass;
+        }
+
+        public static function fromJson($json) {
+            $result = new AdaClass(null, $json->name);
+            if (isset($json->documentclass))
+                $result->setIsDocumentClass($json->documentclass);
+            if (isset($json->folderclass))
+                $result->setIsFolderClass($json->folderclass);
+            return $result;
+        }
+
+        public static function validateJson($input) {
+            $properties = array_keys(get_object_vars($input));
+            $validProperties = ["name", "description", "folderclass", "documentclass"];
+            $propertyTypes = ["name" =>'string', "description"=>"string", "folderclass"=>"boolean", "documentclass"=>"boolean"];
+            $requiredProperties = ["name"];
+            $valid = true;
+            foreach($properties as $property) {
+                if (!in_array($property, $validProperties)) {
+                    $valid = false;
+                    break;
+                }
+                else if (gettype($input->$property) != $propertyTypes[$property]) {
+                    $valid = false;
+                    break;
+                }
+            }
+            if ($valid) {
+                foreach($requiredProperties as $property) {
+                    if (!in_array($property, $properties)) {
+                        $valid = false;
+                        break;
+                    }
+                }
+            }
+            if (isset($input->documentclass) && isset($input->folderclass) && $input->documentclass && $input->folderclass)
+                $valid = false;
+            return $valid;
+        }
+    }
+?>

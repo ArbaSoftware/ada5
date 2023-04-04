@@ -62,6 +62,20 @@
                 exit;
             }
         }
+        else if (sizeof($urlparts) == 5 && $urlparts[1] == 'ada' && $urlparts[2] == 'store' && $urlparts[4] == 'class') {
+            $storeId = $urlparts[3];
+            if ($db->getStore($storeId)) {
+                $request = json_decode(file_get_contents('php://input'));
+                if ($request && AdaClass::validateJson($request)) {
+                    $class = AdaClass::fromJson($request);
+                    $newClassId = $db->createClass($storeId, $class);
+                    echo $newClassId;
+                    exit;
+                }
+            }
+            header("HTTP/1.1 500 Invalid request");
+            exit;
+        }
     }
     sendState(404, "Not found");
 
