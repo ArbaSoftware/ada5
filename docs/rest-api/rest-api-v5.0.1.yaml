@@ -19,6 +19,25 @@ paths:
               schema:
                 $ref: '#/components/schemas/Store'
               example: '[{"id": "49xa-3003", "name": "FirstEver"}]'
+  /store/{id}:
+    get:
+      summary: Get a store
+      description: Get the store with the specified id
+      parameters: 
+        - name: id
+          in: query
+          description: The id of the store
+          required: true
+          type: guid
+
+      responses:
+        '200':
+          description: Successfull operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schema/Store'
+              example: '{"id": "49xa-3003", "name": "FirstEvet"}]'
               
 components:
   schemas:
