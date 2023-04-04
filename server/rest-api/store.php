@@ -39,8 +39,9 @@
                 $request = json_decode(file_get_contents('php://input'));
                 if ($request && validateAddRequest($request)) {
                     if ($db->isStoreNameUnique($request->name)) {
-                        if ($db->canRead('domain')) {
-                            echo 'Jo';
+                        if ($db->canCreate('domain')) {
+                            $newStoreId = $db->createStore($request->name);
+                            echo $newStoreId;
                         }
                         else
                             sendState(500, "Insufficient rights");
