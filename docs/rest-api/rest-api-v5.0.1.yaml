@@ -1,0 +1,33 @@
+openapi: 3.0.3
+info:
+  title: Ada 5 resta api
+  version: 5.0.1
+  description: Documentation of rest api ada v5
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+paths:
+  /store:
+    get:
+      summary: Get all available stores
+      description: Get all the available stores in the current domain
+      responses:
+        '200':
+          description: Successfull operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Store'
+              example: '[{"id": "49xa-3003", "name": "FirstEver"}]'
+              
+components:
+  schemas:
+    Store:
+      type: object
+      properties:
+        id:
+          type: string
+          format: guid
+        name:
+          type: string
+          format: free
