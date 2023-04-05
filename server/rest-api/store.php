@@ -39,12 +39,12 @@
                 $request = json_decode(file_get_contents('php://input'));
                 if ($request && validateAddRequest($request)) {
                     if ($db->isStoreNameUnique($request->name)) {
-                        if ($db->canCreate('domain')) {
+                        if ($db->canCreateStore()) {
                             $newStoreId = $db->createStore($request->name);
                             echo $newStoreId;
                         }
                         else
-                            sendState(500, "Insufficient rights");
+                            sendState(401, "Insufficient rights");
                         exit;
                     }
                     else {
@@ -67,10 +67,22 @@
             if ($db->getStore($storeId)) {
                 $request = json_decode(file_get_contents('php://input'));
                 if ($request && AdaClass::validateJson($request)) {
-                    $class = AdaClass::fromJson($request);
-                    $newClassId = $db->createClass($storeId, $class);
-                    echo $newClassId;
-                    exit;
+                    if ($db->isUniqueClassName($storeId, $request->name)) {
+                        if ($db->canCreateClass($storeId)) {
+                            $class = AdaClass::fromJson($request);
+                            $newClassId = $db->createClass($storeId, $class);
+                            echo $newClassId;
+                            exit;
+                        }
+                        else {
+                            sendState(401, "Insufficient rights");
+                            exit;
+                        }
+                    }
+                    else {
+                        sendState(500, "Class name not unique");
+                        exit;
+                    }
                 }
             }
             header("HTTP/1.1 500 Invalid request");

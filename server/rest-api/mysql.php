@@ -115,6 +115,17 @@
                 $conn->close();
             }
         }
+
+        public function isUniqueClassName($storeid, $classname) {
+            try {
+                $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
+                $results = $conn->query("select id from classes where name='" . $classname . "' and storeid = '" . $storeid . "'");
+                return $results->num_rows == 0;
+            }
+            finally {
+                $conn->close();
+            }
+        }
         public function canRead($targettype, $targetid=null) {
             try {
                 $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
@@ -152,6 +163,44 @@
                     return false;
                 else {
                     $rights = $conn->query("select level from rights where systemright='create'");
+                    if ($rights->num_rows == 1) 
+                        return intval($rights->fetch_object()->level) & intval($results->fetch_object()->level);
+                    else
+                        return false;
+                }
+            }
+            finally {
+                $conn->close();
+            }
+        }
+
+        public function canCreateStore() {
+            try {
+                $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
+                $results = $conn->query("select level from grantedrights where (granteeid = 'everyone' or (granteeid = '" . $this->userId . "' and identityproviderid = '" . $this->identityProviderId . "')) and targettype = 'domain' and targetid IS NULL order by weight desc limit 1");
+                if ($results->num_rows == 0)
+                    return false;
+                else {
+                    $rights = $conn->query("select level from rights where systemright='createstore'");
+                    if ($rights->num_rows == 1) 
+                        return intval($rights->fetch_object()->level) & intval($results->fetch_object()->level);
+                    else
+                        return false;
+                }
+            }
+            finally {
+                $conn->close();
+            }
+        }
+
+        public function canCreateClass($storeid) {
+            try {
+                $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
+                $results = $conn->query("select level from grantedrights where (granteeid = 'everyone' or (granteeid = '" . $this->userId . "' and identityproviderid = '" . $this->identityProviderId . "')) and targettype = 'store' and targetid='" . $storeid . "' order by weight desc limit 1");
+                if ($results->num_rows == 0)
+                    return false;
+                else {
+                    $rights = $conn->query("select level from rights where systemright='createclass'");
                     if ($rights->num_rows == 1) 
                         return intval($rights->fetch_object()->level) & intval($results->fetch_object()->level);
                     else
