@@ -231,6 +231,14 @@
                 $idquery = $conn->query("select UUID() newid from INFORMATION_SCHEMA.TABLES LIMIT 1");
                 $id = $idquery->fetch_object()->newid;
                 $conn->query("insert into classes (id, name, creator, creatoridentityproviderid, folderclass, contentclass, storeid) values ('" . $id . "','" . $class->getName() . "','" . $this->userId . "','" . $this->identityProviderId . "'," . ($class->isFolderClass() ? '1' : '0') . "," . ($class->isDocumentClass() ? '1': '0') . ",'" . $storeid . "')");
+
+                foreach($class->getProperties() as $property) {
+                    $conn->query("insert into classproperties (id, name, `type`, required, multiple, classid) values (UUID(), '" . $property->getName() . "','" . $property->getType() . "'," . ($property->isRequired()? 1:0) . "," . ($property->isMultiple()? 1: 0). ",'" . $id . "')");
+                }
+
+                if (sizeof($class->getRights()) == 0) {
+                    $conn->query("insert into grantedrights (granteeid, identityproviderid, targetid, targettype, level, weight) values ('" . $this->userId . "','" . $this->identityProviderId . "','". $id . "','class',(select sum(level) from rights where classright = 1), 1)");
+                }
                 return $id;
             }
             finally {
