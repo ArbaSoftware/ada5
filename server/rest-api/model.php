@@ -146,12 +146,16 @@
                 foreach($json->properties as $property)
                     $result->addProperty(Property::fromJson($property));
             }
+            if (isset($json->rights)) {
+                foreach($json->rights as $right) 
+                    $result->addRight(GrantedRight::fromJson($right));
+            }
             return $result;
         }
 
         public static function validateJson($input) {
             $properties = array_keys(get_object_vars($input));
-            $validProperties = ["name", "description", "folderclass", "documentclass", "properties"];
+            $validProperties = ["name", "description", "folderclass", "documentclass", "properties", "rights"];
             $propertyTypes = ["name" =>'string', "description"=>"string", "folderclass"=>"boolean", "documentclass"=>"boolean"];
             $requiredProperties = ["name"];
             $valid = true;
@@ -170,6 +174,19 @@
                         }
                     }
                     else {
+                        $valid = false;
+                        break;
+                    }
+                }
+                else if ($property == 'rights') {
+                    $invalidRightFound = false;
+                    foreach($input->rights as $right) {
+                        if (!GrantedRight::isValidJson($right)) {
+                            $invalidRightFound = true;
+                            break;
+                        }
+                    }
+                    if ($invalidRightFound) {
                         $valid = false;
                         break;
                     }
@@ -198,6 +215,10 @@
 
         public function getRights() {
             return $this->rights;
+        }
+
+        public function addRight($right) {
+            $this->rights[sizeof($this->rights)] = $right;
         }
     }
 
@@ -255,6 +276,56 @@
             }
             else
                 throw new Exception("Invalid property json");
+        }
+    }
+
+    class GrantedRight {
+        private $granteeId;
+        private $identityProviderId;
+        private $level;
+        private $weight;
+
+        public function __construct($granteeid, $identityproviderid, $level, $weight) {
+            $this->granteeId = $granteeid;
+            $this->identityProviderId = $identityproviderid;
+            $this->level = $level;
+            $this->weight = $weight;
+        }
+
+        public function getGranteeId() {
+            return $this->granteeId;
+        }
+
+        public function getIdentityProviderId() {
+            return $this->identityProviderId;
+        }
+
+        public function getLevel() {
+            return $this->level;
+        }
+
+        public function getWeight() {
+            return $this->weight;
+        }
+
+        public static function isValidJson($json) {
+            $properties = array_keys(get_object_vars($json));
+            if (in_array('grantee', $properties)) {
+                if ($json->grantee == 'everybody') 
+                    return (in_array('level', $properties) && sizeof($properties) == 2);
+                else
+                    return (in_array('level', $properties) && in_array('identityprovider', $properties) && sizeof($properties) == 3);
+            }
+            else
+                return false;
+        }
+
+        public static function fromJson($json) {
+            if (GrantedRight::isValidJson($json)) {
+                return new GrantedRight($json->grantee, $json->identityprovider, $json->level, ($json->grantee == 'everybody' ? 0: 1));
+            }
+            else
+                throw new Exception("Invalid right json");
         }
     }
 ?>

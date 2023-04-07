@@ -12,4 +12,6 @@
         public function createStore($name);
         public function canCreateClass($storeid);
         public function createClass($storeid, $class);
+
+        public function areValidRights($rights);
     }

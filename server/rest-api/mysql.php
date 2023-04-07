@@ -239,7 +239,42 @@
                 if (sizeof($class->getRights()) == 0) {
                     $conn->query("insert into grantedrights (granteeid, identityproviderid, targetid, targettype, level, weight) values ('" . $this->userId . "','" . $this->identityProviderId . "','". $id . "','class',(select sum(level) from rights where classright = 1), 1)");
                 }
+                else {
+                    foreach($class->getRights() as $right) {
+                        if ($right->getGranteeId() == 'everybody') 
+                            $conn->query("insert into grantedrights (granteeid, targetid, targettype, level, weight) values ('everybody', '" . $id . "','class'," . $right->getLevel() . ",0)");
+                        else {
+                            $conn->query("insert into grantedrights (granteeid, identityproviderid, targetid, targettype, level, weight) values ('" . $right->getGranteeId() . "','" . $right->getIdentityProviderId() . "','" . $id . "','class'," . $right->getLevel() . ",0)");
+                        }
+                    }
+                }
                 return $id;
+            }
+            finally {
+                $conn->close();
+            }
+        }
+
+        public function areValidRights($rights) {
+            try {
+                $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
+                $checked = [];
+                $result = true;
+                foreach($rights as $right) {
+                    if ($right->grantee != 'everybody') {
+                        $results = $conn->query("select id,name from identityproviders where id = '". $right->identityprovider . "' or name = '" . $right->identityprovider . "'");
+                        if ($results->num_rows == 0) {
+                            $result = false;
+                            break;
+                        }
+                        else {
+                            $idp = $results->fetch_object();
+                            if ($idp->name == $right->identityprovider)
+                                $right->identityprovider = $idp->id;
+                        }
+                    }
+                }
+                return $result;
             }
             finally {
                 $conn->close();

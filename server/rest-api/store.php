@@ -67,21 +67,23 @@
             if ($db->getStore($storeId)) {
                 $request = json_decode(file_get_contents('php://input'));
                 if ($request && AdaClass::validateJson($request)) {
-                    if ($db->isUniqueClassName($storeId, $request->name)) {
-                        if ($db->canCreateClass($storeId)) {
-                            $class = AdaClass::fromJson($request);
-                            $newClassId = $db->createClass($storeId, $class);
-                            echo $newClassId;
-                            exit;
+                    if ($db->areValidRights($request->rights)) {
+                        if ($db->isUniqueClassName($storeId, $request->name)) {
+                            if ($db->canCreateClass($storeId)) {
+                                $class = AdaClass::fromJson($request);
+                                $newClassId = $db->createClass($storeId, $class);
+                                echo $newClassId;
+                                exit;
+                            }
+                            else {
+                                sendState(401, "Insufficient rights");
+                                exit;
+                            }
                         }
                         else {
-                            sendState(401, "Insufficient rights");
+                            sendState(500, "Class name not unique");
                             exit;
                         }
-                    }
-                    else {
-                        sendState(500, "Class name not unique");
-                        exit;
                     }
                 }
             }
