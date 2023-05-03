@@ -7,3 +7,7 @@ RewriteRule ^store$ store.php [NC,L]
 RewriteRule ^store/(.*)$ store.php [NC,L]
 RewriteRule ^store/(.*)/class$ store.php [NC,L]
 
+RewriteRule ^security/right$ security.php [NC,L]
+RewriteRule ^security/identityprovider$ security.php [NC,L]
+
+RewriteRule ^addon$ addon.php [NC,L]

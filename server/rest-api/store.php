@@ -32,6 +32,36 @@
                 exit;
             }
         }
+        else if (sizeof($urlparts) == 5 && $urlparts[1] == 'ada' && $urlparts[2] == 'store' && $urlparts[4] == 'class') {
+            try {
+                $classes = $db->getClasses($urlparts[3]);
+                if (sizeof($classes) == 0)
+                    echo '[]';
+                else
+                    echo AdaClass::toJson($classes);
+                exit;
+            }
+            catch (Exception $exception) {
+                sendState(500, "");
+                exit;
+            }
+        }
+        else if (sizeof($urlparts) == 6 && $urlparts[1] == 'ada' && $urlparts[2] == 'store' && $urlparts[4] == 'class') {
+            try {
+                $class = $db->getClass($urlparts[3], $urlparts[5]);
+                if ($class) {
+                    echo AdaClass::toJson($class);
+                }
+                else {
+                    sendState(404, "Class not found");
+                }
+                exit;
+            }
+            catch (Exception $exception) {
+                sendState(500, "");
+                exit;
+            }
+        }
     }
     else if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         if ($url == '/ada/store') {
@@ -40,7 +70,7 @@
                 if ($request && validateAddRequest($request)) {
                     if ($db->isStoreNameUnique($request->name)) {
                         if ($db->canCreateStore()) {
-                            $newStoreId = $db->createStore($request->name);
+                            $newStoreId = $db->createStore($request->name, $request->grantedrights, $request->addons);
                             echo $newStoreId;
                         }
                         else
@@ -89,6 +119,24 @@
             }
             header("HTTP/1.1 500 Invalid request");
             exit;
+        }
+    }
+    else if ($_SERVER['REQUEST_METHOD'] == 'DELETE') {
+        if (sizeof($urlparts) == 4 && substr($url, 0, strlen('/ada/store/')) == '/ada/store/') {
+            $storeId = $urlparts[3];
+            if ($db->canDeleteStore($storeId)) {
+                if ($db->deleteStore($storeId)) {
+                    sendState(200, "Store deleted");
+                }
+                else {
+                    sendState(500, "");
+                }
+                exit();
+            }
+            else {
+                sendState(401, "Unsufficient rights");
+                exit;
+            }
         }
     }
     sendState(404, "Not found");

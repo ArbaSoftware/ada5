@@ -1,0 +1,35 @@
+<div mat-dialog-content style="display: flex; justify-content:center; align-items:center;">
+    <mat-tab-group mat-stretch-tabs="false" mat-align-tabs="start">
+        <mat-tab label="General">
+            <div style="padding:15px">
+                <table>
+                    <tr>
+                      <td>
+                        <mat-form-field appearance="outline">
+                          <mat-label>Name</mat-label>
+                          <input matInput [(ngModel)]="className" required >
+                        </mat-form-field>      
+                      </td>
+                    </tr>
+                </table>
+            </div>
+        </mat-tab>
+        <mat-tab label="Properties">
+          <div style="padding:15px">
+            <table mat-table [dataSource]="dataSource" class="mat-elevation-z8">
+              <ng-container matColumnDef="name">
+                <th mat-header-cell *matHeaderCellDef> Name </th>
+                <td mat-cell *matCellDef="let element"> {{element.getName()}} </td>
+              </ng-container>
+              <tr mat-header-row *matHeaderRowDef="['name']"></tr>
+              <tr (dblclick)="openProperty(row)" style="cursor:pointer;" mat-row *matRowDef="let row; columns: ['name'];"></tr>
+            </table>
+          </div>
+        </mat-tab>
+        <mat-tab label="Security">Content 3</mat-tab>
+    </mat-tab-group>
+</div>
+<div mat-dialog-actions>
+  <button mat-button>Ok</button>&nbsp;
+  <button mat-button (click)="cancel()">Cancel</button>
+</div>

@@ -1,0 +1,40 @@
+<div mat-dialog-content>
+  <table>
+      <tr>
+        <td>
+          <mat-form-field appearance="outline">
+            <mat-label>Name</mat-label>
+            <input matInput [(ngModel)]="propertyName" required >
+          </mat-form-field>      
+        </td>
+      </tr>
+      <tr>
+          <td>
+              <mat-form-field appearance="outline">
+                  <mat-label>Type</mat-label>
+                  <mat-select [(ngModel)]="propertyType" required>
+                      <mat-option *ngFor="let type of ['text', 'date']" [value]="type">{{type}}</mat-option>
+                    </mat-select>
+              </mat-form-field>
+          </td>
+      </tr>
+      <tr>
+        <td>
+            <mat-checkbox [(ngModel)]="required">Required</mat-checkbox>
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <label id="multiple-label">Multiple</label>
+          <mat-radio-group [(ngModel)]="multiple" aria-labelledby="multiple-label">
+            <mat-radio-button value="Yes">Yes</mat-radio-button>
+            <mat-radio-button value="No">No</mat-radio-button>
+          </mat-radio-group>
+        </td>
+      </tr>
+  </table>
+</div>
+<div mat-dialog-actions>
+  <button mat-button>Ok</button>&nbsp;
+  <button mat-button (click)="cancel()">Cancel</button>
+</div>

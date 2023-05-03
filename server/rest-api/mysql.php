@@ -49,7 +49,7 @@
         public function getStore($id) {
             try {
                 $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
-                $storeresult = $conn->query("select s.id, s.name, gr.level from stores s inner join grantedrights gr on s.id = gr.targetid where s.id='" . $id . "' and gr.granteeid = '" . $this->userId . "' and gr.identityproviderid='" . $this->identityProviderId . "' and gr.targettype='store' order by gr.weight asc limit 1");
+                $storeresult = $conn->query("select s.id, s.name, gr.level from stores s inner join grantedrights gr on s.id = gr.targetid where s.id='" . $id . "' and (gr.granteeid = 'everyone' or (gr.granteeid = '" . $this->userId . "' and gr.identityproviderid='" . $this->identityProviderId . "')) and gr.targettype='store' order by gr.weight asc limit 1");
                 if ($storeresult) {
                     if ($row = $storeresult->fetch_object()) {
                         $readRight = $conn->query("select level from rights where systemright='read'");
@@ -193,6 +193,25 @@
             }
         }
 
+        public function canDeleteStore($storeid) {
+            try {
+                $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
+                $results = $conn->query("select level from grantedrights where (granteeid = 'everyone' or (granteeid = '" . $this->userId . "' and identityproviderid = '" . $this->identityProviderId . "')) and targettype = 'store' and targetid='" . $storeid . "' order by weight desc limit 1");
+                if ($results->num_rows == 0)
+                    return false;
+                else {
+                    $rights = $conn->query("select level from rights where systemright='delete'");
+                    if ($rights->num_rows == 1) 
+                        return intval($rights->fetch_object()->level) & intval($results->fetch_object()->level);
+                    else
+                        return false;
+                }
+            }
+            finally {
+                $conn->close();
+            }
+        }
+
         public function canCreateClass($storeid) {
             try {
                 $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
@@ -212,14 +231,109 @@
             }
         }
 
-        public function createStore($name) {
+        public function createStore($name, $grantedrights, $addons) {
             try {
                 $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
                 $idquery = $conn->query("select UUID() newid from INFORMATION_SCHEMA.TABLES LIMIT 1");
                 $id = $idquery->fetch_object()->newid;
-                $conn->query("insert into stores (id, name) values ('" . $id . "','" . $name . "')");
-                $conn->query("insert into grantedrights (granteeid, identityproviderid, targetid, targettype, level, weight) (select granteeid, identityproviderid,'" . $id . "',targettype, level, weight from grantedrights where targettype = 'store' and targetid IS NULL)");
-                return $id;
+                $conn->begin_transaction();
+                try {
+                    $succeeded = true;
+                    $succeeded = $conn->query("insert into stores (id, name) values ('" . $id . "','" . $name . "')");
+                    if ($succeeded) {
+                        if (sizeof($grantedrights) > 0) {
+                            foreach($grantedrights as $right) {
+                                if ($right->grantee == 'everyone') {
+                                    $succeeded = $conn->query("insert into grantedrights (granteeid, targetid, targettype, level, weight) values ('everyone', '" . $id . "','store'," . $right->level . ",0)");
+                                }
+                                else {
+                                    $userrows = $conn->query("select id from users where email='" . $right->grantee . "'");
+                                    if ($userrows->num_rows == 1) {
+                                        $userrow = $userrows->fetch_object();
+                                        $succeeded = $conn->query("insert into grantedrights (granteeid, identityproviderid, targetid, targettype, level, weight) (select '" . $userrow->id . "',id,'" . $id . "','store', " . $right->level . ",1 from identityproviders where type='internal')");
+                                    }
+                                    else
+                                        $succeeded = false;
+                                }
+                                if (!$succeeded)
+                                    break;
+                            }
+                        }
+                        else {
+                            $succeeded = $conn->query("insert into grantedrights (granteeid, identityproviderid, targetid, targettype, level, weight) (select granteeid, identityproviderid,'" . $id . "',targettype, level, weight from grantedrights where targettype = 'store' and targetid IS NULL)");
+                            if ($succeeded) {
+                                $countres = $conn->query("select count(*) countedrights from grantedrights where targetid = '" . $id . "'");
+                                $rightscount = $countres->fetch_object()->countedrights;
+                                if ($rightscount == 0) {
+                                    $succeeded = $conn->query("insert into grantedrights (granteeid, identityproviderid, targetid, targettype, level, weight) values ('" . $this->userId . "', '" . $this->identityProviderId . "','" . $id . "','store', (select sum(level) from rights where storeright=1), 1)");
+                                }
+                            }
+                        }
+                        if ($addons) {
+                            foreach($addons as $addon) {
+                                $jsons = $conn->query("select structure from addons where id='" . $addon . "'");
+                                if ($json = $jsons->fetch_object()) {
+                                    $definition = json_decode($json->structure);
+                                    foreach($definition->classes as $classdefinition) {
+                                        $class = AdaClass::fromAddOn($classdefinition);
+                                        if ($classdefinition->security) {
+                                            $rights = $this->getRights();
+                                            foreach($classdefinition->security as $sec) {
+                                                $level = 0;
+                                                foreach($sec->rights as $right) {
+                                                    foreach($rights as $checkright) {
+                                                        if ($checkright->getName() == $right || $checkright->getSystemRight() == $right)
+                                                            $level += $checkright->getLevel();
+                                                    }
+                                                }
+                                            }
+                                            if ($sec->grantee == 'everyone') {
+                                                $right = new GrantedRight('everyone', null, $level, 0);
+                                                $class->addRight($right);
+                                            }
+                                            else {
+                                                $right = new GranteeRight($sec->grantee, $sec->identityprovider, $level, 1);
+                                                $class->addRight($right);
+                                            }
+                                        }
+                                        $idquery = $conn->query("select UUID() newid from INFORMATION_SCHEMA.TABLES LIMIT 1");
+                                        $classid = $idquery->fetch_object()->newid;
+                                        $conn->query("insert into classes (id, name, creator, creatoridentityproviderid, folderclass, contentclass, storeid) values ('" . $classid . "','" . $class->getName() . "','" . $this->userId . "','" . $this->identityProviderId . "'," . ($class->isFolderClass() ? '1' : '0') . "," . ($class->isDocumentClass() ? '1': '0') . ",'" . $id . "')");
+                        
+                                        foreach($class->getProperties() as $property) {
+                                            $conn->query("insert into classproperties (id, name, `type`, required, multiple, classid) values (UUID(), '" . $property->getName() . "','" . $property->getType() . "'," . ($property->isRequired()? 1:0) . "," . ($property->isMultiple()? 1: 0). ",'" . $classid . "')");
+                                        }
+                        
+                                        if (sizeof($class->getRights()) == 0) {
+                                            $conn->query("insert into grantedrights (granteeid, identityproviderid, targetid, targettype, level, weight) values ('" . $this->userId . "','" . $this->identityProviderId . "','". $classid . "','class',(select sum(level) from rights where classright = 1), 1)");
+                                        }
+                                        else {
+                                            foreach($class->getRights() as $right) {
+                                                if ($right->getGranteeId() == 'everyone') 
+                                                    $conn->query("insert into grantedrights (granteeid, targetid, targettype, level, weight) values ('everyone', '" . $classid . "','class'," . $right->getLevel() . ",0)");
+                                                else {
+                                                    $conn->query("insert into grantedrights (granteeid, identityproviderid, targetid, targettype, level, weight) values ('" . $right->getGranteeId() . "','" . $right->getIdentityProviderId() . "','" . $classid . "','class'," . $right->getLevel() . ",0)");
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                                else {
+                                    $succeeded = false;
+                                }
+                            }
+                        }
+                    }
+                    if ($succeeded) {
+                        $conn->commit();
+                        return $id;
+                    }
+                    else
+                        $conn->rollback();
+                }
+                catch (Exception $err) {
+                    $conn->rollback();
+                }
             }
             finally {
                 $conn->close();
@@ -241,8 +355,8 @@
                 }
                 else {
                     foreach($class->getRights() as $right) {
-                        if ($right->getGranteeId() == 'everybody') 
-                            $conn->query("insert into grantedrights (granteeid, targetid, targettype, level, weight) values ('everybody', '" . $id . "','class'," . $right->getLevel() . ",0)");
+                        if ($right->getGranteeId() == 'everyone') 
+                            $conn->query("insert into grantedrights (granteeid, targetid, targettype, level, weight) values ('everyone', '" . $id . "','class'," . $right->getLevel() . ",0)");
                         else {
                             $conn->query("insert into grantedrights (granteeid, identityproviderid, targetid, targettype, level, weight) values ('" . $right->getGranteeId() . "','" . $right->getIdentityProviderId() . "','" . $id . "','class'," . $right->getLevel() . ",0)");
                         }
@@ -261,7 +375,7 @@
                 $checked = [];
                 $result = true;
                 foreach($rights as $right) {
-                    if ($right->grantee != 'everybody') {
+                    if ($right->grantee != 'everyone') {
                         $results = $conn->query("select id,name from identityproviders where id = '". $right->identityprovider . "' or name = '" . $right->identityprovider . "'");
                         if ($results->num_rows == 0) {
                             $result = false;
@@ -281,4 +395,155 @@
             }
         }
 
-    }
+        public function getClasses($storeid) {
+            try {
+                $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
+                $potentialrows = $conn->query("select c.id, c.name, c.folderclass, c.contentclass, gr.level from classes c inner join grantedrights gr on c.id = gr.targetid where (gr.granteeid = 'everyone' or (gr.granteeid = '" . $this->userId . "' and gr.identityproviderid = '" . $this->identityProviderId . "')) and c.storeid = '" . $storeid . "' order by gr.weight desc");
+                $potentials = [];
+                $potentialIds = [];
+                while ($potentialrow = $potentialrows->fetch_object()) {
+                    if (!array_key_exists($potentialrow->id, $potentialIds)) {
+                        $newpotential = new AdaClass($potentialrow->id, $potentialrow->name);
+                        $newpotential->setIsDocumentClass($potentialrow->documentclass == 1);
+                        $newpotential->setIsFolderClass($potentialrow->folderclass == 1);
+                        $potentials[sizeof($potentials)] = ["class" => $newpotential, "level" => $potentialrow->level];
+                        $potentialIds[$potentialrow->id] = true;
+                    }
+                }
+                $readRight = $conn->query("select level from rights where systemright='read'");
+                if ($right = $readRight->fetch_object()) {
+                    $classes = [];
+                    foreach($potentials as $potential) {
+                        if (intval($right->level) & intval($potential["level"])) {
+                            $classes[sizeof($classes)] = $potential["class"];
+                        }
+                    }
+                    return $classes;
+                }
+                else
+                    return [];
+            }
+            finally {
+                $conn->close();
+            }
+        }
+
+        public function getClass($storeid, $classid) {
+            try {
+                $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
+                $rows = $conn->query("select c.id, c.name, c.folderclass, c.contentclass, gr.level from classes c inner join grantedrights gr on c.id = gr.targetid where c.storeid = '" . $storeid . "' and c.id = '" . $classid . "' and (gr.granteeid = 'everyone' or (gr.granteeid = '" . $this->userId . "' and gr.identityproviderid = '" . $this->identityProviderId . "')) and gr.targettype='class' order by gr.weight asc limit 1");
+                if ($rows) {
+                    $row = $rows->fetch_object();
+                    $readRight = $conn->query("select level from rights where systemright='read'");
+                    if ($readRight) {
+                        if ($right = $readRight->fetch_object()) {
+                            if (intval($row->level) & intval($right->level)) {
+                                $newClass = new AdaClass($row->id, $row->name);
+                                $newClass->setIsFolderClass($row->folderclass == 1);
+                                $newClass->setIsDocumentClass($row->documentclass == 1);
+
+                                $props = $conn->query("select id, name, `type`, required, multiple from classproperties where classid = '" . $classid . "'");
+                                if ($props) {
+                                    while ($prop = $props->fetch_object()) {
+                                        $newProp = new Property($prop->id, $prop->name, $prop->type);
+                                        $newProp->setMultiple($prop->multiple == 1);
+                                        $newProp->setRequired($prop->required == 1);
+                                        $newClass->addProperty($newProp);
+                                    }
+                                }
+                                return $newClass;
+                            }
+                            else
+                                return false;
+                        }
+                        else {
+                            return false;
+                        }
+                    }
+                    else
+                        return false;
+                }
+                else
+                    return false;
+            }
+            finally {
+                $conn->close();
+            }
+
+        }
+
+        public function getRights() {
+            try {
+                $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
+                $rows = $conn->query("select id, name, systemright, level, domainright, storeright, classright, objectright from rights");
+                $rights = [];
+                while ($row = $rows->fetch_object()) {
+                    $rights[sizeof($rights)] = new Right($row->id, $row->name, $row->systemright, $row->level, $row->domainright, $row->storeright, $row->classright, $row->objectright);
+                }
+                return $rights;
+            }
+            finally {
+                $conn->close();
+            }
+        }
+
+        public function getIdentityProviders() {
+            try {
+                $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
+                $rows = $conn->query("select id, name, `type` from identityproviders");
+                $providers = [];
+                while ($row = $rows->fetch_object()) {
+                    $providers[sizeof($providers)] = new IdentityProvider($row->id, $row->name, $row->type);
+                }
+                return $providers;
+            }
+            finally {
+                $conn->close();
+            }
+        }
+
+        public function deleteStore($storeid) {
+            try {
+                $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
+                return $conn->query("delete from stores where id = '" . $storeid . "'");
+            }
+            finally {
+                $conn->close();
+            }
+        }
+
+        public function canAddAddon() {
+            try {
+                $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
+                $systemrights = $conn->query("select level from rights where systemright='createaddon'");
+                if ($systemright = $systemrights->fetch_object()) {
+                    $grantedrights = $conn->query("select level from grantedrights where targettype='domain' order by weight limit 1");
+                    if ($grantedright = $grantedrights->fetch_object()) {
+                        return intval($systemright->level & intval($grantedright->level));
+                    }
+                    else return false;
+                }
+                else
+                    return false;
+            }
+            finally {
+                $conn->close();
+            }
+        }
+
+        public function addAddon($id, $name, $json) {
+            try {
+                $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
+                $checks = $conn->query("select id from addons where id = '" . $id . "'");
+                if ($check = $checks->fetch_object())
+                    throw new Exception("Addon with id '" . $id . "' already exists");
+                else {
+                    return $conn->query("insert into addons (id, name, structure) values ('" . $id . "','" . $name . "','" . $conn->real_escape_string($json) . "')");
+                }
+            }
+            finally {
+                $conn->close();
+            }
+
+        }
+}

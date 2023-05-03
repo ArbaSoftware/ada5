@@ -1,0 +1,23 @@
+<mat-toolbar style="width:100%;">
+    <div style="width:100%;">
+        <button mat-icon-button [matMenuTriggerFor]="menu" aria-label="Example icon-button with a menu">
+            <mat-icon>menu</mat-icon>
+        </button>
+        <mat-menu #menu="matMenu">
+            <button mat-menu-item>
+            <span>Domain</span>
+            </button>
+            <button mat-menu-item [mat-menu-trigger-for]="storesmenu">
+            <span>Stores</span>
+            </button>
+        </mat-menu>
+
+        <mat-menu #storesmenu="matMenu">
+            <button mat-menu-item *ngFor="let store of this.stores" id="{{store.getId()}}" (click)="showStore(store.getId())">
+            <span>{{store.getName()}}</span>
+            </button>
+        </mat-menu>
+
+        <span style="padding-left:15px;">{{title}}</span>
+    </div>
+</mat-toolbar>

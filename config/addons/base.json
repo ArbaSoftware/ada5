@@ -12,12 +12,18 @@
 					"type": "string",
 					"required": true,
 					"multiple": false
+				},
+				{
+					"name": "ParentFolder",
+					"type": "object",
+					"required": false,
+					"multiple": false
 				}
 			],
 			"security": [
 				{
 					"grantee": "everyone",
-					"rights": ['read','update','delete','create']
+					"rights": ["read","update","delete","create","createobject"]
 				}
 			]
 		}
