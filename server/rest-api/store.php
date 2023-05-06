@@ -3,6 +3,7 @@
     include('mysql.php');
     include('model.php');
     include('auth.php');
+    include('json.php');
 
     $auth = new Auth();
     if (!$user = $auth->isAuthorized()) {
@@ -67,7 +68,7 @@
         if ($url == '/ada/store') {
             try {
                 $request = json_decode(file_get_contents('php://input'));
-                if ($request && validateAddRequest($request)) {
+                if (JsonUtils::validate($request, 'addstorerequest')) {
                     if ($db->isStoreNameUnique($request->name)) {
                         if ($db->canCreateStore()) {
                             $newStoreId = $db->createStore($request->name, $request->grantedrights, $request->addons);
@@ -95,8 +96,9 @@
         else if (sizeof($urlparts) == 5 && $urlparts[1] == 'ada' && $urlparts[2] == 'store' && $urlparts[4] == 'class') {
             $storeId = $urlparts[3];
             if ($db->getStore($storeId)) {
-                $request = json_decode(file_get_contents('php://input'));
-                if ($request && AdaClass::validateJson($request)) {
+                $json = file_get_contents("php://input");
+                if (JsonUtils::validate($json, "addclassrequest")) {
+                    $request = json_decode($json);
                     if ($db->areValidRights($request->rights)) {
                         if ($db->isUniqueClassName($storeId, $request->name)) {
                             if ($db->canCreateClass($storeId)) {
@@ -140,14 +142,6 @@
         }
     }
     sendState(404, "Not found");
-
-    function validateAddRequest($request) {
-        if (isset($request->name) && !isset($request->id)) {
-            return true;
-        }
-        else
-            return false;
-    }
 
     function sendState($code, $message) {
         header("HTTP/1.1 " . $code . " " . $message);

@@ -9,7 +9,11 @@
             else {
                 $allschemas = json_decode(file_get_contents('schemas.json'));
                 if ($allschemas->$schema) {
-                    return JsonUtils::validateObject($parsed, $allschemas->$schema);
+                    $validationErrors = JsonUtils::validateObject($parsed, $allschemas->$schema);
+                    if (sizeof($validationErrors) == 0)
+                        return true;
+                    else
+                        return $validationErrors;
                 }
                 else {
                     $errors[sizeof($errors)] = 'Invalid schema';
@@ -60,6 +64,12 @@
                     }
                 }
             }
+            else if ($definition->type == "enumeration" ) {
+                $values = $definition->values;
+                if (!in_array($value, $values)) {
+                    $errors[sizeof($errors)] = "Invalid value for property ´" . $name . "´";
+                }
+            }
             else if ($propertytype != $definition->type)
                 $errors[sizeof($errors)] = "Property '" . $name . "' has an invalid type (" . $definition->type . ' <> ' . gettype($value) . ")";
             return $errors;
@@ -88,6 +98,8 @@
         }
     }
 
-    $errors = JsonUtils::validate('{"name":"arjan", "grantedrights":[{"grantee":"Y","level":5}],"addons":[5]}', "addstorerequest");
+    /*
+    $errors = JsonUtils::validate('{"name":"arjan", "properties": [{"name":"name","type": "string"} ], "rights": [{"grantee": "a", "level": 5}]}', "addclassrequest");
     print_r($errors);
+    */
 ?>
