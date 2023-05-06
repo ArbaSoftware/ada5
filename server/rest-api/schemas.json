@@ -1,0 +1,30 @@
+{
+    "addstorerequest": {
+        "name": {
+            "required": true,
+            "type": "string"
+        },
+        "grantedrights": {
+            "required": false,
+            "type": "arrayofobjects",
+            "schema": {
+                "grantee": {
+                    "type": "string",
+                    "required": true
+                },
+                "identityprovider": {
+                    "type": "string",
+                    "required": false
+                },
+                "level": {
+                    "type": "integer",
+                    "required": true
+                }
+            }
+        },
+        "addons": {
+            "type": "arrayofstrings",
+            "required": false
+        }
+    }
+}

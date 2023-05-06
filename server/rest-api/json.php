@@ -1,20 +1,93 @@
 <?php
     class JsonUtils {
         public static function validate($json, $schema) {
+            $errors = [];
             $parsed = json_decode($json);
             if (!$parsed) {
-                return false;
+                $errors[sizeof($errors)] = 'Invalid json';
             }
-            return true;
+            else {
+                $allschemas = json_decode(file_get_contents('schemas.json'));
+                if ($allschemas->$schema) {
+                    return JsonUtils::validateObject($parsed, $allschemas->$schema);
+                }
+                else {
+                    $errors[sizeof($errors)] = 'Invalid schema';
+                }
+            }
+            return $errors;
+        }
+
+        private static function validateObject($object, $schema) {
+            $errors = [];
+            $objectProperties = get_object_vars($object);
+            $schemaProperties = get_object_vars($schema);
+            foreach(array_keys($objectProperties) as $property) {
+                if (!array_key_exists($property, $schemaProperties))
+                    $errors[sizeof($errors)] = "Invalid property '" . $property . "'";
+                else {
+                    $propertyErrors = JsonUtils::validateProperty($property, $objectProperties[$property], $schemaProperties[$property]);
+                    foreach($propertyErrors as $error) {
+                        $errors[sizeof($errors)] = $error;
+                    }
+                }
+            }
+            foreach (array_keys($schemaProperties) as $property) {
+                $definition = $schemaProperties[$property];
+                if ($definition->required) {
+                    if (!array_key_exists($property, $objectProperties)) {
+                        $errors[sizeof($errors)] = "Required property '" . $property . "' missing";
+                    }
+                }
+            }
+            return $errors;
+        }
+        private static function validateProperty($name, $value, $definition) {
+            $errors = [];
+            $propertytype = gettype($value);
+            if ($propertytype == 'array' && ($definition->type == 'arrayofstrings' || $definition->type == 'arrayofobjects')) {
+                if ($definition->type == 'arrayofstrings') {
+                    foreach(JsonUtils::validateArrayOfStrings($name,$value) as $error) 
+                        $errors[sizeof($errors)] = $error;
+                }
+                else if ($definition->type == 'arrayofobjects') {
+                    if ($definition->schema) {
+                        foreach(JsonUtils::validateArrayOfObjects($name, $value, $definition->schema) as $error)
+                            $errors[sizeof($errors)] = $error;
+                    }
+                    else {
+                        $errors[sizeof($errors)] = 'Invalid schema - no schema for array of objects';
+                    }
+                }
+            }
+            else if ($propertytype != $definition->type)
+                $errors[sizeof($errors)] = "Property '" . $name . "' has an invalid type (" . $definition->type . ' <> ' . gettype($value) . ")";
+            return $errors;
+        }
+        private static function validateArrayOfStrings($name, $array) {
+            $onlyStrings = true;
+            foreach($array as $item) {
+                if (gettype($item) != 'string') {
+                    $onlyStrings = false;
+                    break;
+                }
+            }
+            if ($onlyStrings)
+                return [];
+            else
+                return ["Property '" . $name . "' is not a string array"];
+        }
+
+        private static function validateArrayOfObjects($name, $array, $itemschema) {
+            $errors = [];
+            foreach($array as $item) {
+                foreach(JsonUtils::validateObject($item, $itemschema) as $error)
+                    $errors[sizeof($errors)] = $error;
+            }
+            return $errors;
         }
     }
 
-    if (JsonUtils::validate('{}', '')) {
-        echo 'valid';
-    }
-    else {
-        echo 'invalid';
-    }
-
-    
+    $errors = JsonUtils::validate('{"name":"arjan", "grantedrights":[{"grantee":"Y","level":5}],"addons":[5]}', "addstorerequest");
+    print_r($errors);
 ?>
