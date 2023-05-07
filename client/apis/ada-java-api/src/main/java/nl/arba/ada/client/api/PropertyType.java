@@ -8,9 +8,9 @@ import nl.arba.ada.client.api.exceptions.InvalidPropertyTypeException;
 
 public enum PropertyType {
     /**
-     * A text or string type
+     * A string type
      */
-    TEXT,
+    STRING,
     /**
      * A numeric type
      */
@@ -31,8 +31,8 @@ public enum PropertyType {
      * @throws InvalidPropertyTypeException When the input value is invalid
      */
     public static PropertyType fromString(String value) throws InvalidPropertyTypeException {
-        if (value.equalsIgnoreCase("text"))
-            return TEXT;
+        if (value.equalsIgnoreCase("string"))
+            return STRING;
         else if (value.equalsIgnoreCase("integer"))
             return INTEGER;
         else if (value.equalsIgnoreCase("date"))
@@ -48,8 +48,8 @@ public enum PropertyType {
      * @return The string value of the property
      */
     public String toString() {
-        if (this.equals(TEXT))
-            return "text";
+        if (this.equals(STRING))
+            return "string";
         else if (this.equals(INTEGER))
             return "integer";
         else if (this.equals(DATE))

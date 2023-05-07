@@ -1,83 +1,37 @@
 <?php
     class Addon {
         public static function validateJson($json, $db) {
-            $input = json_decode($json);
-            if ($input) {
-                if (!$input->classes)
-                    $input->classes = [];
-                if (strlen($input->id) > 0 && strlen($input->name) > 0 && is_array($input->classes)) {
-                    $validClasses = true;
-                    foreach($input->classes as $class) {
-                        if (!Addon::validateClass($class, $db)) {
-                            $validClasses = false;
-                            break;
-                        }
-                    }
-                    return $validClasses;
+            $errors = JsonUtils::validate($json, "addaddonrequest");
+            if ($errors && gettype($errors) == "boolean") {
+                //Structuur is goed.
+                $input = json_decode($json);
+                $validClasses = true;
+                $classErrors = [];
+                foreach($input->classes as $class) {
+                    $classErrors = Addon::validateClass($class, $db);
+                    foreach($classErrors as $error)
+                        $classErrors[sizeof($classErrors)] = $error;
                 }
+                if (sizeof($classErrors) == 0)
+                    return true;
                 else {
-                    return false;
+                    return $classErrors;
                 }
             }
             else {
-                return false;
+                return $errors;
             }
         }
 
         private static function validateClass($class, $db) {
-            $allowedproperties = ['name', 'description', 'folderclass', 'documentclass', 'properties', 'security'];
-            $propertytypes = ["name"=>"string", "description"=>"string", "folderclass"=>"boolean","documentclass"=>"boolean","properties"=>"array","security"=>"array"];
-            $properties = array_keys(get_object_vars($class));
-            $invalidProperty= false;
-            foreach($properties as $property) {
-                if (!in_array($property, $allowedproperties)) {
-                    $invalidProperty = true;
-                    break;
-                }
-                else if (gettype($class->$property) != $propertytypes[$property]) {
-                    $invalidProperty = true;
-                    break;
-                }
-                else if ($property == 'properties' && !Addon::validateProperties($class->properties)) {
-                    $invalidProperty = true;
-                    break;
-                }
-                else if ($property == 'security' && !Addon::validateSecurity($class->security, $db)) {
-                    $invalidProperty = true;
-                    break;
-                }
+            if ($class->security) {
+                if (Addon::validateSecurity($class->security, $db))
+                    return true;
+                else
+                    return ["Invalid security for class '" . $class->name . "'"];
             }
-            return !$invalidProperty;
-        }
-
-        private static function validateProperties($properties) {
-            $foundInvalid = false;
-            foreach($properties as $property) {
-                if (!Addon::validateProperty($property)) {
-                    $foundInvalid = true;
-                    echo $property->name . ' invalid';
-                    break;
-                }
-            }
-            return !$foundInvalid;
-        }
-
-        private static function validateProperty($property) {
-            $allowedproperties = ['name', 'type', 'required', 'multiple'];
-            $propertytypes = ["name"=>"string", "type"=>"string", "required"=>"boolean","multiple"=>"boolean"];
-            $properties = array_keys(get_object_vars($property));
-            $invalidProperty= false;
-            foreach($properties as $propertyproperty) {
-                if (!in_array($propertyproperty, $allowedproperties)) {
-                    $invalidProperty = true;
-                    break;
-                }
-                else if (gettype($property->$propertyproperty) != $propertytypes[$propertyproperty]) {
-                    $invalidProperty = true;
-                    break;
-                }
-            }
-            return !$invalidProperty;
+            else
+                return true;
         }
 
         private static function validateSecurity($security, $db) {

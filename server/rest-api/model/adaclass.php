@@ -87,66 +87,6 @@
             return $result;
         }
 
-        public static function validateJson($input) {
-            $properties = array_keys(get_object_vars($input));
-            $validProperties = ["name", "description", "folderclass", "documentclass", "properties", "rights"];
-            $propertyTypes = ["name" =>'string', "description"=>"string", "folderclass"=>"boolean", "documentclass"=>"boolean"];
-            $requiredProperties = ["name"];
-            $valid = true;
-            foreach($properties as $property) {
-                if ($property == 'properties') {
-                    if (is_array($input->properties)) {
-                        $invalidPropertyFound = false;
-                        foreach($input->properties as $property) {
-                            if (!Property::validJson($property)) {
-                                $invalidPropertyFound = true;
-                            }
-                        }
-                        if ($invalidPropertyFound) {
-                            $valid = false;
-                            break;
-                        }
-                    }
-                    else {
-                        $valid = false;
-                        break;
-                    }
-                }
-                else if ($property == 'rights') {
-                    $invalidRightFound = false;
-                    foreach($input->rights as $right) {
-                        if (!GrantedRight::isValidJson($right)) {
-                            $invalidRightFound = true;
-                            break;
-                        }
-                    }
-                    if ($invalidRightFound) {
-                        $valid = false;
-                        break;
-                    }
-                }
-                else if (!in_array($property, $validProperties)) {
-                    $valid = false;
-                    break;
-                }
-                else if (gettype($input->$property) != $propertyTypes[$property]) {
-                    $valid = false;
-                    break;
-                }
-            }
-            if ($valid) {
-                foreach($requiredProperties as $property) {
-                    if (!in_array($property, $properties)) {
-                        $valid = false;
-                        break;
-                    }
-                }
-            }
-            if (isset($input->documentclass) && isset($input->folderclass) && $input->documentclass && $input->folderclass)
-                $valid = false;
-            return $valid;
-        }
-
         public function getRights() {
             return $this->rights;
         }

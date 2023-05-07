@@ -30,7 +30,7 @@ public class TestClasses {
         folder.setName("Folder");
         GrantedRight right = GrantedRight.create(Everyone.create(), 1);
         folder.addRight(right);
-        folder.addProperty(Property.create("Name", PropertyType.TEXT));
+        folder.addProperty(Property.create("Name", PropertyType.STRING));
         newStore.addClass(folder);
     }
 

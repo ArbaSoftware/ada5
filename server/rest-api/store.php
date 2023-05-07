@@ -3,7 +3,6 @@
     include('mysql.php');
     include('model.php');
     include('auth.php');
-    include('json.php');
 
     $auth = new Auth();
     if (!$user = $auth->isAuthorized()) {
@@ -67,8 +66,9 @@
     else if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         if ($url == '/ada/store') {
             try {
-                $request = json_decode(file_get_contents('php://input'));
-                if (JsonUtils::validate($request, 'addstorerequest')) {
+                $json = file_get_contents('php://input');
+                $request = json_decode($json);
+                if ($errors = JsonUtils::validate($json, 'addstorerequest')) {
                     if ($db->isStoreNameUnique($request->name)) {
                         if ($db->canCreateStore()) {
                             $newStoreId = $db->createStore($request->name, $request->grantedrights, $request->addons);
@@ -84,7 +84,14 @@
                     }
                 }
                 else {
-                    header("HTTP/1.1 500 Invalid request");
+                    $errorJson = "{\"error\": \"Invalid request\", \"messages\": [";
+                    $prefix = "";
+                    foreach($errors as $error) {
+                        $errorJson .= $prefix . '"'. $error . '"';
+                        $prefix = ',';
+                    }
+                    $errorJson .= "]}";
+                    sendState(500, $errorJson);
                     exit;
                 }
             }

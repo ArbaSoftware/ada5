@@ -17,7 +17,8 @@
         if ($url == '/ada/addon') {
             if ($db->canAddAddon()) {
                 $json = file_get_contents('php://input');
-                if (Addon::validateJson($json, $db)) {
+                $errors = Addon::validateJson($json, $db);
+                if ($errors && gettype($errors) == "boolean") {
                     $addon = json_decode($json);
                     try {
                         $db->addAddOn($addon->id, $addon->name, $json);
@@ -28,7 +29,7 @@
                     }
                 }
                 else {
-                    sendState(500, 'Invalid request');
+                    sendState(500, "Invalid request", JsonUtils::createErrorJson($errors));
                 }
             }
             else {
@@ -38,7 +39,8 @@
         else
             sendState(404, '');
     }
-    function sendState($code, $message) {
+    function sendState($code, $message, $json = "") {
         header("HTTP/1.1 " . $code . " " . $message);
+        echo $json;
     }
 ?>        
