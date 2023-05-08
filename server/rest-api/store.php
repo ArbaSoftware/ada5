@@ -62,6 +62,16 @@
                 exit;
             }
         }
+        else if (sizeof($urlparts) == 7 && $urlparts[1] == 'ada' && $urlparts[2] == 'store' && $urlparts[4] == 'class' && $urlparts[6] == 'schema') {
+            $class = $db->getClass($urlparts[3], $urlparts[5]);
+            if ($class) {
+                echo $class->createObjectSchema();
+            }
+            else {
+                sendState(404, "Class not found");
+            }
+            exit;
+        }
     }
     else if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         if ($url == '/ada/store') {

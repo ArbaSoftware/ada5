@@ -70,6 +70,11 @@
                     $errors[sizeof($errors)] = "Invalid value for property ´" . $name . "´";
                 }
             }
+            else if ($definition->type == "fixed") {
+                if ($value != $definition->fixedvalue) {
+                    $errors[sizeof($errors)] = "Invalid value for property '" . $name . "'";
+                }
+            }
             else if ($propertytype != $definition->type)
                 $errors[sizeof($errors)] = "Property '" . $name . "' has an invalid type (" . $definition->type . ' <> ' . gettype($value) . ")";
             return $errors;

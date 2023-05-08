@@ -126,5 +126,23 @@
                 return $json;
             }
         }
+
+        public function createObjectSchema() {
+            $schema = "{\"classid\": {\"type\":\"fixed\",\"fixedvalue\":\"". $this->getId() . "\", \"required\":true}";
+            if ($this->getProperties()) {
+                $schema .= ", \"properties\": {";
+                $prefix = "";
+                foreach($this->getProperties() as $property) {
+                    $schema .= $prefix . "\"" . $property->getName() . "\": {";
+                    $schema .= "\"type\":\"" . $property->getType() . "\",";
+                    $schema .= "\"required\":" . ($property->isRequired() ? "true": "false");
+                    $schema .= "}";
+                    $prefix = ",";
+                }
+                $schema .= "}";
+            }
+            $schema .= "}";
+            return $schema;
+        }
     }
 ?>
