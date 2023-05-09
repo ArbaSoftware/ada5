@@ -8,15 +8,25 @@
             }
             else {
                 $allschemas = json_decode(file_get_contents('schemas.json'));
-                if ($allschemas->$schema) {
-                    $validationErrors = JsonUtils::validateObject($parsed, $allschemas->$schema, $allschemas);
+                if ($allschemas->schemas->$schema) {
+                    $validationErrors = JsonUtils::validateObject($parsed, $allschemas->schemas->$schema, $allschemas);
                     if (sizeof($validationErrors) == 0)
                         return true;
                     else
                         return $validationErrors;
                 }
                 else {
-                    $errors[sizeof($errors)] = 'Invalid schema';
+                    $jsonSchema = json_decode($schema);
+                    if ($jsonSchema) {
+                        $validationErrors = JsonUtils::validateObject($parsed, $jsonSchema, $allschemas);
+                        if (sizeof($validationErrors) == 0)
+                            return true;
+                        else
+                            return $validationErrors;
+                    }
+                    else {
+                        $errors[sizeof($errors)] = 'Invalid schema';
+                    }
                 }
             }
             return $errors;
@@ -65,7 +75,13 @@
                 }
             }
             else if ($definition->type == "enumeration" ) {
-                $values = $definition->values;
+                if (gettype($definition->values) == "string") {
+                    $enum = $definition->values;
+                    $values = $allschemas->enumerations->$enum;
+                }
+                else {
+                    $values = $definition->values;
+                }
                 if (!in_array($value, $values)) {
                     $errors[sizeof($errors)] = "Invalid value for property ´" . $name . "´";
                 }
@@ -96,7 +112,7 @@
         private static function validateArrayOfObjects($name, $array, $itemschema, $allschemas) {
             $errors = [];
             if (gettype($itemschema) == "string") {
-                $itemschema = $allschemas->$itemschema;
+                $itemschema = $allschemas->schemas->$itemschema;
             }
             foreach($array as $item) {
                 foreach(JsonUtils::validateObject($item, $itemschema, $allschemas) as $error)

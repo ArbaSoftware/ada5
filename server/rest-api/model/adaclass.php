@@ -141,6 +141,11 @@
                 }
                 $schema .= "}";
             }
+            $schema .= ",\"rights\":{";
+            $schema .= "\"type\":\"arrayofobjects\",";
+            $schema .= "\"required\":false,";
+            $schema .= "\"schema\": \"right\"";
+            $schema .= "}";
             $schema .= "}";
             return $schema;
         }

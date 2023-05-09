@@ -1,156 +1,162 @@
 {
-    "addstorerequest": {
-        "name": {
-            "required": true,
-            "type": "string"
+    "schemas" : {
+        "addstorerequest": {
+            "name": {
+                "required": true,
+                "type": "string"
+            },
+            "grantedrights": {
+                "required": false,
+                "type": "arrayofobjects",
+                "schema": {
+                    "grantee": {
+                        "type": "string",
+                        "required": true
+                    },
+                    "identityprovider": {
+                        "type": "string",
+                        "required": false
+                    },
+                    "level": {
+                        "type": "integer",
+                        "required": true
+                    }
+                }
+            },
+            "addons": {
+                "type": "arrayofstrings",
+                "required": false
+            }
         },
-        "grantedrights": {
-            "required": false,
-            "type": "arrayofobjects",
-            "schema": {
-                "grantee": {
-                    "type": "string",
-                    "required": true
-                },
-                "identityprovider": {
-                    "type": "string",
-                    "required": false
-                },
-                "level": {
-                    "type": "integer",
-                    "required": true
+        "addclassrequest": {
+            "name": {
+                "type": "string",
+                "required": true
+            },
+            "documentclass" : {
+                "type": "boolean",
+                "required": false
+            },
+            "folderclass" : {
+                "type": "boolean",
+                "required": false
+            },
+            "properties": {
+                "type": "arrayofobjects",
+                "required" : false,
+                "schema": {
+                    "name": {
+                        "type": "string",
+                        "required": true
+                    },
+                    "type": {
+                        "type": "enumeration",
+                        "values": "propertytypes",
+                        "required": true
+                    },
+                    "required": {
+                        "type": "boolean",
+                        "required": false
+                    },
+                    "multiple": {
+                        "type": "boolean",
+                        "required": false
+                    }
+                }
+            },
+            "rights": {
+                "type": "arrayofobjects",
+                "schema" : "right"
+            }
+        },
+        "addonclass": {
+            "name": {
+                "type": "string",
+                "required": true
+            },
+            "description": {
+                "type": "string",
+                "required": false
+            },
+            "documentclass" : {
+                "type": "boolean",
+                "required": false
+            },
+            "folderclass" : {
+                "type": "boolean",
+                "required": false
+            },
+            "properties": {
+                "type": "arrayofobjects",
+                "required" : false,
+                "schema": {
+                    "name": {
+                        "type": "string",
+                        "required": true
+                    },
+                    "type": {
+                        "type": "enumeration",
+                        "values": ["string", "date", "object"],
+                        "required": true
+                    },
+                    "required": {
+                        "type": "boolean",
+                        "required": false
+                    },
+                    "multiple": {
+                        "type": "boolean",
+                        "required": false
+                    }
+                }
+            },
+            "security": {
+                "type": "arrayofobjects",
+                "schema" : {
+                    "grantee": {
+                        "type": "string",
+                        "required": true
+                    },
+                    "identityprovider": {
+                        "type": "string",
+                        "required": false
+                    },
+                    "rights": {
+                        "type": "arrayofstrings",
+                        "required": true
+                    }
                 }
             }
         },
-        "addons": {
-            "type": "arrayofstrings",
-            "required": false
+        "addaddonrequest" : {
+            "id": {
+                "type": "string",
+                "required": true
+            },
+            "name": {
+                "type": "string",
+                "required": true
+            },
+            "classes": {
+                "type": "arrayofobjects",
+                "required": false,
+                "schema": "addonclass"       }
+        },
+        "right" : {
+            "grantee": {
+                "type": "string",
+                "required": true
+            },
+            "identityprovider": {
+                "type": "string",
+                "required": false
+            },
+            "level": {
+                "type": "integer",
+                "required": true
+            }
         }
     },
-    "addclassrequest": {
-        "name": {
-            "type": "string",
-            "required": true
-        },
-        "documentclass" : {
-            "type": "boolean",
-            "required": false
-        },
-        "folderclass" : {
-            "type": "boolean",
-            "required": false
-        },
-        "properties": {
-            "type": "arrayofobjects",
-            "required" : false,
-            "schema": {
-                "name": {
-                    "type": "string",
-                    "required": true
-                },
-                "type": {
-                    "type": "enumeration",
-                    "values": ["string", "date"],
-                    "required": true
-                },
-                "required": {
-                    "type": "boolean",
-                    "required": false
-                },
-                "multiple": {
-                    "type": "boolean",
-                    "required": false
-                }
-            }
-        },
-        "rights": {
-            "type": "arrayofobjects",
-            "schema" : {
-                "grantee": {
-                    "type": "string",
-                    "required": true
-                },
-                "identityprovider": {
-                    "type": "string",
-                    "required": false
-                },
-                "level": {
-                    "type": "integer",
-                    "required": true
-                }
-            }
-        }
-    },
-    "addonclass": {
-        "name": {
-            "type": "string",
-            "required": true
-        },
-        "description": {
-            "type": "string",
-            "required": false
-        },
-        "documentclass" : {
-            "type": "boolean",
-            "required": false
-        },
-        "folderclass" : {
-            "type": "boolean",
-            "required": false
-        },
-        "properties": {
-            "type": "arrayofobjects",
-            "required" : false,
-            "schema": {
-                "name": {
-                    "type": "string",
-                    "required": true
-                },
-                "type": {
-                    "type": "enumeration",
-                    "values": ["string", "date", "object"],
-                    "required": true
-                },
-                "required": {
-                    "type": "boolean",
-                    "required": false
-                },
-                "multiple": {
-                    "type": "boolean",
-                    "required": false
-                }
-            }
-        },
-        "security": {
-            "type": "arrayofobjects",
-            "schema" : {
-                "grantee": {
-                    "type": "string",
-                    "required": true
-                },
-                "identityprovider": {
-                    "type": "string",
-                    "required": false
-                },
-                "rights": {
-                    "type": "arrayofstrings",
-                    "required": true
-                }
-            }
-        }
-    },
-    "addaddonrequest" : {
-        "id": {
-            "type": "string",
-            "required": true
-        },
-        "name": {
-            "type": "string",
-            "required": true
-        },
-        "classes": {
-            "type": "arrayofobjects",
-            "required": false,
-            "schema": "addonclass"       }
+    "enumerations": {
+        "propertytypes": ["string", "date"]
     }
 }

@@ -139,6 +139,24 @@
             header("HTTP/1.1 500 Invalid request");
             exit;
         }
+        else if (sizeof($urlparts) == 7 && $urlparts[1] == 'ada' && $urlparts[2] == 'store' && $urlparts[4] == 'class' && $urlparts[6] == 'object') {
+            $class = $db->getClass($urlparts[3], $urlparts[5]);
+            if ($class) {
+                $json = file_get_contents("php://input");
+                $validationErrors = Jsonutils::validate($json, $class->createObjectSchema());
+                if ($validationErrors && gettype($validationErrors) == 'boolean') {
+                    echo "valid request";
+                }
+                else {
+                    echo "Invalid request";
+                }
+                exit;
+            }
+            else {
+                sendState(404, "Class not found");
+            }
+            exit;
+        }
     }
     else if ($_SERVER['REQUEST_METHOD'] == 'DELETE') {
         if (sizeof($urlparts) == 4 && substr($url, 0, strlen('/ada/store/')) == '/ada/store/') {
