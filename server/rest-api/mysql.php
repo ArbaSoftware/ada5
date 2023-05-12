@@ -594,13 +594,16 @@
                         if (gettype($request->properties) == 'object') {
                             $propertyNames = array_keys( get_object_vars($request->properties));
                             foreach($propertyNames as $property) {
-                                $propertyPmrops = $conn->query("select id, type from classproperties where classid = '" . $class->getId() . "' and name ='" . $property . "'");
+                                $propertyProps = $conn->query("select id, type from classproperties where classid = '" . $class->getId() . "' and name ='" . $property . "'");
                                 if ($propertyProps->num_rows == 1) {
                                     $props = $propertyProps->fetch_object();
                                     $type = $props->type;
                                     $propid = $props->id;
                                     if ($type == 'string') {
                                         $succeeded = $conn->query("insert into objectproperties (objectid,propertyid,string_value) values ('" . $id . "','" . $propid . "','" . $request->properties->$property . "')");
+                                    }
+                                    else if ($type == 'date') {
+                                        $succeeded = $conn->query("insert into objectproperties (objectid,propertyid, date_value) values('" . $id . "','" . $propid . "','" . $request->properties->$property->year . '-' . $request->properties->$property->month . '-' . $request->properties->$property->day . "')");
                                     }
                                     else {
                                         $succeeded = false;
@@ -638,4 +641,43 @@
                 $conn->close();
             }
        }
+       public function getObject($storeid, $objectid) {
+        try {
+            $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
+            $rows = $conn->query("select o.id, o.classid, gr.level from objects o inner join grantedrights gr on o.id = gr.targetid where o.storeid = '" . $storeid . "' and o.id = '" . $objectid . "' and (gr.granteeid = 'everyone' or (gr.granteeid = '" . $this->userId . "' and gr.identityproviderid = '" . $this->identityProviderId . "')) and gr.targettype='object' order by gr.weight asc limit 1");
+            if ($rows) {
+                $row = $rows->fetch_object();
+                $readRight = $conn->query("select level from rights where systemright='read'");
+                if ($readRight) {
+                    if ($right = $readRight->fetch_object()) {
+                        if (intval($row->level) & intval($right->level)) {
+                            $newObject = new AdaObject($row->id, $row->classid);
+                            $propRows = $conn->query("select pd.id, pd.name, pd.type, p.string_value, p.date_value from objectproperties p inner join classproperties pd on p.propertyid = pd.id where p.objectid = '" . $objectid . "'");
+                            while ($propRow = $propRows->fetch_object()) {
+                                if ($propRow->type == 'string')
+                                    $newObject->addProperty($propRow->id, $propRow->name, $propRow->type, $propRow->string_value);
+                                else {
+                                    $dateItems = explode('-', $propRow->date_value);
+                                    $newObject->addProperty($propRow->id, $propRow->name, $propRow->type, ["day" => intval($dateItems[2]), "month"=>intval($dateItems[1]), "year"=>intval($dateItems[0])]);
+                                }
+                            }
+                            return $newObject;
+                        }
+                        else
+                            return false;
+                    }
+                    else {
+                        return false;
+                    }
+                }
+                else
+                    return false;
+            }
+            else
+                return false;
+        }
+        finally {
+            $conn->close();
+        }
+  }
 }

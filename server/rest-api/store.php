@@ -72,6 +72,17 @@
             }
             exit;
         }
+        else if (sizeof($urlparts) == 6 && $urlparts[1] == 'ada' && $urlparts[2] == 'store' && $urlparts[4] == 'object') {
+            $object = $db->getObject($urlparts[3], $urlparts[5]);
+            if ($object) {
+                echo $object->toJson();
+                exit;
+            }
+            else {
+                sendState(404, "Object not found");
+            }
+
+        }
     }
     else if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         if ($url == '/ada/store') {

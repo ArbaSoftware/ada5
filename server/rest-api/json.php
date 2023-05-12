@@ -91,6 +91,30 @@
                     $errors[sizeof($errors)] = "Invalid value for property '" . $name . "'";
                 }
             }
+            else if ($definition->type == "date") {
+                if (gettype($value) == "object") {
+                    $validationErrors = JsonUtils::validateObject($value, $allschemas->schemas->date, $allschemas);
+                    if (sizeof($validationErrors) == 0) {
+                        if ($value->month < 1 or $value->month > 12)
+                            $errors[sizeof($errors)] = "Invalid month for property '" . $name . "'";
+                        else {
+                            $nrofdays = [-1, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+                            if((0 == $value->year % 4) & (0 != $value->year % 100) | (0 == $value->year % 400))
+                                $nrofdays[2] = 29;
+                            if ($value->day < 1 || $value->day > $nrofdays[$value->month])
+                                $errors[sizeof($errors)] = "Invalid day for property '". $name . "'";
+                            if ($value->year < 0)
+                                $errors[sizeof($errors)] = "Invalid year for property '" . $name . "'";
+                        }
+                    }
+                    else {
+                        $errors[sizeof($errors)] = "Invalid date value for property '" . $name . "'";
+                    }
+                }
+                else {
+                    $errors[sizeof($errors)] = "Invalid date value for property '" . $name . "'";
+                }
+            }
             else if ($definition->schema) {
                 $objectErrors = JsonUtils::validateObject($value, $definition->schema, $allschemas);
                 foreach($objectErrors as $error) {

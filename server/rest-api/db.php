@@ -23,4 +23,5 @@
         public function addAddon($id, $name, $json);
         public function canCreateObject($classid);
         public function createObject($storeid, $class, $request);
+        public function getObject($storeid, $objectid);
     }
