@@ -10,7 +10,7 @@
         exit;
     }
 
-    $db = new MySql('192.168.2.74', 'ada', 'ada', 'ada5', $user->getId(), $user->getIdentifyProviderId());
+    $db = new MySql('192.168.2.74', 'ada', 'ada', 'ada5', $user->getEmail(), $user->getIdentifyProviderId());
 
     $url = $_SERVER['REQUEST_URI'];
     $urlparts = explode('/', $url);
@@ -114,7 +114,9 @@
             $storeId = $urlparts[3];
             if ($db->getStore($storeId)) {
                 $json = file_get_contents("php://input");
-                if (JsonUtils::validate($json, "addclassrequest")) {
+                $validationErrors = JsonUtils::validate($json, "addclassrequest");
+                print_r($validationErrors);
+                if ($validationErrors && gettype($validationErrors) == "boolean") {
                     $request = json_decode($json);
                     if ($db->areValidRights($request->rights)) {
                         if ($db->isUniqueClassName($storeId, $request->name)) {
@@ -134,10 +136,22 @@
                             exit;
                         }
                     }
+                    else {
+                        sendState(500, "Invalid request");
+                        echo JsonUtils::createErrorJson(["Invalid rights specification"]);
+                    }
+                }
+                else {
+                    sendState(500, "Invalid request");
+                    echo JsonUtils::createErrorJson($validationErrors);
+                    exit;
                 }
             }
-            header("HTTP/1.1 500 Invalid request");
-            exit;
+            else {
+                header("HTTP/1.1 500 Invalid request");
+                echo JsonUtils::createErrorJson(["Invalid storeid (" . $storeId . ")"]);
+                exit;
+            }
         }
         else if (sizeof($urlparts) == 7 && $urlparts[1] == 'ada' && $urlparts[2] == 'store' && $urlparts[4] == 'class' && $urlparts[6] == 'object') {
             $class = $db->getClass($urlparts[3], $urlparts[5]);
@@ -145,10 +159,25 @@
                 $json = file_get_contents("php://input");
                 $validationErrors = Jsonutils::validate($json, $class->createObjectSchema());
                 if ($validationErrors && gettype($validationErrors) == 'boolean') {
-                    echo "valid request";
+                    $storeId = $urlparts[3];
+                    if ($db->canCreateObject($class->getId())) {
+                        try {
+                            $newObject = $db->createObject($storeId, $class, json_decode($json));
+                            sendState(200, "Object created");
+                            echo $newObject->getId();
+                        }
+                        catch (Exception $err) {
+                            sendState(500, "Object not created");
+                            echo JsonUtils::createErrorJson([$err->getMessage()]);
+                        }
+                    }
+                    else {
+                        sendState(401, "Insufficient rights");
+                    }
                 }
                 else {
-                    echo "Invalid request";
+                    sendState(500, "Invalid request");
+                    echo JsonUtils::createErrorJson($validationErrors);
                 }
                 exit;
             }

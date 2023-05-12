@@ -94,7 +94,7 @@
                 $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
                 $users = $conn->query("select id,firstname,lastname from users where email='" . $mail ."' and passwordhash='" . $passwordhash ."'");
                 if ($user = $users->fetch_object()) {
-                    return new User($user->id, $user->email, $user->firstname, $user->lastname, $idpid);
+                    return new User($user->id, $mail, $user->firstname, $user->lastname, $idpid);
                 }
                 else {
                     return false;
@@ -546,4 +546,96 @@
             }
 
         }
+
+        public function canCreateObject($classid) {
+            try {
+                $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
+                $results = $conn->query("select level from grantedrights where (granteeid = 'everyone' or (granteeid = '" . $this->userId . "' and identityproviderid = '" . $this->identityProviderId . "')) and targettype = 'class' and targetid='" . $classid . "' order by weight desc limit 1");
+                if ($results->num_rows == 0)
+                    return false;
+                else {
+                    $rights = $conn->query("select level from rights where systemright='createobject'");
+                    if ($rights->num_rows == 1) 
+                        return intval($rights->fetch_object()->level) & intval($results->fetch_object()->level);
+                    else
+                        return false;
+                }
+            }
+            finally {
+                $conn->close();
+            }
+       }
+
+       public function createObject($storeid, $class, $request) {
+            try {
+                $detailErrorMessage = 'Object creation failed';
+                $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
+                $idquery = $conn->query("select UUID() newid from INFORMATION_SCHEMA.TABLES LIMIT 1");
+                $id = $idquery->fetch_object()->newid;
+                $succeeded = true;
+                $conn->begin_transaction();
+                $succeeded = $conn->query("insert into objects (id, classid, storeid, creator, creatoridentityproviderid) values ('" . $id . "','" . $class->getId() . "','" . $storeid . "','" . $this->userId . "','" . $this->identityProviderId . "')");
+                if ($succeeded) {
+                    if (gettype($request->rights) == "NULL" or sizeof($request->rights) == 0) {
+                        $succeeded = $conn->query("insert into grantedrights (granteeid, identityproviderid, targetid, targettype, level, weight) values ('" . $this->userId . "','" . $this->identityProviderId . "','". $id . "','object',(select sum(level) from rights where objectright = 1), 1)");
+                    }
+                    else {
+                        foreach($request->rights as $right) {
+                            if ($succeeded) {
+                                if ($right->grantee == 'everyone') 
+                                    $succeeded = $conn->query("insert into grantedrights (granteeid, targetid, targettype, level, weight) values ('everyone', '" . $id . "','object'," . $right->level . ",0)");
+                                else {
+                                    $succeeded = $conn->query("insert into grantedrights (granteeid, identityproviderid, targetid, targettype, level, weight) values ('" . $right->grantee . "','" . $right->identityprovider . "','" . $id . "','object'," . $right->level . ",0)");
+                                }
+                            }
+                        }
+                    }
+                    if ($succeeded) {
+                        if (gettype($request->properties) == 'object') {
+                            $propertyNames = array_keys( get_object_vars($request->properties));
+                            foreach($propertyNames as $property) {
+                                $propertyPmrops = $conn->query("select id, type from classproperties where classid = '" . $class->getId() . "' and name ='" . $property . "'");
+                                if ($propertyProps->num_rows == 1) {
+                                    $props = $propertyProps->fetch_object();
+                                    $type = $props->type;
+                                    $propid = $props->id;
+                                    if ($type == 'string') {
+                                        $succeeded = $conn->query("insert into objectproperties (objectid,propertyid,string_value) values ('" . $id . "','" . $propid . "','" . $request->properties->$property . "')");
+                                    }
+                                    else {
+                                        $succeeded = false;
+                                        $detailErrorMessage = "Unsupported property type (" . $type . ")";
+                                    }
+                                }
+                                else {
+                                    $succeeded = false;
+                                    $detailErrorMessage = "Unknown property (" . $property . ")";
+                                }
+                                if (!$succeeded)
+                                    break;
+                            }
+                        }
+                        if ($succeeded) {
+                            $conn->commit();
+                            return new AdaObject($id, $class);
+                        }
+                        else {
+                            $conn->rollback();
+                            throw new Exception($detailErrorMessage);
+                        }
+                    }
+                    else {
+                        $conn->rollback();
+                        throw new Exception($detailErrorMessage);
+                    }
+                }
+                else {
+                    $conn->rollback();
+                    throw new Exception($detailErrorMessage);
+                }
+            }
+            finally {
+                $conn->close();
+            }
+       }
 }

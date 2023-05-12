@@ -7,5 +7,6 @@
     include("model/grantedright.php");
     include("model/right.php");
     include("model/addon.php");
+    include("model/adaobject.php");
     include("json.php");
 ?>

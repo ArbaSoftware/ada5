@@ -21,5 +21,9 @@
         public function getIdentifyProviderId() {
             return $this->identityproviderid;
         }
+
+        public function getEmail() {
+            return $this->email;
+        }
     }
 ?>

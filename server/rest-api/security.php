@@ -10,7 +10,7 @@
         exit;
     }
 
-    $db = new MySql('192.168.2.74', 'ada', 'ada', 'ada5', $user->getId(), $user->getIdentifyProviderId());
+    $db = new MySql('192.168.2.74', 'ada', 'ada', 'ada5', $user->getEmail(), $user->getIdentifyProviderId());
 
     $url = $_SERVER['REQUEST_URI'];
     $urlparts = explode('/', $url);

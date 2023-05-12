@@ -91,6 +91,12 @@
                     $errors[sizeof($errors)] = "Invalid value for property '" . $name . "'";
                 }
             }
+            else if ($definition->schema) {
+                $objectErrors = JsonUtils::validateObject($value, $definition->schema, $allschemas);
+                foreach($objectErrors as $error) {
+                    $errors[sizeof($errors)] = $error;
+                }
+            }
             else if ($propertytype != $definition->type)
                 $errors[sizeof($errors)] = "Property '" . $name . "' has an invalid type (" . $definition->type . ' <> ' . gettype($value) . ")";
             return $errors;

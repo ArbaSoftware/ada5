@@ -128,9 +128,9 @@
         }
 
         public function createObjectSchema() {
-            $schema = "{\"classid\": {\"type\":\"fixed\",\"fixedvalue\":\"". $this->getId() . "\", \"required\":true}";
+            $schema = "{";
             if ($this->getProperties()) {
-                $schema .= ", \"properties\": {";
+                $schema .= "\"properties\": {\"schema\":{";
                 $prefix = "";
                 foreach($this->getProperties() as $property) {
                     $schema .= $prefix . "\"" . $property->getName() . "\": {";
@@ -139,9 +139,9 @@
                     $schema .= "}";
                     $prefix = ",";
                 }
-                $schema .= "}";
+                $schema .= "}},";
             }
-            $schema .= ",\"rights\":{";
+            $schema .= "\"rights\":{";
             $schema .= "\"type\":\"arrayofobjects\",";
             $schema .= "\"required\":false,";
             $schema .= "\"schema\": \"right\"";
