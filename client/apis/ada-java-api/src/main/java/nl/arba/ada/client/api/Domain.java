@@ -183,8 +183,10 @@ public class Domain {
      */
     public AdaClass addClass(String storeid, AdaClass newclass) throws ClassNotCreatedException {
         try {
+            System.out.println(newclass.toJson());
             InputStream is = HttpUtils.doPost(baseUrl + "/store/" + storeid + "/class", newclass.toJson(), user, password);
             String classId = StreamUtils.streamToString(is);
+            System.out.println(baseUrl + "/store/" + storeid + "/class/" + classId);
             is = HttpUtils.doGet(baseUrl + "/store/" + storeid + "/class/" + classId, user, password);
             return mapper.readValue(is, AdaClass.class);
         }
@@ -203,12 +205,36 @@ public class Domain {
     public AddOn addAddOn(AddOn definition) throws AddOnNotCreatedException{
         try {
             InputStream is = HttpUtils.doPost(baseUrl + "/addon", definition.toJson(), user, password);
-            System.out.println(StreamUtils.streamToString(is));
             return definition;
         }
         catch (IOException io) {
             io.printStackTrace();
             throw new AddOnNotCreatedException();
+        }
+    }
+
+    public AdaObject addObject(Store store, AdaObject toadd) throws ObjectNotCreatedException {
+        try {
+            System.out.println("Adding object: "+ baseUrl + "/store/" + store.getId() + "/class/" + toadd.getClassId() + "/object");
+            System.out.println(toadd.createAddRequest());
+            InputStream is = HttpUtils.doPost(baseUrl + "/store/" + store.getId() + "/class/" + toadd.getClassId() + "/object", toadd.createAddRequest(), user, password);
+            String objectId = StreamUtils.streamToString(is);
+            return store.getObject(objectId);
+        }
+        catch (Exception err) {
+            err.printStackTrace();
+            throw new ObjectNotCreatedException();
+        }
+    }
+
+    public AdaObject getObject(Store store, String id) throws ObjectNotFoundException {
+        try {
+            InputStream is = HttpUtils.doGet(baseUrl + "/store/" + store.getId() + "/object/" + id, user, password);
+            return mapper.readValue(is, AdaObject.class);
+        }
+        catch (IOException io) {
+            io.printStackTrace();
+            throw new ObjectNotFoundException();
         }
     }
 

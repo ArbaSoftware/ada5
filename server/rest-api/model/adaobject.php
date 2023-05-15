@@ -19,7 +19,7 @@
         }
 
         public function toJson() {
-            $json = "{\"id\":\"". $this->getId() . "\",\"classid\":\"" . $this->getClassId() . "\",properties:[";
+            $json = "{\"id\":\"". $this->getId() . "\",\"classid\":\"" . $this->getClassId() . "\",\"properties\":[";
             $prefix = '';
             foreach($this->properties as $property) {
                 $json .= $prefix . "{\"id\":\"" . $property["id"] . "\",\"name\":\"" . $property['name']. "\",\"type\":\"". $property['type'] . "\"";

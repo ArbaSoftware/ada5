@@ -2,6 +2,8 @@ package nl.arba.ada.client.api;
 
 import nl.arba.ada.client.api.exceptions.ClassNotCreatedException;
 import nl.arba.ada.client.api.exceptions.ClassNotDeletedException;
+import nl.arba.ada.client.api.exceptions.ObjectNotCreatedException;
+import nl.arba.ada.client.api.exceptions.ObjectNotFoundException;
 
 import java.util.ArrayList;
 
@@ -106,5 +108,9 @@ public class Store {
      */
     public String[] getAddons() {
         return addons.toArray(new String[0]);
+    }
+
+    public AdaObject getObject(String id) throws ObjectNotFoundException {
+        return domain.getObject(this, id);
     }
 }

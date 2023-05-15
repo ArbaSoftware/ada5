@@ -126,7 +126,6 @@
             if ($db->getStore($storeId)) {
                 $json = file_get_contents("php://input");
                 $validationErrors = JsonUtils::validate($json, "addclassrequest");
-                print_r($validationErrors);
                 if ($validationErrors && gettype($validationErrors) == "boolean") {
                     $request = json_decode($json);
                     if ($db->areValidRights($request->rights)) {

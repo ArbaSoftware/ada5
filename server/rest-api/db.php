@@ -6,8 +6,6 @@
         public function isUniqueClassName($storeid, $classname);
         public function getIdentifyProviders();
         public function getInternalUser($mail, $passwordhash, $idpid);
-        public function canRead($targettype, $targetid=null);
-        public function canCreate($targettype, $targetid=null);
         public function canCreateStore();
         public function createStore($name, $grantedrights, $addons);
         public function canCreateClass($storeid);

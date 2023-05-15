@@ -161,10 +161,4 @@
             return $result;
         }
     }
-
-
-    /*
-    $errors = JsonUtils::validate('{"name":"arjan", "properties": [{"name":"name","type": "string"} ], "rights": [{"grantee": "a", "level": 5}]}', "addclassrequest");
-    print_r($errors);
-    */
 ?>

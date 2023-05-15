@@ -126,53 +126,6 @@
                 $conn->close();
             }
         }
-        public function canRead($targettype, $targetid=null) {
-            try {
-                $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
-                if (is_null($targetid)) {
-                    $results = $conn->query("select level from grantedrights where (granteeid = 'everyone' or (granteeid = '" . $this->userId . "' and identityproviderid = '" . $this->identityProviderId . "')) and targettype = '" . $targettype . "' order by weight desc limit 1");
-                }
-                else {
-                    $results = $conn->query("select level from grantedrights where (granteeid = 'everyone' or (granteeid = '" . $this->userId . "' and identityproviderid = '" . $this->identityProviderId . "')) and targettype = '" . $targettype . "' and targetid='" . $targetid . "' order by weight desc limit 1");
-                }
-                if ($results->num_rows == 0)
-                    return false;
-                else {
-                    $rights = $conn->query("select level from rights where systemright='read'");
-                    if ($rights->num_rows == 1) 
-                        return intval($rights->fetch_object()->level) & intval($results->fetch_object()->level);
-                    else
-                        return false;
-                }
-            }
-            finally {
-                $conn->close();
-            }
-        }
-
-        public function canCreate($targettype, $targetid=null) {
-            try {
-                $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
-                if (is_null($targetid)) {
-                    $results = $conn->query("select level from grantedrights where (granteeid = 'everyone' or (granteeid = '" . $this->userId . "' and identityproviderid = '" . $this->identityProviderId . "')) and targettype = '" . $targettype . "' order by weight desc limit 1");
-                }
-                else {
-                    $results = $conn->query("select level from grantedrights where (granteeid = 'everyone' or (granteeid = '" . $this->userId . "' and identityproviderid = '" . $this->identityProviderId . "')) and targettype = '" . $targettype . "' and targetid='" . $targetid . "' order by weight desc limit 1");
-                }
-                if ($results->num_rows == 0)
-                    return false;
-                else {
-                    $rights = $conn->query("select level from rights where systemright='create'");
-                    if ($rights->num_rows == 1) 
-                        return intval($rights->fetch_object()->level) & intval($results->fetch_object()->level);
-                    else
-                        return false;
-                }
-            }
-            finally {
-                $conn->close();
-            }
-        }
 
         public function canCreateStore() {
             try {
@@ -305,14 +258,14 @@
                                         }
                         
                                         if (sizeof($class->getRights()) == 0) {
-                                            $conn->query("insert into grantedrights (granteeid, identityproviderid, targetid, targettype, level, weight) values ('" . $this->userId . "','" . $this->identityProviderId . "','". $classid . "','class',(select sum(level) from rights where classright = 1), 1)");
+                                            $conn->query("insert into classrights (granteeid, identityproviderid, classid, level, weight) values ('" . $this->userId . "','" . $this->identityProviderId . "','". $classid . "',(select sum(level) from rights where classright = 1), 1)");
                                         }
                                         else {
                                             foreach($class->getRights() as $right) {
                                                 if ($right->getGranteeId() == 'everyone') 
-                                                    $conn->query("insert into grantedrights (granteeid, targetid, targettype, level, weight) values ('everyone', '" . $classid . "','class'," . $right->getLevel() . ",0)");
+                                                    $conn->query("insert into classrights (granteeid, objectid, level, weight) values ('everyone', '" . $classid . "'," . $right->getLevel() . ",0)");
                                                 else {
-                                                    $conn->query("insert into grantedrights (granteeid, identityproviderid, targetid, targettype, level, weight) values ('" . $right->getGranteeId() . "','" . $right->getIdentityProviderId() . "','" . $classid . "','class'," . $right->getLevel() . ",0)");
+                                                    $conn->query("insert into classrights (granteeid, identityproviderid, objectid, level, weight) values ('" . $right->getGranteeId() . "','" . $right->getIdentityProviderId() . "','" . $classid . "'," . $right->getLevel() . ",0)");
                                                 }
                                             }
                                         }
@@ -351,14 +304,14 @@
                 }
 
                 if (sizeof($class->getRights()) == 0) {
-                    $conn->query("insert into grantedrights (granteeid, identityproviderid, targetid, targettype, level, weight) values ('" . $this->userId . "','" . $this->identityProviderId . "','". $id . "','class',(select sum(level) from rights where classright = 1), 1)");
+                    $conn->query("insert into classrights (granteeid, identityproviderid, classid, level, weight) values ('" . $this->userId . "','" . $this->identityProviderId . "','". $id . "',(select sum(level) from rights where classright = 1), 1)");
                 }
                 else {
                     foreach($class->getRights() as $right) {
                         if ($right->getGranteeId() == 'everyone') 
-                            $conn->query("insert into grantedrights (granteeid, targetid, targettype, level, weight) values ('everyone', '" . $id . "','class'," . $right->getLevel() . ",0)");
+                            $conn->query("insert into classrights (granteeid, classid, targettype, level, weight) values ('everyone', '" . $id . "'," . $right->getLevel() . ",0)");
                         else {
-                            $conn->query("insert into grantedrights (granteeid, identityproviderid, targetid, targettype, level, weight) values ('" . $right->getGranteeId() . "','" . $right->getIdentityProviderId() . "','" . $id . "','class'," . $right->getLevel() . ",0)");
+                            $conn->query("insert into classrights (granteeid, identityproviderid, classid, level, weight) values ('" . $right->getGranteeId() . "','" . $right->getIdentityProviderId() . "','" . $id . "'," . $right->getLevel() . ",0)");
                         }
                     }
                 }
@@ -398,7 +351,7 @@
         public function getClasses($storeid) {
             try {
                 $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
-                $potentialrows = $conn->query("select c.id, c.name, c.folderclass, c.contentclass, gr.level from classes c inner join grantedrights gr on c.id = gr.targetid where (gr.granteeid = 'everyone' or (gr.granteeid = '" . $this->userId . "' and gr.identityproviderid = '" . $this->identityProviderId . "')) and c.storeid = '" . $storeid . "' order by gr.weight desc");
+                $potentialrows = $conn->query("select c.id, c.name, c.folderclass, c.contentclass, r.level from classes c inner join classrights r on c.id = r.classid where (r.granteeid = 'everyone' or (r.granteeid = '" . $this->userId . "' and r.identityproviderid = '" . $this->identityProviderId . "')) and c.storeid = '" . $storeid . "' order by r.weight desc");
                 $potentials = [];
                 $potentialIds = [];
                 while ($potentialrow = $potentialrows->fetch_object()) {
@@ -431,7 +384,7 @@
         public function getClass($storeid, $classid) {
             try {
                 $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
-                $rows = $conn->query("select c.id, c.name, c.folderclass, c.contentclass, gr.level from classes c inner join grantedrights gr on c.id = gr.targetid where c.storeid = '" . $storeid . "' and c.id = '" . $classid . "' and (gr.granteeid = 'everyone' or (gr.granteeid = '" . $this->userId . "' and gr.identityproviderid = '" . $this->identityProviderId . "')) and gr.targettype='class' order by gr.weight asc limit 1");
+                $rows = $conn->query("select c.id, c.name, c.folderclass, c.contentclass, r.level from classes c inner join classrights r on c.id = r.classid where c.storeid = '" . $storeid . "' and c.id = '" . $classid . "' and (r.granteeid = 'everyone' or (r.granteeid = '" . $this->userId . "' and r.identityproviderid = '" . $this->identityProviderId . "')) order by r.weight asc limit 1");
                 if ($rows) {
                     $row = $rows->fetch_object();
                     $readRight = $conn->query("select level from rights where systemright='read'");
@@ -550,7 +503,7 @@
         public function canCreateObject($classid) {
             try {
                 $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
-                $results = $conn->query("select level from grantedrights where (granteeid = 'everyone' or (granteeid = '" . $this->userId . "' and identityproviderid = '" . $this->identityProviderId . "')) and targettype = 'class' and targetid='" . $classid . "' order by weight desc limit 1");
+                $results = $conn->query("select level from classrights where (granteeid = 'everyone' or (granteeid = '" . $this->userId . "' and identityproviderid = '" . $this->identityProviderId . "')) and classid='" . $classid . "' order by weight desc limit 1");
                 if ($results->num_rows == 0)
                     return false;
                 else {
@@ -577,15 +530,15 @@
                 $succeeded = $conn->query("insert into objects (id, classid, storeid, creator, creatoridentityproviderid) values ('" . $id . "','" . $class->getId() . "','" . $storeid . "','" . $this->userId . "','" . $this->identityProviderId . "')");
                 if ($succeeded) {
                     if (gettype($request->rights) == "NULL" or sizeof($request->rights) == 0) {
-                        $succeeded = $conn->query("insert into grantedrights (granteeid, identityproviderid, targetid, targettype, level, weight) values ('" . $this->userId . "','" . $this->identityProviderId . "','". $id . "','object',(select sum(level) from rights where objectright = 1), 1)");
+                        $succeeded = $conn->query("insert into objectrights (granteeid, identityproviderid, objectid, level, weight) values ('" . $this->userId . "','" . $this->identityProviderId . "','". $id . "',(select sum(level) from rights where objectright = 1), 1)");
                     }
                     else {
                         foreach($request->rights as $right) {
                             if ($succeeded) {
                                 if ($right->grantee == 'everyone') 
-                                    $succeeded = $conn->query("insert into grantedrights (granteeid, targetid, targettype, level, weight) values ('everyone', '" . $id . "','object'," . $right->level . ",0)");
+                                    $succeeded = $conn->query("insert into objectrights (granteeid, objectid, level, weight) values ('everyone', '" . $id . "'," . $right->level . ",0)");
                                 else {
-                                    $succeeded = $conn->query("insert into grantedrights (granteeid, identityproviderid, targetid, targettype, level, weight) values ('" . $right->grantee . "','" . $right->identityprovider . "','" . $id . "','object'," . $right->level . ",0)");
+                                    $succeeded = $conn->query("insert into objectrights (granteeid, identityproviderid, objectid, level, weight) values ('" . $right->grantee . "','" . $right->identityprovider . "','" . $id . "'," . $right->level . ",0)");
                                 }
                             }
                         }
@@ -644,7 +597,7 @@
        public function getObject($storeid, $objectid) {
         try {
             $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
-            $rows = $conn->query("select o.id, o.classid, gr.level from objects o inner join grantedrights gr on o.id = gr.targetid where o.storeid = '" . $storeid . "' and o.id = '" . $objectid . "' and (gr.granteeid = 'everyone' or (gr.granteeid = '" . $this->userId . "' and gr.identityproviderid = '" . $this->identityProviderId . "')) and gr.targettype='object' order by gr.weight asc limit 1");
+            $rows = $conn->query("select o.id, o.classid, r.level from objects o inner join objectrights r on o.id = r.objectid where o.storeid = '" . $storeid . "' and o.id = '" . $objectid . "' and (r.granteeid = 'everyone' or (r.granteeid = '" . $this->userId . "' and r.identityproviderid = '" . $this->identityProviderId . "')) order by r.weight asc limit 1");
             if ($rows) {
                 $row = $rows->fetch_object();
                 $readRight = $conn->query("select level from rights where systemright='read'");
