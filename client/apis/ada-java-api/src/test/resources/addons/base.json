@@ -9,13 +9,14 @@
       "properties": [
         {
           "name": "Name",
-          "type": "text",
+          "type": "string",
           "required": true,
           "multiple": false
         },
         {
           "name": "ParentFolder",
           "type": "object",
+          "class": "ThisClass",
           "required": false,
           "multiple": false
         }

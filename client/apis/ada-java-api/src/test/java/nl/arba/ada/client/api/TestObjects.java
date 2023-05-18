@@ -2,12 +2,14 @@ package nl.arba.ada.client.api;
 
 import nl.arba.ada.client.api.security.Everyone;
 import nl.arba.ada.client.api.security.GrantedRight;
+import nl.arba.ada.client.api.security.Right;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
+import java.util.List;
 
 public class TestObjects {
     private static Domain domain;
@@ -23,13 +25,14 @@ public class TestObjects {
     public static void before() throws Exception {
         domain = Domain.create(TEST_URL);
         domain.login(TEST_USER_1_EMAIL, TEST_USER_1_PASSWORD);
-        store = domain.createStore("test" + System.currentTimeMillis());
-        folder = new AdaClass();
-        folder.setFolderClass(true);
-        folder.setDocumentClass(false);
-        folder.setName("Folder");
-        folder.addProperty(Property.create("Name", PropertyType.STRING));
-        folder = domain.addClass(store.getId(), folder);
+        List<Right> rights = domain.getRights();
+        int allowAll = 0;
+        for (Right right: rights) {
+            if (right.isClassRight())
+                allowAll += right.getLevel();
+        }
+        store = domain.createStore("test" + System.currentTimeMillis(), new GrantedRight[] {GrantedRight.create(Everyone.create(), allowAll)}, new String[] {"base"});
+        folder = store.getAdaClass("Folder");
     }
 
     @AfterAll
@@ -41,7 +44,14 @@ public class TestObjects {
     public void doTest() throws Exception {
         AdaObject newObject = new AdaObject();
         newObject.setClassid(folder.getId());
+        newObject.setStringProperty("Name", "Eerste folder");
         newObject = domain.addObject(store, newObject);
+
+        AdaObject childFolder = new AdaObject();
+        childFolder.setClassid(folder.getId());
+        childFolder.setStringProperty("Name", "Subfolder");
+        childFolder.setObjectProperty("ParentFolder", newObject.getId());
+        childFolder = domain.addObject(store, childFolder);
     }
 
 }

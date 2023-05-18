@@ -37,14 +37,28 @@ public class TestStores {
 
     @Test
     public void createStore() throws Exception {
-        domain.createStore("test" + System.currentTimeMillis());
+        Store store = null;
+        try {
+            store = domain.createStore("test" + System.currentTimeMillis());
+        }
+        finally {
+            if (store != null)
+                store.delete();
+        }
     }
 
     @Test
     public void createStoreForEverybody() throws Exception {
-        domain.createStore("test" + System.currentTimeMillis(), new GrantedRight[] {
-                GrantedRight.create(Everyone.create(), 1)
-        });
+        Store store = null;
+        try {
+            store = domain.createStore("test" + System.currentTimeMillis(), new GrantedRight[]{
+                    GrantedRight.create(Everyone.create(), 1)
+            });
+        }
+        finally {
+            if (store != null)
+                store.delete();
+        }
     }
 
     @Test
@@ -69,7 +83,13 @@ public class TestStores {
 
     @Test
     public void createStoreWithAddons() throws Exception {
-        domain.createStore("test" + System.currentTimeMillis(), new GrantedRight[]{}, new String[] {"base"});
+        Store store = null;
+        try {
+            store = domain.createStore("test" + System.currentTimeMillis(), new GrantedRight[]{}, new String[]{"base"});
+        }
+        finally {
+            store.delete();
+        }
     }
 
 }

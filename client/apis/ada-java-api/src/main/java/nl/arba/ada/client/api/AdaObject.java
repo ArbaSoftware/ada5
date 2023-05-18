@@ -55,7 +55,7 @@ public class AdaObject {
     public String createAddRequest() {
         String json = "{";
         if (!getProperties().isEmpty()) {
-            json += "\"properties\": \"{";
+            json += "\"properties\": {";
             String prefix = "";
             for (PropertyValue prop : getProperties()) {
                 if (prop.getType().equals(PropertyType.STRING)) {
@@ -65,6 +65,10 @@ public class AdaObject {
                 else if (prop.getType().equals(PropertyType.DATE)) {
                     Date dateValue = (Date) prop.getValue();
                     json += prefix + "{\"day\":" + dateValue.getDate() + ",\"month\":" + (dateValue.getMonth()+1) + ",\"year\":" + dateValue.getYear() + "}";
+                    prefix = ",";
+                }
+                else if (prop.getType().equals(PropertyType.OBJECT)) {
+                    json += prefix + "\"" + prop.getName() + "\":\"" + prop.getValue() + "\"";
                     prefix = ",";
                 }
             }
@@ -114,6 +118,22 @@ public class AdaObject {
     public void setProperties(PropertyValue[] properties) {
         this.properties.clear();
         this.properties.addAll(Arrays.asList(properties));
+    }
+
+    public void setStringProperty(String name, String stringvalue) {
+        PropertyValue value = new PropertyValue();
+        value.setName(name);
+        value.setType(PropertyType.STRING);
+        value.setValue(stringvalue);
+        properties.add(value);
+    }
+
+    public void setObjectProperty(String name, String objectid) {
+        PropertyValue value = new PropertyValue();
+        value.setName(name);
+        value.setType(PropertyType.OBJECT);
+        value.setValue(objectid);
+        properties.add(value);
     }
 
     /**

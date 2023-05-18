@@ -245,7 +245,7 @@
                                                 $class->addRight($right);
                                             }
                                             else {
-                                                $right = new GranteeRight($sec->grantee, $sec->identityprovider, $level, 1);
+                                                $right = new GrantedRight($sec->grantee, $sec->identityprovider, $level, 1);
                                                 $class->addRight($right);
                                             }
                                         }
@@ -254,7 +254,18 @@
                                         $conn->query("insert into classes (id, name, creator, creatoridentityproviderid, folderclass, contentclass, storeid) values ('" . $classid . "','" . $class->getName() . "','" . $this->userId . "','" . $this->identityProviderId . "'," . ($class->isFolderClass() ? '1' : '0') . "," . ($class->isDocumentClass() ? '1': '0') . ",'" . $id . "')");
                         
                                         foreach($class->getProperties() as $property) {
-                                            $conn->query("insert into classproperties (id, name, `type`, required, multiple, classid) values (UUID(), '" . $property->getName() . "','" . $property->getType() . "'," . ($property->isRequired()? 1:0) . "," . ($property->isMultiple()? 1: 0). ",'" . $classid . "')");
+                                            if (is_null($property->getValueClass()))
+                                                $conn->query("insert into classproperties (id, name, `type`, required, multiple, classid) values (UUID(), '" . $property->getName() . "','" . $property->getType() . "'," . ($property->isRequired()? 1:0) . "," . ($property->isMultiple()? 1: 0). ",'" . $classid . "')");
+                                            else if ($property->getValueClass() == 'ThisClass')
+                                                $conn->query("insert into classproperties (id, name, `type`, required, multiple, classid, objectclassid) values (UUID(), '" . $property->getName() . "','" . $property->getType() . "'," . ($property->isRequired()? 1:0) . "," . ($property->isMultiple()? 1: 0). ",'" . $classid . "','" . $classid . "')");
+                                            else {
+                                                $classresults = $conn->query("select id from classes where id = '" . $property->getValueClass() . "' or name='" . $property->getValueClass() . "'");
+                                                if ($classresults) {
+                                                    $conn->query("insert into classproperties (id, name, `type`, required, multiple, classid, objectclassid) values (UUID(), '" . $property->getName() . "','" . $property->getType() . "'," . ($property->isRequired()? 1:0) . "," . ($property->isMultiple()? 1: 0). ",'" . $classid . "','" . $classresults->fetch_object()->id . "')");
+                                                }
+                                                else
+                                                    $succeeded = false;
+                                            }
                                         }
                         
                                         if (sizeof($class->getRights()) == 0) {
@@ -262,10 +273,11 @@
                                         }
                                         else {
                                             foreach($class->getRights() as $right) {
-                                                if ($right->getGranteeId() == 'everyone') 
-                                                    $conn->query("insert into classrights (granteeid, objectid, level, weight) values ('everyone', '" . $classid . "'," . $right->getLevel() . ",0)");
+                                                if ($right->getGranteeId() == 'everyone') {
+                                                    $conn->query("insert into classrights (granteeid, classid, level, weight) values ('everyone', '" . $classid . "'," . $right->getLevel() . ",0)");
+                                                }
                                                 else {
-                                                    $conn->query("insert into classrights (granteeid, identityproviderid, objectid, level, weight) values ('" . $right->getGranteeId() . "','" . $right->getIdentityProviderId() . "','" . $classid . "'," . $right->getLevel() . ",0)");
+                                                    $conn->query("insert into classrights (granteeid, identityproviderid, classid, level, weight) values ('" . $right->getGranteeId() . "','" . $right->getIdentityProviderId() . "','" . $classid . "'," . $right->getLevel() . ",0)");
                                                 }
                                             }
                                         }
@@ -281,8 +293,10 @@
                         $conn->commit();
                         return $id;
                     }
-                    else
+                    else {
                         $conn->rollback();
+                        return false;
+                    }
                 }
                 catch (Exception $err) {
                     $conn->rollback();
@@ -309,7 +323,7 @@
                 else {
                     foreach($class->getRights() as $right) {
                         if ($right->getGranteeId() == 'everyone') 
-                            $conn->query("insert into classrights (granteeid, classid, targettype, level, weight) values ('everyone', '" . $id . "'," . $right->getLevel() . ",0)");
+                            $conn->query("insert into classrights (granteeid, classid, level, weight) values ('everyone', '" . $id . "'," . $right->getLevel() . ",0)");
                         else {
                             $conn->query("insert into classrights (granteeid, identityproviderid, classid, level, weight) values ('" . $right->getGranteeId() . "','" . $right->getIdentityProviderId() . "','" . $id . "'," . $right->getLevel() . ",0)");
                         }
@@ -384,7 +398,7 @@
         public function getClass($storeid, $classid) {
             try {
                 $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
-                $rows = $conn->query("select c.id, c.name, c.folderclass, c.contentclass, r.level from classes c inner join classrights r on c.id = r.classid where c.storeid = '" . $storeid . "' and c.id = '" . $classid . "' and (r.granteeid = 'everyone' or (r.granteeid = '" . $this->userId . "' and r.identityproviderid = '" . $this->identityProviderId . "')) order by r.weight asc limit 1");
+                $rows = $conn->query("select c.id, c.name, c.folderclass, c.contentclass, r.level from classes c inner join classrights r on c.id = r.classid where c.storeid = '" . $storeid . "' and (c.id = '" . $classid . "' or c.name = '" . $classid . "') and (r.granteeid = 'everyone' or (r.granteeid = '" . $this->userId . "' and r.identityproviderid = '" . $this->identityProviderId . "')) order by r.weight asc limit 1");
                 if ($rows) {
                     $row = $rows->fetch_object();
                     $readRight = $conn->query("select level from rights where systemright='read'");
@@ -484,6 +498,25 @@
             }
         }
 
+        public function canUpdateAddon() {
+            try {
+                $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
+                $systemrights = $conn->query("select level from rights where systemright='updateaddon'");
+                if ($systemright = $systemrights->fetch_object()) {
+                    $grantedrights = $conn->query("select level from grantedrights where targettype='domain' order by weight limit 1");
+                    if ($grantedright = $grantedrights->fetch_object()) {
+                        return intval($systemright->level & intval($grantedright->level));
+                    }
+                    else return false;
+                }
+                else
+                    return false;
+            }
+            finally {
+                $conn->close();
+            }
+        }
+
         public function addAddon($id, $name, $json) {
             try {
                 $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
@@ -492,6 +525,22 @@
                     throw new Exception("Addon with id '" . $id . "' already exists");
                 else {
                     return $conn->query("insert into addons (id, name, structure) values ('" . $id . "','" . $name . "','" . $conn->real_escape_string($json) . "')");
+                }
+            }
+            finally {
+                $conn->close();
+            }
+
+        }
+
+        public function updateAddon($id, $name, $json) {
+            try {
+                $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
+                $checks = $conn->query("select id from addons where id = '" . $id . "'");
+                if ($check = $checks->fetch_object())
+                    return $conn->query("update addons set name='". $name . "', structure = '" . $conn->real_escape_string($json) . "' where id = '" . $id . "'");
+                else {
+                    throw new Exception("Addon with id '" . $id . "' not exists");
                 }
             }
             finally {
@@ -557,6 +606,16 @@
                                     }
                                     else if ($type == 'date') {
                                         $succeeded = $conn->query("insert into objectproperties (objectid,propertyid, date_value) values('" . $id . "','" . $propid . "','" . $request->properties->$property->year . '-' . $request->properties->$property->month . '-' . $request->properties->$property->day . "')");
+                                    }
+                                    else if ($type == 'object') {
+                                        $checkObject = $conn->query("select count(*) count from objects where id = '" . $request->properties->$property . "' and storeid = '" . $storeid . "'");
+                                        if ($checkObject->fetch_object()->count == 1) {
+                                            $succeeded = $conn->query("insert into objectproperties (objectid,propertyid,string_value) values ('" . $id . "','" . $propid . "','" . $request->properties->$property . "')");
+                                        }
+                                        else {
+                                            $succeeded = false;
+                                            $detailErrorMessage = "Invalid valid for property '" . $property . "'";
+                                        }
                                     }
                                     else {
                                         $succeeded = false;

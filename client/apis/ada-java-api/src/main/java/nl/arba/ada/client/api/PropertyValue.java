@@ -52,6 +52,10 @@ public class PropertyValue {
          this.type = PropertyType.fromString(type);
     }
 
+    public void setType(PropertyType type) {
+        this.type = type;
+    }
+
     /**
      * Get the type of property which value is hold by this object
      * @return The type of the property which value is hold by this object

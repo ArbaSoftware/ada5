@@ -59,4 +59,16 @@ public enum PropertyType {
         else
             return null;
     }
+
+    public String toJson(Object value) {
+        if (this.equals(STRING)) {
+            if (value instanceof String)
+                return "\"" + value + "\"";
+        }
+        else if (this.equals(INTEGER)) {
+            if (value instanceof Integer)
+                return ((Integer) value).toString();
+        }
+        return "null";
+    }
 }

@@ -18,7 +18,9 @@
         public function getIdentityProviders();
         public function deleteStore($storeid);
         public function canAddAddon();
+        public function canUpdateAddon();
         public function addAddon($id, $name, $json);
+        public function updateAddon($id, $name, $json);
         public function canCreateObject($classid);
         public function createObject($storeid, $class, $request);
         public function getObject($storeid, $objectid);

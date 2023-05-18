@@ -1,9 +1,6 @@
 package nl.arba.ada.client.api;
 
-import nl.arba.ada.client.api.exceptions.ClassNotCreatedException;
-import nl.arba.ada.client.api.exceptions.ClassNotDeletedException;
-import nl.arba.ada.client.api.exceptions.ObjectNotCreatedException;
-import nl.arba.ada.client.api.exceptions.ObjectNotFoundException;
+import nl.arba.ada.client.api.exceptions.*;
 
 import java.util.ArrayList;
 
@@ -90,6 +87,10 @@ public class Store {
         catch (Exception err) {
             throw new ClassNotCreatedException();
         }
+    }
+
+    public AdaClass getAdaClass(String name) throws AdaClassNotFoundException {
+        return getDomain().getAdaClass(getId(), name);
     }
 
     /**

@@ -24,11 +24,14 @@
             foreach($this->properties as $property) {
                 $json .= $prefix . "{\"id\":\"" . $property["id"] . "\",\"name\":\"" . $property['name']. "\",\"type\":\"". $property['type'] . "\"";
                 if ($property['type'] == "string")
-                    $json .= ",\"value\":\"". $property['value'] . "\"";
+                    $json .= ",\"value\":\"". $property['value'] . "\"}";
                 else if ($property['type'] == "date") {
                     $json .= ",\"value\":{\"day\":" . $property['value']['day'] . ",";
                     $json .= "\"month\":" . $property['value']['month'] . ",";
                     $json .= "\"year\":" . $property['value']['year'] . "}";
+                }
+                else if ($property['type'] == "object") {
+                    $json .= ",\"value\":\"" . $property['value'] . "\"}";
                 }
                 $prefix = ",";
             }

@@ -81,8 +81,9 @@
             if (isset($json->description))
                 $result->setDescription($json->description);
             if (isset($result->properties)) {
-                foreach($json->properties as $property)
+                foreach($json->properties as $property) {
                     $result->addProperty(Property::fromJson($property));
+                }
             }
             return $result;
         }

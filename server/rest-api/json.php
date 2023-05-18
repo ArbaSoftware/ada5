@@ -115,6 +115,11 @@
                     $errors[sizeof($errors)] = "Invalid date value for property '" . $name . "'";
                 }
             }
+            else if ($definition->type == "object") {
+                if (gettype($value) != "string") {
+                    $errors[sizeof($errors)] = "Invalid value for property '" . $name . "'";
+                }
+            }
             else if ($definition->schema) {
                 $objectErrors = JsonUtils::validateObject($value, $definition->schema, $allschemas);
                 foreach($objectErrors as $error) {

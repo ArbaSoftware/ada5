@@ -4,6 +4,7 @@ import nl.arba.ada.client.api.exceptions.InsufficientRightsException;
 import org.apache.hc.client5.http.classic.methods.HttpDelete;
 import org.apache.hc.client5.http.classic.methods.HttpGet;
 import org.apache.hc.client5.http.classic.methods.HttpPost;
+import org.apache.hc.client5.http.classic.methods.HttpPut;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
 import org.apache.hc.client5.http.impl.classic.HttpClients;
@@ -86,5 +87,27 @@ public class HttpUtils {
             throw new InsufficientRightsException();
         else
             return false;
+    }
+
+    /**
+     * Executes a http put request
+     * @param url The url to get
+     * @param json The payload to post
+     * @param user The user to authenticate the request
+     * @param password The password to authenticate the request
+     * @return The result as an inputstream
+     * @throws IOException An IOException can occur
+     */
+    public static InputStream doPut(String url, String json, String user, String password) throws IOException {
+        HttpPut put = new HttpPut(url);
+        put.setHeader("Authorization", "Basic " + Base64.getEncoder().encodeToString((user+":"+password).getBytes()));
+        put.setHeader("Content-type", "application/json");
+        put.setEntity(new StringEntity(json));
+        CloseableHttpResponse response = getClient().execute(put);
+        if (response.getCode() == 200) {
+            return response.getEntity().getContent();
+        }
+        else
+            throw new IOException("Error on executing put (" + response.getCode() + ")" + StreamUtils.streamToString(response.getEntity().getContent()));
     }
 }

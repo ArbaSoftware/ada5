@@ -39,6 +39,32 @@
         else
             sendState(404, '');
     }
+    else if ($_SERVER['REQUEST_METHOD'] == 'PUT') {
+        $url = $_SERVER['REQUEST_URI'];
+        $urlparts = explode('/', $url);
+        if ($url = '/ada/addon') {
+            if ($db->canUpdateAddOn()){
+                $json = file_get_contents('php://input');
+                $errors = Addon::validateJson($json, $db);
+                if ($errors && gettype($errors) == "boolean") {
+                    $addon = json_decode($json);
+                    try {
+                        $db->updateAddon($addon->id, $addon->name, $json);
+                        sendState(200, 'OK');
+                    }
+                    catch (Exception $err) {
+                        sendState(500, $err->getMessage());
+                    }
+                }
+                else {
+                    sendState(500, "Invalid request", JsonUtils::createErrorJson($errors));
+                }
+            }
+            else
+                sendState(401, 'Insufficient rights');
+        }
+    }
+
     function sendState($code, $message, $json = "") {
         header("HTTP/1.1 " . $code . " " . $message);
         echo $json;

@@ -92,8 +92,11 @@
                 if ($errors = JsonUtils::validate($json, 'addstorerequest')) {
                     if ($db->isStoreNameUnique($request->name)) {
                         if ($db->canCreateStore()) {
-                            $newStoreId = $db->createStore($request->name, $request->grantedrights, $request->addons);
-                            echo $newStoreId;
+                            if ($newStoreId = $db->createStore($request->name, $request->grantedrights, $request->addons)) {
+                                echo $newStoreId;
+                            }
+                            else
+                                sendState(500, "Store creation failed");
                         }
                         else
                             sendState(401, "Insufficient rights");

@@ -5,11 +5,12 @@
         private $required = false;
         private $multiple = false;
         private $id;
+        private $valueclass = null;
 
         public static function validJson($input) {
             $properties = array_keys(get_object_vars($input));
             if (in_array("name", $properties) && in_array("type", $properties)) {
-                $allowedProperties = ["name", "type", "required", "multiple"];
+                $allowedProperties = ["name", "type", "required", "multiple","class"];
                 $invalidPropertyFound = false;
                 foreach($properties as $property) {
                     if (!in_array($property, $allowedProperties)) {
@@ -60,13 +61,22 @@
             if (Property::validJson($json)) {
                 $result = new Property($json->id, $json->name, $json->type);
                 if (isset($json->json->required))
-                    $result->required = $required;
+                    $result->required = $json->required;
                 if (isset($json->json->multiple))
-                    $result->multiple = $multiple;
+                    $result->multiple = $json->multiple;
+                if (isset($json->class))
+                    $result->valueclass = $json->class;
                 return $result;
             }
             else
                 throw new Exception("Invalid property json");
+        }
+
+        public function getValueClass() {
+            if ($this->getType() == "object" && isset($this->valueclass))
+                return $this->valueclass;
+            else
+                return null;
         }
 
         public function toJson() {
