@@ -1,11 +1,11 @@
 package nl.arba.ada.client.api;
 
+import nl.arba.ada.client.api.exceptions.InvalidPropertyTypeException;
+import nl.arba.ada.client.api.exceptions.PropertyNotFoundException;
 import nl.arba.ada.client.api.security.GrantedRight;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.List;
+import java.io.IOException;
+import java.util.*;
 
 /**
  * This class represents an object
@@ -15,6 +15,7 @@ public class AdaObject {
     private String classId;
     private ArrayList<GrantedRight> rights = new ArrayList <>();
     private ArrayList<PropertyValue> properties = new ArrayList<>();
+    private Store store;
 
     /**
      * Set the id of the object
@@ -50,9 +51,9 @@ public class AdaObject {
 
     /**
      * Create the request to add the object to a store
-     * @return
+     * @return The request as json
      */
-    public String createAddRequest() {
+    public String createAddRequest() throws IOException {
         String json = "{";
         if (!getProperties().isEmpty()) {
             json += "\"properties\": {";
@@ -63,8 +64,9 @@ public class AdaObject {
                     prefix = ",";
                 }
                 else if (prop.getType().equals(PropertyType.DATE)) {
-                    Date dateValue = (Date) prop.getValue();
-                    json += prefix + "{\"day\":" + dateValue.getDate() + ",\"month\":" + (dateValue.getMonth()+1) + ",\"year\":" + dateValue.getYear() + "}";
+                    Calendar calendarValue = Calendar.getInstance();
+                    calendarValue.setTime((Date) prop.getValue());
+                    json += prefix + "{\"day\":" + calendarValue.get(Calendar.DAY_OF_MONTH) + ",\"month\":" + (calendarValue.get(Calendar.MONTH)+1) + ",\"year\":" + calendarValue.get(Calendar.YEAR) + "}";
                     prefix = ",";
                 }
                 else if (prop.getType().equals(PropertyType.OBJECT)) {
@@ -86,6 +88,10 @@ public class AdaObject {
                 prefix = ",";
             }
             json += "]";
+        }
+        if (this instanceof ContentHolding) {
+            Content content = ((ContentHolding) this).getContent();
+            json += (json.equals("{")? "" : ",") + "\"content\":" + content.toJson();
         }
         json += "}";
         return json;
@@ -120,20 +126,58 @@ public class AdaObject {
         this.properties.addAll(Arrays.asList(properties));
     }
 
-    public void setStringProperty(String name, String stringvalue) {
-        PropertyValue value = new PropertyValue();
-        value.setName(name);
-        value.setType(PropertyType.STRING);
-        value.setValue(stringvalue);
-        properties.add(value);
+    private Optional<PropertyValue> findProperty(String name) {
+        return properties.stream().filter(v -> v.getName().equals(name)).findFirst();
     }
 
+    /**
+     * Set the value of a string property
+     * @param name The name of the property to set the value for
+     * @param stringvalue The new value for the property
+     */
+    public void setStringProperty(String name, String stringvalue) {
+        Optional<PropertyValue> existing = findProperty(name);
+        if (existing.isPresent())
+            existing.get().setValue(stringvalue);
+        else {
+            PropertyValue value = new PropertyValue();
+            value.setName(name);
+            value.setType(PropertyType.STRING);
+            value.setValue(stringvalue);
+            properties.add(value);
+        }
+    }
+
+    public String getStringProperty(String name) throws InvalidPropertyTypeException, PropertyNotFoundException {
+        Optional<PropertyValue> existing = findProperty(name);
+        if (existing.isPresent()) {
+            PropertyValue value = existing.get();
+            if (value.getType().equals(PropertyType.STRING)) {
+                return (String) value.getValue();
+            }
+            else
+                throw new InvalidPropertyTypeException("");
+        }
+        else
+            throw new PropertyNotFoundException();
+    }
+
+    /**
+     * Sets the value for an object property
+     * @param name The name of the property
+     * @param objectid The value of the property (an objectid)
+     */
     public void setObjectProperty(String name, String objectid) {
-        PropertyValue value = new PropertyValue();
-        value.setName(name);
-        value.setType(PropertyType.OBJECT);
-        value.setValue(objectid);
-        properties.add(value);
+        Optional <PropertyValue> optValue = findProperty(name);
+        if (optValue.isPresent())
+            optValue.get().setValue(objectid);
+        else {
+            PropertyValue value = new PropertyValue();
+            value.setName(name);
+            value.setType(PropertyType.OBJECT);
+            value.setValue(objectid);
+            properties.add(value);
+        }
     }
 
     /**
@@ -143,5 +187,21 @@ public class AdaObject {
      */
     public List <PropertyValue> getProperties() {
         return properties;
+    }
+
+    /**
+     * Set the store in which the object is stored
+     * @param store The store in which the object is stored
+     */
+    public void setStore(Store store) {
+        this.store = store;
+    }
+
+    /**
+     * Get the store in which the object is stored
+     * @return The store in which the object is stored
+     */
+    public Store getStore() {
+        return store;
     }
 }

@@ -168,9 +168,54 @@
                 "type": "integer",
                 "required": true
             }
+        },
+        "search": {
+            "class": {
+                "type": "string",
+                "required": true
+            },
+            "filters": {
+                "type": "arrayofobjects",
+                "required": true,
+                "schema": "propertyfilter"
+            }
+        },
+        "propertyfilter": { 
+            "property": {
+                "type": "string",
+                "required": true
+            },
+            "operator": {
+                "type": "enumeration",
+                "values": "filteroperators",
+                "required": true
+            },
+            "value": {
+                "type": "any",
+                "required": false
+            }
+        },
+        "content": {
+            "content": {
+                "type": "base64",
+                "required": true
+            },
+            "minorversion": {
+                "type": "boolean",
+                "required": false
+            },
+            "mimetype": {
+                "type": "string",
+                "required": true
+            },
+            "uploadfile": {
+                "type": "string",
+                "required": true
+            }
         }
     },
     "enumerations": {
-        "propertytypes": ["string", "date"]
+        "propertytypes": ["string", "date"],
+        "filteroperators": ["isnull","equals"]
     }
 }

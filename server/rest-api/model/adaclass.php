@@ -130,7 +130,7 @@
 
         public function createObjectSchema() {
             $schema = "{";
-            if ($this->getProperties()) {
+            if ($this->getProperties() || $this->isDocumentClass()) {
                 $schema .= "\"properties\": {\"schema\":{";
                 $prefix = "";
                 foreach($this->getProperties() as $property) {
@@ -141,6 +141,12 @@
                     $prefix = ",";
                 }
                 $schema .= "}},";
+            }
+            if ($this->isDocumentClass()) {
+                $schema .= "\"content\": {";
+                $schema .= "\"schema\":\"content\",";
+                $schema .= "\"required\": false";
+                $schema .= "},";
             }
             $schema .= "\"rights\":{";
             $schema .= "\"type\":\"arrayofobjects\",";

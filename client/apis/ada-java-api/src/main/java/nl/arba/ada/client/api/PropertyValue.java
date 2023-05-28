@@ -47,11 +47,17 @@ public class PropertyValue {
      * Set the type of property which value is hold by this object
      * @param type The type of the property which value is hold by this object
      * @see PropertyType
+     * @throws InvalidPropertyTypeException Throwed when the given type is invalid
      */
     public void setType(String type) throws InvalidPropertyTypeException {
          this.type = PropertyType.fromString(type);
     }
 
+    /**
+     * Set the property type
+     * @param type The property type
+     * @see PropertyType
+     */
     public void setType(PropertyType type) {
         this.type = type;
     }

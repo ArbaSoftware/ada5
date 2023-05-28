@@ -120,8 +120,26 @@
                     $errors[sizeof($errors)] = "Invalid value for property '" . $name . "'";
                 }
             }
+            else if ($definition->type == "base64") {
+                if (gettype($value) != "string") {
+                    $errors[sizeof($errors)] = "Invalid value for property '" . $name . "'";
+                }
+                else {
+                    if (!base64_decode($value, true))
+                        $errors[sizeof($errors)] = "Invalid value for property '" . $name . "'";
+                }
+            }
+            else if ($definition->type == "any") { 
+                //No validation
+            }
             else if ($definition->schema) {
-                $objectErrors = JsonUtils::validateObject($value, $definition->schema, $allschemas);
+                if (gettype($definition->schema) == "string") {
+                    $schemaName = $definition->schema;
+                    $objectErrors = JsonUtils::validateObject($value, $allschemas->schemas->$schemaName, $allschemas);
+                }
+                else {
+                    $objectErrors = JsonUtils::validateObject($value, $definition->schema, $allschemas);
+                }
                 foreach($objectErrors as $error) {
                     $errors[sizeof($errors)] = $error;
                 }

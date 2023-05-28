@@ -124,6 +124,27 @@
                 exit;
             }
         }
+        else if (sizeof($urlparts) == 5 && $urlparts[1] == 'ada' && $urlparts[2] == 'store' && $urlparts[4] == 'search') {
+            $storeid = $urlparts[3];
+            $search = file_get_contents('php://input');
+            $validationerrors = JsonUtils::validate($search, "search");
+            if ($validationerrors && gettype($validationerrors) == 'boolean') {
+                $searchresults = $db->search($storeid, json_decode($search));
+                if (gettype($searchresults) == "string") {
+                    sendState(200, "");
+                    echo $searchresults;
+                }
+                else {
+                    sendState(500, "No searchresults");
+                    echo JsonUtils::createErrorJson($searchresults);
+                }
+            }
+            else {
+                sendState(500, "Invalid request");
+                echo JsonUtils::createErrorJson($validationerrors);
+            }
+            exit;
+        }
         else if (sizeof($urlparts) == 5 && $urlparts[1] == 'ada' && $urlparts[2] == 'store' && $urlparts[4] == 'class') {
             $storeId = $urlparts[3];
             if ($db->getStore($storeId)) {

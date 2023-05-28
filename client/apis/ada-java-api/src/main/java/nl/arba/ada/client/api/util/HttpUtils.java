@@ -8,7 +8,12 @@ import org.apache.hc.client5.http.classic.methods.HttpPut;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
 import org.apache.hc.client5.http.impl.classic.HttpClients;
+import org.apache.hc.core5.http.ClassicHttpRequest;
+import org.apache.hc.core5.http.ClassicHttpResponse;
+import org.apache.hc.core5.http.HttpException;
+import org.apache.hc.core5.http.io.HttpClientResponseHandler;
 import org.apache.hc.core5.http.io.entity.StringEntity;
+import org.apache.hc.core5.http.message.BasicClassicHttpResponse;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -21,9 +26,7 @@ public class HttpUtils {
     private static CloseableHttpClient client;
 
     private static CloseableHttpClient getClient() {
-        if (client == null)
-            client = HttpClients.createDefault();
-        return client;
+        return HttpClients.createDefault();
     }
 
     /**
@@ -37,12 +40,25 @@ public class HttpUtils {
     public static InputStream doGet(String url, String user, String password) throws IOException {
         HttpGet get = new HttpGet(url);
         get.setHeader("Authorization", "Basic " + Base64.getEncoder().encodeToString((user+":" + password).getBytes()));
-        CloseableHttpResponse response = getClient().execute(get);
+        ResponseState response = execute(get);
         if (response.getCode() == 200) {
-            return response.getEntity().getContent();
+            return response.getStream();
         }
         else
-            throw new IOException("Error on executing get");
+            throw new IOException("Execution of get request failed");
+    }
+
+    private static ResponseState execute(ClassicHttpRequest request) throws IOException {
+        HttpClientResponseHandler <ResponseState> handler = new HttpClientResponseHandler<ResponseState>() {
+            @Override
+            public ResponseState handleResponse(ClassicHttpResponse classicHttpResponse) throws HttpException, IOException {
+                ResponseState state = new ResponseState();
+                state.setCode(classicHttpResponse.getCode());
+                state.setStream(StreamUtils.readStream(classicHttpResponse.getEntity().getContent()));
+                return state;
+            }
+        };
+        return getClient().execute(request, handler);
     }
 
     /**
@@ -59,12 +75,12 @@ public class HttpUtils {
         post.setHeader("Authorization", "Basic " + Base64.getEncoder().encodeToString((user+":"+password).getBytes()));
         post.setHeader("Content-type", "application/json");
         post.setEntity(new StringEntity(json));
-        CloseableHttpResponse response = getClient().execute(post);
+        ResponseState response = execute(post);
         if (response.getCode() == 200) {
-            return response.getEntity().getContent();
+            return response.getStream();
         }
         else
-            throw new IOException("Error on executing post (" + response.getCode() + ")" + StreamUtils.streamToString(response.getEntity().getContent()));
+            throw new IOException("Error on executing post (" + response.getCode() + ")");
     }
 
     /**
@@ -79,11 +95,11 @@ public class HttpUtils {
     public static boolean doDelete(String url, String user, String password) throws IOException, InsufficientRightsException {
         HttpDelete delete = new HttpDelete(url);
         delete.setHeader("Authorization", "Basic " + Base64.getEncoder().encodeToString((user+":"+password).getBytes()));
-        CloseableHttpResponse response = getClient().execute(delete);
-        if (response.getCode() == 200) {
+        ResponseState state = execute(delete);
+        if (state.getCode() == 200) {
             return true;
         }
-        else if (response.getCode() == 401)
+        else if (state.getCode() == 401)
             throw new InsufficientRightsException();
         else
             return false;
@@ -103,11 +119,41 @@ public class HttpUtils {
         put.setHeader("Authorization", "Basic " + Base64.getEncoder().encodeToString((user+":"+password).getBytes()));
         put.setHeader("Content-type", "application/json");
         put.setEntity(new StringEntity(json));
-        CloseableHttpResponse response = getClient().execute(put);
-        if (response.getCode() == 200) {
-            return response.getEntity().getContent();
+        ResponseState state = execute(put);
+        if (state.getCode() == 200) {
+            return state.getStream();
         }
         else
-            throw new IOException("Error on executing put (" + response.getCode() + ")" + StreamUtils.streamToString(response.getEntity().getContent()));
+            throw new IOException("Error on executing put (" + state.getCode() + ")" + StreamUtils.streamToString(state.getStream()));
+    }
+
+    private static class ResponseState {
+        private int code;
+        private InputStream stream;
+        private boolean finished = false;
+
+        public void setCode(int code) {
+            this.code = code;
+        }
+
+        public int getCode() {
+            return code;
+        }
+
+        public void setStream(InputStream stream) {
+            this.stream = stream;
+        }
+
+        public InputStream getStream() {
+            return stream;
+        }
+
+        public void setFinished() {
+            finished = true;
+        }
+
+        public boolean isFinished() {
+            return finished;
+        }
     }
 }

@@ -3,10 +3,7 @@ package nl.arba.ada.client.api;
 import nl.arba.ada.client.api.security.Everyone;
 import nl.arba.ada.client.api.security.GrantedRight;
 import nl.arba.ada.client.api.security.Right;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.*;
 
 import java.io.IOException;
 import java.util.List;
@@ -21,7 +18,7 @@ public class TestObjects {
     private static Store store = null;
     private static AdaClass folder = null;
 
-    @BeforeAll
+    @BeforeClass
     public static void before() throws Exception {
         domain = Domain.create(TEST_URL);
         domain.login(TEST_USER_1_EMAIL, TEST_USER_1_PASSWORD);
@@ -35,7 +32,7 @@ public class TestObjects {
         folder = store.getAdaClass("Folder");
     }
 
-    @AfterAll
+    @AfterClass
     public static void after() throws Exception {
         store.delete();
     }

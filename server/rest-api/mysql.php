@@ -6,14 +6,23 @@
         private $dbname;
         private $userId;
         private $identityProviderId;
+        private $contentDir;
 
-        public function __construct($host, $user, $password, $dbname, $userid = null, $identityproviderid = null) {
+        public function __construct($host, $user, $password, $dbname, $userid = null, $identityproviderid = null, $contentdir = null) {
             $this->host = $host;
             $this->user = $user;
             $this->password = $password;
             $this->dbname = $dbname;
             $this->userId = $userid;
             $this->identityProviderId = $identityproviderid;
+            if (is_null($contentdir)) {
+                $this->contentDir = substr(__FILE__, 0, strrpos(__FILE__, '/')+1) . "content";
+            }
+            else {
+                $this->contentDir = $contentdir;
+            }
+            if (!is_dir($this->contentDir))
+                mkdir($this->contentDir, 0777, true);
         }
         
         public function getStores() {
@@ -203,7 +212,7 @@
                                     $userrows = $conn->query("select id from users where email='" . $right->grantee . "'");
                                     if ($userrows->num_rows == 1) {
                                         $userrow = $userrows->fetch_object();
-                                        $succeeded = $conn->query("insert into grantedrights (granteeid, identityproviderid, targetid, targettype, level, weight) (select '" . $userrow->id . "',id,'" . $id . "','store', " . $right->level . ",1 from identityproviders where type='internal')");
+                                        $succeeded = $conn->query("insert into grantedrights (granteeid, identityproviderid, targetid, targettype, level, weight) (select '" . $right->grantee . "',id,'" . $id . "','store', " . $right->level . ",1 from identityproviders where type='internal')");
                                     }
                                     else
                                         $succeeded = false;
@@ -371,7 +380,7 @@
                 while ($potentialrow = $potentialrows->fetch_object()) {
                     if (!array_key_exists($potentialrow->id, $potentialIds)) {
                         $newpotential = new AdaClass($potentialrow->id, $potentialrow->name);
-                        $newpotential->setIsDocumentClass($potentialrow->documentclass == 1);
+                        $newpotential->setIsDocumentClass($potentialrow->contentclass == 1);
                         $newpotential->setIsFolderClass($potentialrow->folderclass == 1);
                         $potentials[sizeof($potentials)] = ["class" => $newpotential, "level" => $potentialrow->level];
                         $potentialIds[$potentialrow->id] = true;
@@ -401,13 +410,14 @@
                 $rows = $conn->query("select c.id, c.name, c.folderclass, c.contentclass, r.level from classes c inner join classrights r on c.id = r.classid where c.storeid = '" . $storeid . "' and (c.id = '" . $classid . "' or c.name = '" . $classid . "') and (r.granteeid = 'everyone' or (r.granteeid = '" . $this->userId . "' and r.identityproviderid = '" . $this->identityProviderId . "')) order by r.weight asc limit 1");
                 if ($rows) {
                     $row = $rows->fetch_object();
+                    $classid = $row->id;
                     $readRight = $conn->query("select level from rights where systemright='read'");
                     if ($readRight) {
                         if ($right = $readRight->fetch_object()) {
                             if (intval($row->level) & intval($right->level)) {
                                 $newClass = new AdaClass($row->id, $row->name);
                                 $newClass->setIsFolderClass($row->folderclass == 1);
-                                $newClass->setIsDocumentClass($row->documentclass == 1);
+                                $newClass->setIsDocumentClass($row->contentclass == 1);
 
                                 $props = $conn->query("select id, name, `type`, required, multiple from classproperties where classid = '" . $classid . "'");
                                 if ($props) {
@@ -472,6 +482,11 @@
         public function deleteStore($storeid) {
             try {
                 $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
+                $contents = $conn->query("select c.id, c.localdir from content c inner join objects o on (o.id = c.objectid and o.storeid = '" . $storeid . "')");
+                while ($content = $contents->fetch_object()) {
+                    $file = $content->localdir. "/" . $content->id;
+                    unlink($file);
+                }
                 return $conn->query("delete from stores where id = '" . $storeid . "'");
             }
             finally {
@@ -631,6 +646,28 @@
                             }
                         }
                         if ($succeeded) {
+                            if (gettype($request->content) == "object" && $class->isDocumentClass()) {
+                                $date = new DateTime();
+                                $saveDir = $this->contentDir . "/" . $date->format("Y") . "/" . $date->format("m") . "/" . $date->format("d");
+                                if (!is_dir($saveDir))
+                                    mkdir($saveDir, 0777, true);
+                                $contentidquery = $conn->query("select UUID() newid from INFORMATION_SCHEMA.TABLES LIMIT 1");
+                                $contentId = $contentidquery->fetch_object()->newid;
+                                $contentfile = fopen($saveDir . "/" . $contentId, "w");
+                                fwrite($contentfile, base64_decode($request->content->content));
+                                fclose($contentfile);
+                                if ($request->content->minorversion) {
+                                    $majorversion = 0;
+                                    $minorversion = 1;
+                                }
+                                else {
+                                    $majorversion = 1;
+                                    $minorversion = 0;
+                                }
+                                $succeeded = $conn->query("insert into content (id, objectid, size, mimetype, majorversion, minorversion, localdir, uploadfile) values ('" . $contentId . "','" . $id . "'," . filesize($saveDir . "/" . $contentId) . ",'". $request->content->mimetype . "',". $majorversion . "," . $minorversion. ",'" . $saveDir . "','" . $request->content->uploadfile . "')");
+                                if (!$succeeded)
+                                    $detailErrorMessage = "Content kon niet worden toegevoegd";
+                            }
                             $conn->commit();
                             return new AdaObject($id, $class);
                         }
@@ -691,5 +728,80 @@
         finally {
             $conn->close();
         }
-  }
+    }
+
+    public function search($storeid, $search) {
+        $class = $this->getClass($storeid, $search->class);
+        $query = "select o.id, r.level, o.classid from objects o inner join objectrights r on o.id = r.objectid";
+        $filterindex = 1;
+        $where = "o.storeid = '" . $storeid . "' and (r.granteeid = 'everyone' or (r.granteeid = '" . $this->userId . "' and r.identityproviderid = '" . $this->identityProviderId . "'))";
+        $errors = [];
+        foreach($search->filters as $filter) {
+            $property = $filter->property;
+            $propertyId = null;
+            $propertyType = null;
+            foreach($class->getProperties() as $classproperty) {
+                if ($classproperty->getName() == $property) {
+                    $propertyId = $classproperty->getId();
+                    $propertyType = $classproperty->getType();
+                    break;
+                }
+            };
+            $operator = $filter->operator;
+
+            if ($operator == 'isnull') {
+                $query .= " left outer join objectproperties f" . $filterindex . " on (o.id = f" . $filterindex . ".objectid and f" . $filterindex . ".propertyid = '" . $propertyId . "')";
+                $where .= " and " . "f" . $filterindex . ".objectid is null";
+                $filterindex++;
+            }
+            else if ($operator == 'equals') {
+                $query .= " left outer join objectproperties f" . $filterindex . " on (o.id = f" . $filterindex . ".objectid and f". $filterindex . ".propertyid = '" . $propertyId . "')";
+                if ($propertyType == 'object') {
+                    if (gettype($filter->value) == 'string') {
+                        $where .= " and f" . $filterindex . ".string_value = '" . $filter->value . "'";
+                    }
+                    else {
+                        $errors[sizeof($errors)] = "Invalid filter value for property '" . $property . "' (" . $filter->value . ")";
+                    }
+                }
+            }
+        }
+        $query .= " where " . $where . " order by o.id, r.weight";
+
+        if (sizeof($errors) == 0) {
+            $lastObjectId = "";
+            $foundObjects = [];
+            try {
+                $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
+                $readRight = $conn->query("select level from rights where systemright='read'");
+                if ($readRight) {
+                    if ($right = $readRight->fetch_object()) {
+                        $objectresults = $conn->query($query);
+                        while ($row = $objectresults->fetch_object()) {
+                            if (intval($row->level) & intval($right->level)) {
+                                $objectId = $row->id;
+                                if ($objectId != $lastObjectId) {
+                                    $foundObjects[sizeof($foundObjects)] = new AdaObject($objectId, $row->classid);
+                                    $lastObjectId = $objectId;
+                                }
+                            }
+                        }
+                    }
+                }
+                $json = "[";
+                $prefix = "";
+                foreach($foundObjects as $object) {
+                    $json .= $prefix . $object->toJson();
+                    $prefix = ",";
+                }
+                $json .= "]";
+                return $json;
+            }
+            finally {
+                $conn->close();
+            }
+        }
+        else
+            return $errors;
+    }
 }

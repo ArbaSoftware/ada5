@@ -27,6 +27,25 @@
           "rights": ["read","update","delete","create","createobject"]
         }
       ]
+    },
+    {
+      "name": "Document",
+      "description": "Base document class",
+      "documentclass": true,
+      "properties": [
+        {
+          "name": "DocumentTitle",
+          "type": "string",
+          "required": true,
+          "multiple": false
+        }
+      ],
+      "security": [
+        {
+          "grantee": "everyone",
+          "rights": ["read","update","delete","create","createobject"]
+        }
+      ]
     }
   ]
 }

@@ -3,6 +3,7 @@ package nl.arba.ada.client.api;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import nl.arba.ada.client.api.addon.AddOn;
 import nl.arba.ada.client.api.exceptions.*;
+import nl.arba.ada.client.api.search.Search;
 import nl.arba.ada.client.api.security.GrantedRight;
 import nl.arba.ada.client.api.security.IdentityProvider;
 import nl.arba.ada.client.api.security.Right;
@@ -146,7 +147,6 @@ public class Domain {
             json += "}";
             InputStream is = HttpUtils.doPost(baseUrl + "/store", json, user, password);
             String storeId = StreamUtils.streamToString(is);
-            System.out.println(storeId);
             return getStore(storeId);
         }
         catch (IOException err) {
@@ -196,10 +196,16 @@ public class Domain {
         }
     }
 
-    public AdaClass getAdaClass(String storeid, String name) throws AdaClassNotFoundException {
+    /**
+     * Get the class in a store
+     * @param store The store that holds the class
+     * @param name The name of the class
+     * @return The class with the given name in the given store
+     * @throws AdaClassNotFoundException Throwed when the class is not found
+     */
+    public AdaClass getAdaClass(Store store, String name) throws AdaClassNotFoundException {
         try {
-            System.out.println(baseUrl + "/store/" + storeid + "/class/" + name);
-            InputStream is = HttpUtils.doGet(baseUrl + "/store/" + storeid + "/class/" + name, user, password);
+            InputStream is = HttpUtils.doGet(baseUrl + "/store/" + store.getId() + "/class/" + name, user, password);
             return mapper.readValue(is, AdaClass.class);
         }
         catch (IOException io) {
@@ -215,7 +221,7 @@ public class Domain {
      */
     public AddOn addAddOn(AddOn definition) throws AddOnNotCreatedException{
         try {
-            InputStream is = HttpUtils.doPost(baseUrl + "/addon", definition.toJson(), user, password);
+            HttpUtils.doPost(baseUrl + "/addon", definition.toJson(), user, password);
             return definition;
         }
         catch (IOException io) {
@@ -224,6 +230,12 @@ public class Domain {
         }
     }
 
+    /**
+     * Updates an addon in the domain
+     * @param definition The (new) definition of the addon
+     * @throws AddOnNotUpdatedException Throwed when the update of the addon fails
+     * @see AddOn
+     */
     public void updateAddOn(AddOn definition) throws AddOnNotUpdatedException {
         try {
             InputStream is = HttpUtils.doPut(baseUrl + "/addon", definition.toJson(), user, password);
@@ -234,8 +246,19 @@ public class Domain {
         }
     }
 
+    /**
+     * Add an object to a store
+     * @param store The store to add the object to
+     * @param toadd The object to add
+     * @return The added object
+     * @throws ObjectNotCreatedException Throwed when the creation of the object fails
+     * @see AdaObject
+     * @see Store
+     */
     public AdaObject addObject(Store store, AdaObject toadd) throws ObjectNotCreatedException {
         try {
+            System.out.println(baseUrl + "/store/" + store.getId() + "/class/" + toadd.getClassId() + "/object");
+            System.out.println(toadd.createAddRequest());
             InputStream is = HttpUtils.doPost(baseUrl + "/store/" + store.getId() + "/class/" + toadd.getClassId() + "/object", toadd.createAddRequest(), user, password);
             String objectId = StreamUtils.streamToString(is);
             return store.getObject(objectId);
@@ -246,12 +269,21 @@ public class Domain {
         }
     }
 
+    /**
+     * Get an object in the given store with the given id
+     * @param store The store in which the object is stored
+     * @param id The id of the object
+     * @return The object
+     * @throws ObjectNotFoundException Throwed when the object is not found
+     */
     public AdaObject getObject(Store store, String id) throws ObjectNotFoundException {
         String jsonresponse = "";
         try {
             InputStream is = HttpUtils.doGet(baseUrl + "/store/" + store.getId() + "/object/" + id, user, password);
             jsonresponse = StreamUtils.streamToString(is);
-            return mapper.readValue(jsonresponse, AdaObject.class);
+            AdaObject result = mapper.readValue(jsonresponse, AdaObject.class);
+            result.setStore(store);
+            return result;
         }
         catch (IOException io) {
             System.out.println(jsonresponse);
@@ -260,8 +292,38 @@ public class Domain {
         }
     }
 
+    /**
+     * Get the rights that are defined in the domain
+     * @return An array of all the defined rights
+     */
     public List <Right> getRights() {
         return rights;
+    }
+
+    /**
+     * Executes a search
+     * @param store The store to execute the search in
+     * @param search The search to execute
+     * @return The results as an array of objects
+     * @throws NoSearchResultsException Throwed when the execution of the search fails
+     * @see Search
+     * @see Store
+     * @see NoSearchResultsException
+     */
+    public AdaObject[] search(Store store, Search search) throws NoSearchResultsException {
+        String jsonresponse = "";
+        try {
+            InputStream is = HttpUtils.doPost(baseUrl + "/store/" + store.getId() + "/search", search.toJson(), user, password);
+            jsonresponse = StreamUtils.streamToString(is);
+            AdaObject[] results = mapper.readValue(jsonresponse, AdaObject[].class);
+            for (AdaObject result: results)
+                result.setStore(store);
+            return results;
+        }
+        catch (IOException io) {
+            System.out.println(jsonresponse);
+            throw new NoSearchResultsException();
+        }
     }
 
 }

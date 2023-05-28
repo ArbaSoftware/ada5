@@ -89,8 +89,14 @@ public class Store {
         }
     }
 
+    /**
+     * Get a class with the given name in this store
+     * @param name The name of the class
+     * @return The class
+     * @throws AdaClassNotFoundException Throwed when the class is not found
+     */
     public AdaClass getAdaClass(String name) throws AdaClassNotFoundException {
-        return getDomain().getAdaClass(getId(), name);
+        return getDomain().getAdaClass(this, name);
     }
 
     /**
@@ -111,6 +117,23 @@ public class Store {
         return addons.toArray(new String[0]);
     }
 
+    /**
+     * Add an object to the given store
+     * @param source The object to add to the store
+     * @return The added object
+     * @throws ObjectNotCreatedException When the creation fails
+     * @see AdaObject
+     */
+    public AdaObject createObject(AdaObject source) throws ObjectNotCreatedException {
+        return domain.addObject(this, source);
+    }
+
+    /**
+     * Get the object with the given id
+     * @param id The id of the object to retrieve
+     * @return The object with the given id
+     * @throws ObjectNotFoundException Throwed when the object is not found
+     */
     public AdaObject getObject(String id) throws ObjectNotFoundException {
         return domain.getObject(this, id);
     }
