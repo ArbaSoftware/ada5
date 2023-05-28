@@ -52,6 +52,7 @@ public class AdaObject {
     /**
      * Create the request to add the object to a store
      * @return The request as json
+     * @throws IOException Throwed when a json problem occurs
      */
     public String createAddRequest() throws IOException {
         String json = "{";
@@ -148,6 +149,13 @@ public class AdaObject {
         }
     }
 
+    /**
+     * Get the value of a string property
+     * @param name The name of the property to get the value for
+     * @return The string value for the property
+     * @throws InvalidPropertyTypeException Throwed when the property has not the string type
+     * @throws PropertyNotFoundException Throwed when the property is not found in the collection
+     */
     public String getStringProperty(String name) throws InvalidPropertyTypeException, PropertyNotFoundException {
         Optional<PropertyValue> existing = findProperty(name);
         if (existing.isPresent()) {
