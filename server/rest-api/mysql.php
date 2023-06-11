@@ -317,28 +317,69 @@
         }
         public function createClass($storeid, $class) {
             try {
+                $succeeded = true;
+                $errors = [];
                 $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
+                $conn->begin_transaction();
+
                 $idquery = $conn->query("select UUID() newid from INFORMATION_SCHEMA.TABLES LIMIT 1");
                 $id = $idquery->fetch_object()->newid;
-                $conn->query("insert into classes (id, name, creator, creatoridentityproviderid, folderclass, contentclass, storeid) values ('" . $id . "','" . $class->getName() . "','" . $this->userId . "','" . $this->identityProviderId . "'," . ($class->isFolderClass() ? '1' : '0') . "," . ($class->isDocumentClass() ? '1': '0') . ",'" . $storeid . "')");
 
-                foreach($class->getProperties() as $property) {
-                    $conn->query("insert into classproperties (id, name, `type`, required, multiple, classid) values (UUID(), '" . $property->getName() . "','" . $property->getType() . "'," . ($property->isRequired()? 1:0) . "," . ($property->isMultiple()? 1: 0). ",'" . $id . "')");
-                }
-
-                if (sizeof($class->getRights()) == 0) {
-                    $conn->query("insert into classrights (granteeid, identityproviderid, classid, level, weight) values ('" . $this->userId . "','" . $this->identityProviderId . "','". $id . "',(select sum(level) from rights where classright = 1), 1)");
-                }
+                if (is_null($class->getParentClass()))
+                    $succeeded = $conn->query("insert into classes (id, name, creator, creatoridentityproviderid, folderclass, contentclass, storeid) values ('" . $id . "','" . $class->getName() . "','" . $this->userId . "','" . $this->identityProviderId . "'," . ($class->isFolderClass() ? '1' : '0') . "," . ($class->isDocumentClass() ? '1': '0') . ",'" . $storeid . "')");
                 else {
-                    foreach($class->getRights() as $right) {
-                        if ($right->getGranteeId() == 'everyone') 
-                            $conn->query("insert into classrights (granteeid, classid, level, weight) values ('everyone', '" . $id . "'," . $right->getLevel() . ",0)");
-                        else {
-                            $conn->query("insert into classrights (granteeid, identityproviderid, classid, level, weight) values ('" . $right->getGranteeId() . "','" . $right->getIdentityProviderId() . "','" . $id . "'," . $right->getLevel() . ",0)");
-                        }
+                    $potentialClasses = $conn->query("select id from classes where storeid = '" . $storeid . "' and (id = '" . $class->getParentClass() . "' or name = '" . $class->getParentClass() . "')");
+                    if ($potentialClass = $potentialClasses->fetch_object()) {
+                        $succeeded = $conn->query("insert into classes (id, name, creator, creatoridentityproviderid, folderclass, contentclass, storeid, parentclassid) values ('" . $id . "','" . $class->getName() . "','" . $this->userId . "','" . $this->identityProviderId . "'," . ($class->isFolderClass() ? '1' : '0') . "," . ($class->isDocumentClass() ? '1': '0') . ",'" . $storeid . "','" . $potentialClass->id . "')");
                     }
                 }
-                return $id;
+                if ($succeeded) {
+                    foreach($class->getProperties() as $property) {
+                        if ($conn->query("insert into classproperties (id, name, `type`, required, multiple, classid) values (UUID(), '" . $property->getName() . "','" . $property->getType() . "'," . ($property->isRequired()? 1:0) . "," . ($property->isMultiple()? 1: 0). ",'" . $id . "')")) {
+                            //Do nothing
+                        }
+                        else {
+                            $succeeded = false;
+                            $errors[sizeof($errors)] = "Property '" . $property->getName() . "' could not be added.";
+                            break;
+                        }
+
+                    }
+                    if ($succeeded)
+                        if (sizeof($class->getRights()) == 0) {
+                            $succeeded = $conn->query("insert into classrights (granteeid, identityproviderid, classid, level, weight) values ('" . $this->userId . "','" . $this->identityProviderId . "','". $id . "',(select sum(level) from rights where classright = 1), 1)");
+                        }
+                        else {
+                            foreach($class->getRights() as $right) {
+                                if ($right->getGranteeId() == 'everyone') 
+                                    $succeeded = $conn->query("insert into classrights (granteeid, classid, level, weight) values ('everyone', '" . $id . "'," . $right->getLevel() . ",0)");
+                                else {
+                                    $succeeded = $conn->query("insert into classrights (granteeid, identityproviderid, classid, level, weight) values ('" . $right->getGranteeId() . "','" . $right->getIdentityProviderId() . "','" . $id . "'," . $right->getLevel() . ",0)");
+                                }
+                                if ($succeeded) {
+                                    //Do nothing
+                                }
+                                else {
+                                    $succeeded = false;
+                                    break;
+                                }
+                            }
+                        }
+                        if ($succeeded) {
+                            $conn->commit();
+                            return $id;
+                        }
+                        else { 
+                            $conn->rollback();
+                            $errors[sizeof($errors)] = "Rights could not be added";
+                            return $errors;
+                        }
+                    }
+                    else {
+                        $conn->rollback();
+                        $errors[sizeof($errors)] = "Class could not be added";
+                        return $errors;
+                    }
             }
             finally {
                 $conn->close();
@@ -407,7 +448,7 @@
         public function getClass($storeid, $classid) {
             try {
                 $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
-                $rows = $conn->query("select c.id, c.name, c.folderclass, c.contentclass, r.level from classes c inner join classrights r on c.id = r.classid where c.storeid = '" . $storeid . "' and (c.id = '" . $classid . "' or c.name = '" . $classid . "') and (r.granteeid = 'everyone' or (r.granteeid = '" . $this->userId . "' and r.identityproviderid = '" . $this->identityProviderId . "')) order by r.weight asc limit 1");
+                $rows = $conn->query("select c.id, c.name, c.folderclass, c.contentclass, r.level, c.parentclassid from classes c inner join classrights r on c.id = r.classid where c.storeid = '" . $storeid . "' and (c.id = '" . $classid . "' or c.name = '" . $classid . "') and (r.granteeid = 'everyone' or (r.granteeid = '" . $this->userId . "' and r.identityproviderid = '" . $this->identityProviderId . "')) order by r.weight asc limit 1");
                 if ($rows) {
                     $row = $rows->fetch_object();
                     $classid = $row->id;
@@ -418,6 +459,9 @@
                                 $newClass = new AdaClass($row->id, $row->name);
                                 $newClass->setIsFolderClass($row->folderclass == 1);
                                 $newClass->setIsDocumentClass($row->contentclass == 1);
+                                if (!is_null($row->parentclassid)) {
+                                    $newClass->setParentClass($row->parentclassid);
+                                }
 
                                 $props = $conn->query("select id, name, `type`, required, multiple from classproperties where classid = '" . $classid . "'");
                                 if ($props) {
@@ -693,7 +737,7 @@
        public function getObject($storeid, $objectid) {
         try {
             $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
-            $rows = $conn->query("select o.id, o.classid, r.level from objects o inner join objectrights r on o.id = r.objectid where o.storeid = '" . $storeid . "' and o.id = '" . $objectid . "' and (r.granteeid = 'everyone' or (r.granteeid = '" . $this->userId . "' and r.identityproviderid = '" . $this->identityProviderId . "')) order by r.weight asc limit 1");
+            $rows = $conn->query("select o.id, o.classid, r.level, c.majorversion, c.minorversion, c.mimetype, co.userid, co.identityproviderid from objects o inner join objectrights r on o.id = r.objectid left outer join content c on c.objectid = o.id left outer join checkouts co on co.objectid = o.id where o.storeid = '" . $storeid . "' and o.id = '" . $objectid . "' and (r.granteeid = 'everyone' or (r.granteeid = '" . $this->userId . "' and r.identityproviderid = '" . $this->identityProviderId . "')) order by r.weight asc, c.majorversion desc, c.minorversion desc limit 1");
             if ($rows) {
                 $row = $rows->fetch_object();
                 $readRight = $conn->query("select level from rights where systemright='read'");
@@ -709,6 +753,12 @@
                                     $dateItems = explode('-', $propRow->date_value);
                                     $newObject->addProperty($propRow->id, $propRow->name, $propRow->type, ["day" => intval($dateItems[2]), "month"=>intval($dateItems[1]), "year"=>intval($dateItems[0])]);
                                 }
+                            }
+                            if (!is_null($row->majorversion)) {
+                                if (is_null($row->userid))
+                                    $newObject->setContent($row->majorversion, $row->minorversion, $row->mimetype, false);
+                                else
+                                    $newObject->setContent($row->majorversion, $row->minorversion, $row->mimetype, true, $row->userid, $row->identityproviderid);
                             }
                             return $newObject;
                         }
@@ -804,4 +854,189 @@
         else
             return $errors;
     }
+
+    public function canGetContent($storeid, $objectid) {
+        try {
+            $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
+            $rows = $conn->query("select r.level from objects o inner join objectrights r on o.id = r.objectid where o.storeid = '" . $storeid . "' and o.id = '" . $objectid . "' and (r.granteeid = 'everyone' or (r.granteeid = '" . $this->userId . "' and r.identityproviderid = '" . $this->identityProviderId . "')) order by r.weight asc limit 1");
+            if ($rows) {
+                $row = $rows->fetch_object();
+                $readRight = $conn->query("select level from rights where systemright='getcontent'");
+                if ($readRight) {
+                    if ($right = $readRight->fetch_object()) {
+                        if (intval($row->level) & intval($right->level)) {
+                            return true;
+                        }
+                        else
+                            return false;
+                    }
+                    else {
+                        return false;
+                    }
+                }
+                else
+                    return false;
+            }
+            else
+                return false;
+       }
+       finally {
+           $conn->close();
+       }
+    }
+
+    public function getContent($storeid, $objectid, $version) {
+        try {
+            $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
+            if ($version == 'current') {
+                $versionresults = $conn->query("select majorversion, minorversion from content where objectid = '" . $objectid . "' order by majorversion desc, minorversion desc limit 1");
+                if ($currentversion = $versionresults->fetch_object()) {
+                    $versions = [$currentversion->majorversion, $currentversion->minorversion];
+                }
+                else
+                    return false;
+            }
+            else {
+                $versions = explode(".", $version);
+            }
+            $rows = $conn->query("select id, mimetype, localdir, uploadfile, size from content where objectid = '" . $objectid . "' and majorversion = " . $versions[0] . " and minorversion = " . $versions[1]);
+            if ($rows) {
+                if ($row = $rows->fetch_object()) {
+                    return new Content($objectid, $row->localdir . "/" . $row->id, $versions[0], $versions[1], $row->uploadfile, $row->mimetype, $row->size);
+                }
+                else 
+                    return false;
+            }
+            else
+                return false;
+       }
+       finally {
+           $conn->close();
+       }
+    }
+
+    public function canCheckout($storeid, $objectid) {
+        try {
+            $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
+            $rows = $conn->query("select r.level from objects o inner join objectrights r on o.id = r.objectid where o.storeid = '" . $storeid . "' and o.id = '" . $objectid . "' and (r.granteeid = 'everyone' or (r.granteeid = '" . $this->userId . "' and r.identityproviderid = '" . $this->identityProviderId . "')) order by r.weight asc limit 1");
+            if ($rows) {
+                $row = $rows->fetch_object();
+                $readRight = $conn->query("select level from rights where systemright='checkout'");
+                if ($readRight) {
+                    if ($right = $readRight->fetch_object()) {
+                        if (intval($row->level) & intval($right->level)) {
+                            return true;
+                        }
+                        else
+                            return false;
+                    }
+                    else {
+                        return false;
+                    }
+                }
+                else
+                    return false;
+            }
+            else
+                return false;
+       }
+       finally {
+           $conn->close();
+       }
+    }
+
+    public function checkout($storeid, $objectid) {
+        try {
+            $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
+            $checkres = $conn->query("select userid, identityproviderid from checkouts where objectid = '" . $objectid . "'");
+            if ($checkres->fetch_object()) {
+                if ($checkres->userid == $this->userId && $checkres->identityproviderid == $this->identityProviderId) {
+                    return true;
+                }
+                else
+                    return false;
+            }
+            else {
+                return $conn->query("insert into checkouts (objectid,userid,identityproviderid) values ('" . $objectid . "','" . $this->userId . "','" . $this->identityProviderId . "')");
+            }
+       }
+       finally {
+           $conn->close();
+       }
+    }
+
+    public function canCheckin($storeid, $objectid) {
+        try {
+            $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
+            $checkedout = $conn->query("select userid, identityproviderid from checkouts where objectid = '" . $objectid . "'");
+            if ($checkoutrow = $checkedout->fetch_object()) {
+                if ($checkoutrow->userid == $this->userId && $checkoutrow->identityproviderid == $this->identityProviderId) {
+                    return true;
+                }
+                else {
+                    $rows = $conn->query("select r.level from objects o inner join objectrights r on o.id = r.objectid where o.storeid = '" . $storeid . "' and o.id = '" . $objectid . "' and (r.granteeid = 'everyone' or (r.granteeid = '" . $this->userId . "' and r.identityproviderid = '" . $this->identityProviderId . "')) order by r.weight asc limit 1");
+                    if ($rows) {
+                        $row = $rows->fetch_object();
+                        $readRight = $conn->query("select level from rights where systemright='checkin'");
+                        if ($readRight) {
+                            if ($right = $readRight->fetch_object()) {
+                                if (intval($row->level) & intval($right->level)) {
+                                    return true;
+                                }
+                                else
+                                    return false;
+                            }
+                            else {
+                                return false;
+                            }
+                        }
+                        else
+                            return false;
+                    }
+                    else
+                        return false;
+                }
+            }
+            else
+                return false; //Not checked out
+       }
+       finally {
+           $conn->close();
+       }
+    }
+
+    public function checkin($storeid, $objectid, $content) {
+        try {
+            $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
+            $versionres = $conn->query("select majorversion, minorversion from content where objectid = '". $objectid . "' order by majorversion desc, minorversion desc");
+            if ($versionrow = $versionres->fetch_object()) {
+                $majorversion = $versionrow->majorversion;
+                $minorversion = $versionrow->minorversion;
+            }
+            $checkres = $conn->query("select userid, identityproviderid from checkouts where objectid = '" . $objectid . "'");
+
+            //Add content
+            $date = new DateTime();
+            $saveDir = $this->contentDir . "/" . $date->format("Y") . "/" . $date->format("m") . "/" . $date->format("d");
+            if (!is_dir($saveDir))
+                mkdir($saveDir, 0777, true);
+            $contentidquery = $conn->query("select UUID() newid from INFORMATION_SCHEMA.TABLES LIMIT 1");
+            $contentId = $contentidquery->fetch_object()->newid;
+            $contentfile = fopen($saveDir . "/" . $contentId, "w");
+            fwrite($contentfile, base64_decode($content->content));
+            fclose($contentfile);
+            if ($content->minorversion) {
+                $minorversion++;
+            }
+            else {
+                $majorversion++;
+                $minorversion = 0;
+            }
+            return $conn->query("insert into content (id, objectid, size, mimetype, majorversion, minorversion, localdir, uploadfile) values ('" . $contentId . "','" . $objectid . "'," . filesize($saveDir . "/" . $contentId) . ",'". $content->mimetype . "',". $majorversion . "," . $minorversion. ",'" . $saveDir . "','" . $content->uploadfile . "')");
+        }
+       finally {
+           $conn->close();
+       }
+    }
+
 }

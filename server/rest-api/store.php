@@ -3,6 +3,7 @@
     include('mysql.php');
     include('model.php');
     include('auth.php');
+    define('CHUNK_SIZE', 1024*1024);
 
     $auth = new Auth();
     if (!$user = $auth->isAuthorized()) {
@@ -83,6 +84,34 @@
             }
 
         }
+        else if (sizeof($urlparts) == 8 && $urlparts[1] == 'ada' && $urlparts[2] == 'store' && $urlparts[4] == 'object' && $urlparts[6] == 'content') {
+            if ($db->canGetContent($urlparts[3], $urlparts[5])) {
+                $content = $db->getContent($urlparts[3], $urlparts[5], $urlparts[7]);
+                if ($content) {
+                    header("Content-Type: " . $content->getMimetype());
+                    header("Content-Length: " . $content->getSize());
+                    header('Content-Disposition: attachment; filename="' . $content->getFileName() . "'");
+                    streamfile_chunked($content->getContentFile());
+                }
+                else {
+                    sendState(404, "Content not found");
+                }
+            }
+            else
+                sendState(401, "Insufficient rights");
+        }
+        else if (sizeof($urlparts) == 7 && $urlparts[1] == 'ada' && $urlparts[2] == 'store' && $urlparts[4] == 'object' && $urlparts[6] == 'checkout') {
+            if ($db->canCheckout($urlparts[3], $urlparts[5])) {
+                if ($db->checkout($urlparts[3], $urlparts[5])) {
+                    sendState(200, "Checked out");
+                    echo "OK";
+                }
+                else 
+                    sendState(500, "Checkout failed");
+            }
+            else
+                sendState(401, "Insufficient rights");
+        }
     }
     else if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         if ($url == '/ada/store') {
@@ -157,8 +186,14 @@
                             if ($db->canCreateClass($storeId)) {
                                 $class = AdaClass::fromJson($request);
                                 $newClassId = $db->createClass($storeId, $class);
-                                echo $newClassId;
-                                exit;
+                                if (gettype($newClassId) == 'array') {
+                                    sendState(500, "Class not added");
+                                    echo JsonUtils::createErrorJson($newClassId);
+                                }
+                                else {
+                                    echo $newClassId;
+                                    exit;
+                                }
                             }
                             else {
                                 sendState(401, "Insufficient rights");
@@ -220,6 +255,18 @@
             }
             exit;
         }
+        else if (sizeof($urlparts) == 7 && $urlparts[1] == 'ada' && $urlparts[2] == 'store' && $urlparts[4] == 'object' && $urlparts[6] == 'checkin') {
+            if ($db->canCheckin($urlparts[3], $urlparts[5])) {
+                if ($db->checkin($urlparts[3], $urlparts[5], json_decode(file_get_contents('php://input')))) {
+                    sendState(200, "Checked in");
+                    echo "OK";
+                }
+                else 
+                    sendState(500, "Checkin failed");
+            }
+            else
+                sendState(401, "Insufficient rights");
+        }
     }
     else if ($_SERVER['REQUEST_METHOD'] == 'DELETE') {
         if (sizeof($urlparts) == 4 && substr($url, 0, strlen('/ada/store/')) == '/ada/store/') {
@@ -244,4 +291,32 @@
     function sendState($code, $message) {
         header("HTTP/1.1 " . $code . " " . $message);
     }
-?>
+
+    function streamfile_chunked($filename, $retbytes = TRUE) {
+        $buffer = '';
+        $cnt    = 0;
+        $handle = fopen($filename, 'rb');
+    
+        if ($handle === false) {
+            return false;
+        }
+    
+        while (!feof($handle)) {
+            $buffer = fread($handle, CHUNK_SIZE);
+            echo $buffer;
+            ob_flush();
+            flush();
+    
+            if ($retbytes) {
+                $cnt += strlen($buffer);
+            }
+        }
+    
+        $status = fclose($handle);
+    
+        if ($retbytes && $status) {
+            return $cnt; // return num. bytes delivered like readfile() does.
+        }
+    
+        return $status;
+    }?>

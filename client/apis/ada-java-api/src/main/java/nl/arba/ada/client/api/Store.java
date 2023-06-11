@@ -3,6 +3,7 @@ package nl.arba.ada.client.api;
 import nl.arba.ada.client.api.exceptions.*;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 
 /**
  * Class that represents a store
@@ -12,6 +13,7 @@ public class Store {
     private String name;
     private Domain domain;
     private ArrayList<String> addons;
+    private ArrayList<AdaClass> classes = new ArrayList<>();
 
     /**
      * Set the id of the store
@@ -82,7 +84,9 @@ public class Store {
      */
     public AdaClass addClass(AdaClass newclass) throws ClassNotCreatedException{
         try {
-            return getDomain().addClass(getId(), newclass);
+            AdaClass result = getDomain().addClass(getId(), newclass);
+            result.setStore(this);
+            return result;
         }
         catch (Exception err) {
             throw new ClassNotCreatedException();
@@ -125,7 +129,9 @@ public class Store {
      * @see AdaObject
      */
     public AdaObject createObject(AdaObject source) throws ObjectNotCreatedException {
-        return domain.addObject(this, source);
+        AdaObject result = domain.addObject(this, source);
+        result.setStore(this);
+        return result;
     }
 
     /**
@@ -136,5 +142,12 @@ public class Store {
      */
     public AdaObject getObject(String id) throws ObjectNotFoundException {
         return domain.getObject(this, id);
+    }
+
+    public AdaClass[] getClasses() throws AdaClassNotFoundException{
+        if (classes.isEmpty()) {
+            classes.addAll(Arrays.asList(getDomain().getAdaClasses(this)));
+        }
+        return classes.toArray(new AdaClass[0]);
     }
 }

@@ -7,6 +7,7 @@ import nl.arba.ada.client.api.exceptions.StoreNotCreatedException;
 import nl.arba.ada.client.api.security.Everyone;
 import nl.arba.ada.client.api.security.GrantedRight;
 import nl.arba.ada.client.api.security.Right;
+import nl.arba.ada.client.api.util.StreamUtils;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -43,8 +44,15 @@ public class TestDocuments {
     }
 
     @Test
-    public void test() throws ObjectNotCreatedException {
-        Document newDoc = Document.create("Eerste document", new File("/home/arjanbas/test.txt"), "text/text", false );
-        store.createObject(newDoc);
+    public void test() throws ObjectNotCreatedException, IOException {
+        Document newDoc = new Document();
+        newDoc.setTitle("Eerste document");
+        newDoc.setContent(Content.create(new File("/home/arjanbas/test.txt"), "text/text", false ));
+        newDoc.refresh(store.createObject(newDoc));
+        newDoc.checkout();
+        newDoc.checkin(Content.create(new File("/home/arjanbas/test.txt"), "text/text", false ));
+        System.out.println(newDoc.getMajorVersion() + "." + newDoc.getMinorVersion() + " (" + newDoc.getMimetype() + ")");
+        System.out.println(newDoc.getStore().getId() + " / " + newDoc.getId());
+        System.out.println(newDoc.isCheckedOut() + " -> " + newDoc.getCheckOutUser().getEmail());
     }
 }

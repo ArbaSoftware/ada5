@@ -3,11 +3,13 @@
         private $id;
         private $classid;
         private $properties;
+        private $content;
 
         public function __construct($id, $classid) {
             $this->id = $id;
             $this->classid = $classid;
             $this->properties = [];
+            $this->content = null;
         }
 
         public function getId() {
@@ -35,7 +37,14 @@
                 }
                 $prefix = ",";
             }
-            $json .= "]}";
+            $json .= "]";
+            if (!is_null($this->content)) {
+                if ($this->content["checkedout"])
+                    $json .= ",\"content\":{\"majorversion\":" . $this->content['majorversion'] . ",\"minorversion\":" . $this->content['minorversion'] . ",\"mimetype\":\"" . $this->content['mimetype'] . "\",\"checkedout\":true, \"checkedoutuser\":\"" . $this->content['checkedoutuser'] . "\",\"checkedoutidentityproviderid\":\"" . $this->content['checkedoutidentityproviderid'] . "\"}";
+                else
+                    $json .= ",\"content\":{\"majorversion\":" . $this->content['majorversion'] . ",\"minorversion\":" . $this->content['minorversion'] . ",\"mimetype\":\"" . $this->content['mimetype'] . "\",\"checkedout\":false}";
+            }
+            $json .="}";
             return $json;
         }
 
@@ -46,6 +55,16 @@
                 "type" => $type,
                 "value"=> $value
             ];
+        }
+
+        public function setContent($majorversion, $minorversion, $mimetype, $checkedout, $checkoutuser = null, $checkoutidentityproviderid = null) {
+            $this->content = [];
+            $this->content["majorversion"] = $majorversion;
+            $this->content["minorversion"] = $minorversion;
+            $this->content["mimetype"] = $mimetype;
+            $this->content["checkedout"] = $checkedout;
+            $this->content['checkedoutuser'] = $checkoutuser;
+            $this->content['checkedoutidentityproviderid'] = $checkoutidentityproviderid;
         }
 
     }

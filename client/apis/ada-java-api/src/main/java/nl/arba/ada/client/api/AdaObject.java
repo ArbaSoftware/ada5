@@ -1,8 +1,11 @@
 package nl.arba.ada.client.api;
 
+import nl.arba.ada.client.api.exceptions.IdentityProviderNotFoundException;
 import nl.arba.ada.client.api.exceptions.InvalidPropertyTypeException;
 import nl.arba.ada.client.api.exceptions.PropertyNotFoundException;
 import nl.arba.ada.client.api.security.GrantedRight;
+import nl.arba.ada.client.api.security.IdentityProvider;
+import nl.arba.ada.client.api.security.User;
 
 import java.io.IOException;
 import java.util.*;
@@ -16,6 +19,15 @@ public class AdaObject {
     private ArrayList<GrantedRight> rights = new ArrayList <>();
     private ArrayList<PropertyValue> properties = new ArrayList<>();
     private Store store;
+    private int majorVersion;
+    private int minorVersion;
+    private String mimetype;
+    private boolean checkedout;
+    private String checkoutUserId;
+
+    private User checkoutUser;
+
+    private String checkoutIdentityProviderId;
 
     /**
      * Set the id of the object
@@ -212,4 +224,54 @@ public class AdaObject {
     public Store getStore() {
         return store;
     }
+
+    public void setContent(Map source) {
+        majorVersion = (Integer) source.get("majorversion");
+        minorVersion = (Integer) source.get("minorversion");
+        mimetype = (String) source.get("mimetype");
+        checkedout = (Boolean) source.get("checkedout");
+        if (checkedout) {
+            checkoutIdentityProviderId = (String) source.get("checkedoutidentityproviderid");
+            checkoutUserId = (String) source.get("checkedoutuser");
+            if (getStore() != null) {
+                retrieveUser();
+            }
+        }
+    }
+
+    public int getMajorVersion() {
+        return majorVersion;
+    }
+
+    public int getMinorVersion() {
+        return minorVersion;
+    }
+
+    public String getMimetype() {
+        return mimetype;
+    }
+
+    public boolean isCheckedOut() {
+        return checkedout;
+    }
+
+    private User retrieveUser() {
+        try {
+            IdentityProvider idp = getStore().getDomain().getIdentityProvider(checkoutIdentityProviderId);
+            checkoutUser = new User();
+            checkoutUser.setIdentityProvider(idp);
+            checkoutUser.setEmail(checkoutUserId);
+        } catch (IdentityProviderNotFoundException idpnfe) {
+        }
+        return checkoutUser;
+    }
+
+    public User getCheckOutUser() {
+        if (checkoutUser == null) {
+            retrieveUser();
+        }
+        return checkoutUser;
+    }
+
+
 }

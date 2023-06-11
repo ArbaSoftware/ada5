@@ -35,7 +35,6 @@ public class TestClasses {
 
     @Test
     public void test_create_class() throws Exception {
-        System.out.println("1");
         AdaClass folder = new AdaClass();
         folder.setFolderClass(true);
         folder.setDocumentClass(false);
@@ -43,7 +42,18 @@ public class TestClasses {
         GrantedRight right = GrantedRight.create(Everyone.create(), 1);
         folder.addRight(right);
         folder.addProperty(Property.create("Name", PropertyType.STRING));
-        store.addClass(folder);
+        folder = store.addClass(folder);
+
+        AdaClass anotherfolder = new AdaClass();
+        anotherfolder.setName("AnotherFolder");
+        anotherfolder.setParentClass(folder);
+        anotherfolder.addRight(right);
+        anotherfolder = store.addClass(anotherfolder);
+        System.out.println(anotherfolder.getParentClass().getName());
+        System.out.println("Store id: " + store.getId());
+        System.out.println("Class id: " + anotherfolder.getId());
+
+        AdaClass[] classes = store.getClasses();
     }
 
 }

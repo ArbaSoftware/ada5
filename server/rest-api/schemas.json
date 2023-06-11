@@ -41,6 +41,10 @@
                 "type": "boolean",
                 "required": false
             },
+            "parentclass" : {
+                "type": "string",
+                "required": false
+            },
             "properties": {
                 "type": "arrayofobjects",
                 "required" : false,

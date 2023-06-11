@@ -16,6 +16,7 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -183,15 +184,18 @@ public class Domain {
      * @throws ClassNotCreatedException When the createion fails
      */
     public AdaClass addClass(String storeid, AdaClass newclass) throws ClassNotCreatedException {
+        InputStream is = null;
         try {
-            InputStream is = HttpUtils.doPost(baseUrl + "/store/" + storeid + "/class", newclass.toJson(), user, password);
+            is = HttpUtils.doPost(baseUrl + "/store/" + storeid + "/class", newclass.toJson(), user, password);
             String classId = StreamUtils.streamToString(is);
-            System.out.println(baseUrl + "/store/" + storeid + "/class/" + classId);
             is = HttpUtils.doGet(baseUrl + "/store/" + storeid + "/class/" + classId, user, password);
             return mapper.readValue(is, AdaClass.class);
         }
         catch (IOException io) {
-            io.printStackTrace();
+            try {
+                System.out.println(StreamUtils.streamToString(is));
+            }
+            catch (IOException io2) {}
             throw new ClassNotCreatedException();
         }
     }
@@ -207,6 +211,16 @@ public class Domain {
         try {
             InputStream is = HttpUtils.doGet(baseUrl + "/store/" + store.getId() + "/class/" + name, user, password);
             return mapper.readValue(is, AdaClass.class);
+        }
+        catch (IOException io) {
+            throw new AdaClassNotFoundException();
+        }
+    }
+
+    public AdaClass[] getAdaClasses(Store store) throws AdaClassNotFoundException {
+        try {
+            InputStream is = HttpUtils.doGet(baseUrl + "/store/" + store.getId() + "/class", user, password);
+            return mapper.readValue(is, AdaClass[].class);
         }
         catch (IOException io) {
             throw new AdaClassNotFoundException();
@@ -257,8 +271,6 @@ public class Domain {
      */
     public AdaObject addObject(Store store, AdaObject toadd) throws ObjectNotCreatedException {
         try {
-            System.out.println(baseUrl + "/store/" + store.getId() + "/class/" + toadd.getClassId() + "/object");
-            System.out.println(toadd.createAddRequest());
             InputStream is = HttpUtils.doPost(baseUrl + "/store/" + store.getId() + "/class/" + toadd.getClassId() + "/object", toadd.createAddRequest(), user, password);
             String objectId = StreamUtils.streamToString(is);
             return store.getObject(objectId);
@@ -326,4 +338,41 @@ public class Domain {
         }
     }
 
+    public InputStream getContent(Store store, String docid) {
+        try {
+            return HttpUtils.doGet(baseUrl + "/store/" + store.getId() + "/object/" + docid + "/content/current", user, password);
+        }
+        catch (IOException io) {
+
+        }
+        return null;
+    }
+
+    public boolean checkout(Store store, String docid) {
+        try {
+            HttpUtils.doGet(baseUrl + "/store/" + store.getId() + "/object/" + docid + "/checkout", user, password);
+            return true;
+        }
+        catch (IOException io) {
+            return false;
+        }
+    }
+
+    public IdentityProvider getIdentityProvider(String id) throws IdentityProviderNotFoundException {
+        Optional<IdentityProvider> optProvider = identityProviders.stream().filter(p -> p.getId().equals(id)).findFirst();
+        if (optProvider.isPresent())
+            return optProvider.get();
+        else
+            throw new IdentityProviderNotFoundException();
+    }
+
+    public boolean checkin(String storeid, String objectid, Content content) {
+        try {
+            HttpUtils.doPost(baseUrl + "/store/" + storeid + "/object/" + objectid + "/checkin", content.toJson(), user, password);
+            return true;
+        }
+        catch (IOException io) {
+            return false;
+        }
+    }
 }

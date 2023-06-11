@@ -7,6 +7,7 @@
         private $description;
         private $properties;
         private $rights;
+        private $parentClass;
 
         public function __construct($id, $name) {
             $this->id = $id;
@@ -55,12 +56,22 @@
             return isset($this->properties) ? $this->properties: false;
         }
 
+        public function setParentClass($id) {
+            $this->parentClass = $id;
+        }
+
+        public function getParentClass() {
+            return $this->parentClass;
+        }
+
         public static function fromJson($json) {
             $result = new AdaClass(null, $json->name);
             if (isset($json->documentclass))
                 $result->setIsDocumentClass($json->documentclass);
             if (isset($json->folderclass))
                 $result->setIsFolderClass($json->folderclass);
+            if (isset($json->parentclass))
+                $result->setParentClass($json->parentclass);
             if (isset($result->properties)) {
                 foreach($json->properties as $property)
                     $result->addProperty(Property::fromJson($property));
@@ -78,6 +89,8 @@
                 $result->setIsDocumentClass($json->documentclass);
             if (isset($json->folderclass))
                 $result->setIsFolderClass($json->folderclass);
+            if (isset($json->parentclass))
+                $result->setParentClass($json->parentclassid);
             if (isset($json->description))
                 $result->setDescription($json->description);
             if (isset($result->properties)) {
@@ -113,6 +126,9 @@
                 $json .= '"name":"' . $classes->getName() . '",';
                 $json .= '"folderclass":' . ($classes->isFolderClass() ? 'true':'false') . ',';
                 $json .= '"documentclass":' . ($classes->isDocumentClass() ? 'true': 'false');
+                if (!is_null($classes->getParentClass())) {
+                    $json .= ',"parentclass":"' . $classes->getParentClass() . '"';
+                }
                 if ($props = $classes->getProperties()) {
                     $json .= ',"properties":[';
                     $first = true;

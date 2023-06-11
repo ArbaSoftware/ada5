@@ -8,5 +8,6 @@
     include("model/right.php");
     include("model/addon.php");
     include("model/adaobject.php");
+    include("model/content.php");
     include("json.php");
 ?>

@@ -25,4 +25,10 @@
         public function createObject($storeid, $class, $request);
         public function getObject($storeid, $objectid);
         public function search($storeid, $search);
+        public function canGetContent($storeid, $objectId);
+        public function getContent($storeid, $objectId, $version);
+        public function canCheckout($storeid, $objectId);
+        public function checkout($storeid, $objectid);
+        public function canCheckin($storeid, $objectid);
+        public function checkin($storeid, $objectid, $content);
     }

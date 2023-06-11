@@ -1,6 +1,7 @@
 package nl.arba.ada.client.api;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import nl.arba.ada.client.api.exceptions.AdaClassNotFoundException;
 import nl.arba.ada.client.api.security.GrantedRight;
 
 import java.util.ArrayList;
@@ -18,6 +19,10 @@ public class AdaClass {
     private ArrayList <GrantedRight> rights = new ArrayList<>();
     private ArrayList <Property> properties = new ArrayList<>();
     private String description;
+
+    private AdaClass parentClass;
+    private String parentClassId;
+    private Store store;
 
     /**
      * Set the unique id of the class
@@ -127,6 +132,7 @@ public class AdaClass {
         return "{\"name\" : \"" + getName() + "\", " +
             "\"documentclass\": " + documentClass + "," +
             "\"folderclass\": " + folderClass + "," +
+            (getParentClass() == null ? "": ("\"parentclass\": \"" + getParentClass().getId() + "\",")) +
             "\"rights\":[" +
                 rights.stream().map(r -> rightToJson(r)).collect(Collectors.joining(",")) +
             "]," +
@@ -167,5 +173,31 @@ public class AdaClass {
     public void setGrantedRights(GrantedRight[] rights) {
         this.rights.clear();
         this.rights.addAll(Arrays.asList(rights));
+    }
+
+    public void setParentClass(AdaClass parentclass) {
+        this.parentClass = parentclass;
+    }
+
+    public void setParentclass(String classid) {
+        parentClassId = classid;
+    }
+
+    public AdaClass getParentClass() {
+        if (parentClass == null && parentClassId != null && getStore() != null) {
+            try {
+                parentClass = getStore().getAdaClass(parentClassId);
+            }
+            catch (AdaClassNotFoundException cnfe) {}
+        }
+        return parentClass;
+    }
+
+    public Store getStore() {
+        return store;
+    }
+
+    public void setStore(Store store) {
+        this.store = store;
     }
 }
