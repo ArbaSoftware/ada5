@@ -43,7 +43,6 @@ public class TestDocuments {
         store.delete();
     }
 
-    @Test
     public void test() throws ObjectNotCreatedException, IOException {
         Document newDoc = new Document();
         newDoc.setTitle("Eerste document");

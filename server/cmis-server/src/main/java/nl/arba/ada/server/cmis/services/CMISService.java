@@ -6,7 +6,10 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import nl.arba.ada.client.api.Domain;
 import nl.arba.ada.client.api.Store;
+import nl.arba.ada.client.api.exceptions.StoreNotFoundException;
+import nl.arba.ada.server.cmis.model.CMISObject;
 import nl.arba.ada.server.cmis.model.Repository;
+import nl.arba.ada.server.cmis.model.RootFolder;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -37,6 +40,14 @@ public class CMISService extends HttpServlet {
         os.close();
     }
 
+    public void notFound(HttpServletResponse response) throws IOException {
+        response.setStatus(404);
+        response.setIntHeader("Content-Length", 0);
+        OutputStream os = response.getOutputStream();
+        os.flush();
+        os.close();
+    }
+
     private Domain getDomain(String authorization) throws IOException {
         if (!getCache().hasSession(authorization))
             getCache().addSession(authorization);
@@ -50,5 +61,16 @@ public class CMISService extends HttpServlet {
         for (int index = 0; index < results.length; index++)
             results[index] = Repository.fromStore(stores.get(index));
         return results;
+    }
+
+    public Repository getRepository(String id, HttpServletRequest request) throws IOException, StoreNotFoundException {
+        Domain domain = getDomain(request.getHeader("Authorizization"));
+        return Repository.fromStore(domain.getStore(id));
+    }
+
+    public CMISObject getRootFolder(String storeid, HttpServletRequest request) throws IOException, StoreNotFoundException {
+        Domain domain = getDomain(request.getHeader("Authorization"));
+        Store store = domain.getStore(storeid);
+        return RootFolder.create(store);
     }
 }

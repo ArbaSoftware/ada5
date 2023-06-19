@@ -15,7 +15,7 @@ public class App {
 
             ServletHandler handler = new ServletHandler();
             BrowserService browser = new BrowserService("http://192.168.2.74:9601/ada", cache);
-            handler.addServletWithMapping(new ServletHolder(browser), "/browser");
+            handler.addServletWithMapping(new ServletHolder(browser), "/browser/*");
             server.setHandler(handler);
 
             server.start();
