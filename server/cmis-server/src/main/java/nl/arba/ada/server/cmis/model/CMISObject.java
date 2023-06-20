@@ -10,6 +10,14 @@ public class CMISObject {
         setProperty(PropertyValue.create(Property.createObjectId(), id));
     }
 
+    public void setBaseTypeId(String basetypeid) {
+        setProperty(PropertyValue.create(Property.createBaseTypeId(), basetypeid));
+    }
+
+    public void setObjectType(String type) {
+        setProperty(PropertyValue.create(Property.createObjectType(), type));
+    }
+
     public void setProperty(PropertyValue value) {
         propertyValues.put(value.getProperty().getId(), value);
     }

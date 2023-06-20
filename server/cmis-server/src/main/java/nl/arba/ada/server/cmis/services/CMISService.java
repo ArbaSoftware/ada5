@@ -31,7 +31,7 @@ public class CMISService extends HttpServlet {
     }
 
     public boolean verifyAuthorization(String authorizationheader) {
-        return true;
+        return authorizationheader != null;
     }
 
     public void notAuthorized(HttpServletResponse response) throws IOException {
@@ -66,8 +66,14 @@ public class CMISService extends HttpServlet {
     }
 
     public Repository getRepository(String id, HttpServletRequest request) throws IOException, StoreNotFoundException {
-        Domain domain = getDomain(request.getHeader("Authorizization"));
-        return Repository.fromStore(domain.getStore(id));
+        try {
+            Domain domain = getDomain(request.getHeader("Authorization"));
+            return Repository.fromStore(domain.getStore(id));
+        }
+        catch (Exception err) {
+            err.printStackTrace();
+            throw new IOException();
+        }
     }
 
     public CMISObject getRootFolder(String storeid, HttpServletRequest request) throws IOException, StoreNotFoundException {

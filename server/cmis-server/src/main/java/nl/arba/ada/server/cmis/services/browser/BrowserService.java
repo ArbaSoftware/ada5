@@ -33,8 +33,6 @@ public class BrowserService extends CMISService {
     public void doGet(HttpServletRequest request, HttpServletResponse response) throws IOException {
         if (verifyAuthorization(request.getHeader("Authorization"))) {
             String uri = request.getRequestURI();
-            System.out.println(uri);
-            System.out.println(request.getQueryString());
             if (uri.equals("/browser"))
                 sendRepositories(request, response);
             else {
@@ -53,11 +51,22 @@ public class BrowserService extends CMISService {
                     else if ("typeDefinition".equals(cmisSelector)) {
                         sendTypeDefinition(request, response);
                     }
-                    else
+                    else {
+                        System.out.println("NOT FOUND: " + request.getRequestURI());
                         notFound(response);
+                    }
                 }
                 else {
-                    notFound(response);
+                    String[] uriItems = request.getRequestURI().split(Pattern.quote("/"));
+                    if (uriItems.length == 3) {
+                        try {
+                            String storeId = uriItems[2];
+                            sendRepository(request, response);
+                        }
+                        catch (StoreNotFoundException snfe) {
+                            notFound(response);
+                        }
+                    }
                 }
             }
         }
@@ -106,6 +115,7 @@ public class BrowserService extends CMISService {
             propMap.put("value", prop.getValue());
             properties.put(prop.getProperty().getId(), propMap);
         }
+        jsonSource.put("properties", properties);
         sendJson(getMapper().writeValueAsString(jsonSource), response);
     }
 
@@ -153,7 +163,6 @@ public class BrowserService extends CMISService {
     }
 
     private void sendJson(String json, HttpServletResponse response) throws IOException {
-        System.out.println(json);
         response.setStatus(200);
         response.setContentLength(json.length());
         response.setContentType("text/json");

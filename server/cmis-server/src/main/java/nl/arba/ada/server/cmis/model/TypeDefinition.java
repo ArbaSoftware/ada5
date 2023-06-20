@@ -1,6 +1,12 @@
 package nl.arba.ada.server.cmis.model;
 
 public class TypeDefinition {
+    private String id;
+    private String localName;
+    private String localNamespace;
+    private String displayName;
+    private String queryName;
+    private String baseId;
     /*
 {
     "id": "cmis:document",
@@ -434,4 +440,67 @@ public class TypeDefinition {
     }
 }
      */
+
+    private TypeDefinition() {
+
+    }
+
+    public void setId(String id) {
+        this.id = id;
+    }
+
+    public String getId() {
+        return id;
+    }
+
+    public void setLocalName(String localname) {
+        localName = localname;
+    }
+
+    public String getLocalName() {
+        return localName;
+    }
+
+    public void setLocalNamespace(String namespace) {
+        localNamespace = namespace;
+    }
+
+    public String getLocalNamespace() {
+        return localNamespace;
+    }
+
+    public void setDisplayName(String displayname) {
+        displayName = displayname;
+    }
+
+    public String getDisplayName() {
+        return displayName;
+    }
+
+    public void setQueryName(String name) {
+        queryName = name;
+    }
+
+    public String getQueryName() {
+        return queryName;
+    }
+
+    public void setBaseId(String id) {
+        baseId = id;
+    }
+
+    public String getBaseId() {
+        return baseId;
+    }
+
+    public static TypeDefinition getCmisDocument() {
+        TypeDefinition result = new TypeDefinition();
+        result.setId("cmis:document");
+        result.setBaseId("cmis:document");
+        result.setDisplayName("Document");
+        result.setLocalName("document");
+        result.setQueryName("cmis:document");
+        result.setLocalNamespace("http://arjanbas.nl/ada/cmis/1.1");
+        return result;
+    }
 }

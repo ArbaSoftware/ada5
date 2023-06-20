@@ -4,10 +4,11 @@ import nl.arba.ada.client.api.Domain;
 
 import java.io.IOException;
 import java.util.Base64;
+import java.util.HashMap;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class Cache {
-    private ConcurrentHashMap <String, Domain> domains = new ConcurrentHashMap<>();
+    private HashMap <String, Domain> domains = new HashMap<>();
     private String apiUrl;
     private static Cache onlyCache;
 

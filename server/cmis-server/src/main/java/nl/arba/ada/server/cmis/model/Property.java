@@ -43,4 +43,26 @@ public class Property {
         return result;
     }
 
+    public static Property createBaseTypeId() {
+        Property result = new Property();
+        result.id = "cmis:baseTypeId";
+        result.localName = "baseTypeId";
+        result.displayName = "Base Type Id";
+        result.queryName = "cmis:baseTypeId";
+        result.type = PropertyType.ID;
+        result.cardinality = Cardinality.SINGLE;
+        return result;
+    }
+
+    public static Property createObjectType() {
+        Property result = new Property();
+        result.id = "cmis:objectType";
+        result.localName = "objectType";
+        result.displayName = "Object Type";
+        result.queryName = "cmis:objectType";
+        result.type = PropertyType.ID;
+        result.cardinality = Cardinality.SINGLE;
+        return result;
+    }
+
 }
