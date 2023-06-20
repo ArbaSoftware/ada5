@@ -2,6 +2,7 @@ package nl.arba.ada.client.api;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import nl.arba.ada.client.api.exceptions.AdaClassNotFoundException;
+import nl.arba.ada.client.api.exceptions.PropertyNotFoundException;
 import nl.arba.ada.client.api.security.GrantedRight;
 
 import java.util.ArrayList;
@@ -122,6 +123,17 @@ public class AdaClass {
      */
     public Property[] getProperties() {
         return properties.toArray(new Property[0]);
+    }
+
+    public boolean hasProperty(String name) {
+        return properties.stream().anyMatch(p -> p.getName().equals(name));
+    }
+
+    public Property getProperty(String name) throws PropertyNotFoundException {
+        if (hasProperty(name))
+            return properties.stream().filter(p ->p.getName().equals(name)).findFirst().get();
+        else
+            throw new PropertyNotFoundException();
     }
 
     /**

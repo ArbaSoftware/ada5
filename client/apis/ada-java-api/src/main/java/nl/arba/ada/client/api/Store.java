@@ -1,6 +1,9 @@
 package nl.arba.ada.client.api;
 
+import nl.arba.ada.client.api.addon.base.Folder;
 import nl.arba.ada.client.api.exceptions.*;
+import nl.arba.ada.client.api.search.PropertyFilter;
+import nl.arba.ada.client.api.search.Search;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -149,5 +152,22 @@ public class Store {
             classes.addAll(Arrays.asList(getDomain().getAdaClasses(this)));
         }
         return classes.toArray(new AdaClass[0]);
+    }
+
+    public Folder[] getRootFolders() throws NoSearchResultsException {
+        try {
+            AdaClass folderClass = getAdaClass("Folder");
+            Property parentFolder = folderClass.getProperty("ParentFolder");
+            Search search = Search.create(getAdaClass("Folder"));
+            search.addFilter(PropertyFilter.createNullFilter("ParentFolder", parentFolder.getType()));
+            AdaObject[] results = domain.search(this, search);
+            Folder[] folderResults = new Folder[results.length];
+            for (int index = 0; index < folderResults.length; index++)
+                folderResults[index] = Folder.create(results[index]);
+            return folderResults;
+        }
+        catch (Exception err) {
+            throw new NoSearchResultsException();
+        }
     }
 }

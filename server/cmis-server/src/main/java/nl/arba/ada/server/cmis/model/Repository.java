@@ -2,7 +2,7 @@ package nl.arba.ada.server.cmis.model;
 
 import nl.arba.ada.client.api.Store;
 
-public class Repository {
+public class Repository extends CMISObject {
     private String id;
     private String name;
 
@@ -26,6 +26,7 @@ public class Repository {
         Repository result = new Repository();
         result.setId(store.getId());
         result.setName(store.getName());
+        result.setObjectId("root");
         return result;
     }
 }

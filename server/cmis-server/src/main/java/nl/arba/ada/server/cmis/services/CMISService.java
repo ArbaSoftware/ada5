@@ -6,6 +6,8 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import nl.arba.ada.client.api.Domain;
 import nl.arba.ada.client.api.Store;
+import nl.arba.ada.client.api.addon.base.Folder;
+import nl.arba.ada.client.api.exceptions.NoSearchResultsException;
 import nl.arba.ada.client.api.exceptions.StoreNotFoundException;
 import nl.arba.ada.server.cmis.model.CMISObject;
 import nl.arba.ada.server.cmis.model.Repository;
@@ -72,5 +74,12 @@ public class CMISService extends HttpServlet {
         Domain domain = getDomain(request.getHeader("Authorization"));
         Store store = domain.getStore(storeid);
         return RootFolder.create(store);
+    }
+
+    public CMISObject[] getRootFolders(String storeid, HttpServletRequest request) throws IOException, NoSearchResultsException, StoreNotFoundException {
+        Domain domain = getDomain(request.getHeader("Authorization"));
+        Store store = domain.getStore(storeid);
+        Folder[] rootFolders = store.getRootFolders();
+        return new CMISObject[0];
     }
 }

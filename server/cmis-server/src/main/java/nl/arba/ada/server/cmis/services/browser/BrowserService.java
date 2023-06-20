@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import nl.arba.ada.client.api.exceptions.NoSearchResultsException;
 import nl.arba.ada.client.api.exceptions.StoreNotFoundException;
 import nl.arba.ada.server.cmis.model.*;
 import nl.arba.ada.server.cmis.services.CMISService;
@@ -33,34 +34,27 @@ public class BrowserService extends CMISService {
         if (verifyAuthorization(request.getHeader("Authorization"))) {
             String uri = request.getRequestURI();
             System.out.println(uri);
+            System.out.println(request.getQueryString());
             if (uri.equals("/browser"))
                 sendRepositories(request, response);
             else {
-                String[] uriItems = uri.split(Pattern.quote("/"));
-                if (uriItems.length == 3) {
-                    notFound(response);
-                    /*
-                    try {
-                        String storeId = uriItems[2];
-                        sendRepository(storeId, request, response);
-                    }
-                    catch (StoreNotFoundException snfe) {
-                        notFound(response);
-                    }
-                     */
-                }
-                else if (uriItems.length == 4) {
-                    try {
-                        String storeId = uriItems[2];
-                        String objectId = uriItems[3];
-                        if (objectId.equals("root")) {
-                            sendObject(getRootFolder(storeId, request), response);
-                        } else
+                Map<String,String[]> params = request.getParameterMap();
+                if (params.containsKey("objectId")) {
+                    String objectId = params.get("objectId")[0];
+                    String cmisSelector = params.get("cmisselector")[0];
+                    if ("root".equals(objectId) && "object".equals(cmisSelector)) {
+                        try {
+                            sendRepository(request, response);
+                        }
+                        catch (StoreNotFoundException snfe) {
                             notFound(response);
+                        }
                     }
-                    catch (StoreNotFoundException snfe) {
+                    else if ("typeDefinition".equals(cmisSelector)) {
+                        sendTypeDefinition(request, response);
+                    }
+                    else
                         notFound(response);
-                    }
                 }
                 else {
                     notFound(response);
@@ -92,13 +86,55 @@ public class BrowserService extends CMISService {
         }
     }
 
-    private void sendRepository(String storeid, HttpServletRequest request, HttpServletResponse response) throws IOException, StoreNotFoundException {
-        Repository repo = getRepository(storeid, request);
-        sendJson(getMapper().writeValueAsString(repo), response);
+    private void sendRepository(HttpServletRequest request, HttpServletResponse response) throws IOException, StoreNotFoundException {
+        String[] uriItems = request.getRequestURI().split(Pattern.quote("/"));
+        Repository repo = getRepository(uriItems[2], request);
+        sendObject(repo, response);
     }
 
     private void sendObject(CMISObject object, HttpServletResponse response) throws IOException {
-        sendJson(getMapper().writeValueAsString(object), response);
+        HashMap <String, Object> jsonSource = new HashMap<>();
+        HashMap<String, Object> properties = new HashMap<>();
+        for (PropertyValue prop: object.getProperties()) {
+            HashMap <String, Object> propMap = new HashMap<>();
+            propMap.put("id", prop.getProperty().getId());
+            propMap.put("localName", prop.getProperty().getLocalName());
+            propMap.put("displayName", prop.getProperty().getDisplayName());
+            propMap.put("queryName", prop.getProperty().getQueryName());
+            propMap.put("type",prop.getProperty().getType().getValue());
+            propMap.put("cardinality", prop.getProperty().getCardinality().getValue());
+            propMap.put("value", prop.getValue());
+            properties.put(prop.getProperty().getId(), propMap);
+        }
+        sendJson(getMapper().writeValueAsString(jsonSource), response);
+    }
+
+    private void sendRootfolders(HttpServletRequest request, HttpServletResponse response) throws IOException {
+        try {
+            String[] uriItems = request.getRequestURI().split(Pattern.quote("/"));
+            CMISObject[] rootFolders = getRootFolders(uriItems[2], request);
+            sendJson("{\"objects\":[]}", response);
+        }
+        catch (Exception nsre) {
+            notFound(response);
+        }
+    }
+
+    private void sendTypeDefinition(HttpServletRequest request, HttpServletResponse response) throws IOException {
+        try {
+            String typeId = request.getParameter("typeId");
+            sendJson("{" +
+                    "    \"id\": \"cmis:document\",\n" +
+                    "    \"localName\": \"document\",\n" +
+                    "    \"localNamespace\": \"http://www.alfresco.org/model/cmis/1.0/cs01\",\n" +
+                    "    \"displayName\": \"Document\",\n" +
+                    "    \"queryName\": \"cmis:document\",\n" +
+                    "    \"description\": \"Document Type\",\n" +
+                    "    \"baseId\": \"cmis:document\"}", response);
+        }
+        catch (Exception err) {
+            notFound(response);
+        }
     }
 
     private Map getJson(Repository source, HttpServletRequest request) throws IOException {
