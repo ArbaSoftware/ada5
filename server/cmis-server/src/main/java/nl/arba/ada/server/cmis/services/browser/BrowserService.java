@@ -49,6 +49,9 @@ public class BrowserService extends CMISService {
                             notFound(response);
                         }
                     }
+                    else if ("root".equalsIgnoreCase(objectId) && "children".equals(cmisSelector)) {
+                        sendJson("{\"children\": []}", response);
+                    }
                     else {
                         System.out.println("NOT FOUND: " + request.getRequestURI());
                         notFound(response);
@@ -60,6 +63,7 @@ public class BrowserService extends CMISService {
                         sendTypeChildren(request, response);
                     else if ("typeDefinition".equals(cmisselector))
                         sendTypeDefinition(request, response);
+
                 }
                 else {
                     String[] uriItems = request.getRequestURI().split(Pattern.quote("/"));
@@ -200,8 +204,7 @@ public class BrowserService extends CMISService {
             types.add(defJson);
         }
         json.put("types", types);
-        String resultjson = getMapper().writeValueAsString(types);
-        System.out.println(resultjson);
+        String resultjson = getMapper().writeValueAsString(json);
         sendJson(resultjson, response);
     }
 

@@ -29,6 +29,7 @@ public class Repository extends CMISObject {
         result.setObjectId("root");
         result.setBaseTypeId("cmis:folder");
         result.setObjectType("cmis:folder");
+        result.setProperty(PropertyValue.create(Property.createPath(), "/"));
         return result;
     }
 }
