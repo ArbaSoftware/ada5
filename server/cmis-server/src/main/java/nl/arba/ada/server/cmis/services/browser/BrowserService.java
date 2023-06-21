@@ -31,6 +31,7 @@ public class BrowserService extends CMISService {
     }
 
     public void doGet(HttpServletRequest request, HttpServletResponse response) throws IOException {
+        System.out.println(request.getRequestURL() + "?" + request.getQueryString());
         if (verifyAuthorization(request.getHeader("Authorization"))) {
             String uri = request.getRequestURI();
             if (uri.equals("/browser"))
@@ -48,13 +49,17 @@ public class BrowserService extends CMISService {
                             notFound(response);
                         }
                     }
-                    else if ("typeDefinition".equals(cmisSelector)) {
-                        sendTypeDefinition(request, response);
-                    }
                     else {
                         System.out.println("NOT FOUND: " + request.getRequestURI());
                         notFound(response);
                     }
+                }
+                else if (params.containsKey("cmisselector")) {
+                    String cmisselector = params.get("cmisselector")[0];
+                    if ("typeChildren".equals(cmisselector))
+                        sendTypeChildren(request, response);
+                    else if ("typeDefinition".equals(cmisselector))
+                        sendTypeDefinition(request, response);
                 }
                 else {
                     String[] uriItems = request.getRequestURI().split(Pattern.quote("/"));
@@ -76,7 +81,7 @@ public class BrowserService extends CMISService {
     }
 
     public void doPost(HttpServletRequest request, HttpServletResponse response) throws IOException {
-        System.out.println(request.getRequestURI());
+        System.out.println(request.getRequestURL() + "?" + request.getQueryString());
     }
 
     private void sendRepositories(HttpServletRequest request, HttpServletResponse response) throws IOException {
@@ -133,18 +138,71 @@ public class BrowserService extends CMISService {
     private void sendTypeDefinition(HttpServletRequest request, HttpServletResponse response) throws IOException {
         try {
             String typeId = request.getParameter("typeId");
-            sendJson("{" +
-                    "    \"id\": \"cmis:document\",\n" +
-                    "    \"localName\": \"document\",\n" +
-                    "    \"localNamespace\": \"http://www.alfresco.org/model/cmis/1.0/cs01\",\n" +
-                    "    \"displayName\": \"Document\",\n" +
-                    "    \"queryName\": \"cmis:document\",\n" +
-                    "    \"description\": \"Document Type\",\n" +
-                    "    \"baseId\": \"cmis:document\"}", response);
+            if ("cmis:document".equals(typeId)) {
+                sendJson(getMapper().writeValueAsString(createTypeDefinitionJson(TypeDefinition.getCmisDocument())), response);
+            }
+            else if ("cmis:folder".equals(typeId)) {
+                sendJson(getMapper().writeValueAsString(createTypeDefinitionJson(TypeDefinition.getCmisFolder())), response);
+            }
+            else
+                throw new Exception("Unknonw");
         }
         catch (Exception err) {
             notFound(response);
         }
+    }
+
+    private Map<String,Object> createTypeDefinitionJson(TypeDefinition definition) {
+        HashMap<String, Object> defJson = new HashMap<>();
+        defJson.put("id", definition.getId());
+        defJson.put("localName", definition.getLocalName());
+        defJson.put("localNamespace",definition.getLocalNamespace());
+        defJson.put("displayName", definition.getDisplayName());
+        defJson.put("queryName", definition.getQueryName());
+        defJson.put("description", "");
+        defJson.put("baseId", definition.getBaseId());
+        defJson.put("creatable", definition.isCreatable());
+        defJson.put("fileable", definition.isFileable());
+        defJson.put("queryable", definition.isQueryable());
+        defJson.put("fulltextIndexed", definition.isFulltextIndexed());
+        defJson.put("includedInSupertypeQuery", definition.isIncludedInSupertypeQuery());
+        defJson.put("controllablePolicy", definition.hasControllablePolicy());
+        defJson.put("controllableACL", definition.hasControllableAcl());
+        HashMap<String, Map<String,Object>> propDefs = new HashMap<>();
+        for (Property def: definition.getPropertyDefinitions())
+            propDefs.put(def.getId(), createPropertyDefinitionJson(def));
+        defJson.put("propertyDefinitions", propDefs);
+        return defJson;
+    }
+
+    private Map <String,Object> createPropertyDefinitionJson(Property property) {
+        HashMap <String,Object> json = new HashMap<>();
+        json.put("id", property.getId());
+        json.put("localName", property.getLocalName());
+        json.put("localNamespace", "http://www.arjanbas.nl/ada/cmis/1.1");
+        json.put("displayName", property.getDisplayName());
+        json.put("queryName", property.getQueryName());
+        json.put("description", "");
+        json.put("propertyType", property.getType().getValue());
+        json.put("cardinality", property.getCardinality().getValue());
+        return json;
+    }
+
+    private void sendTypeChildren(HttpServletRequest request, HttpServletResponse response) throws IOException {
+        HashMap <String, Object> json = new HashMap<>();
+        ArrayList <Map> types = new ArrayList<>();
+        TypeDefinition[] definitions = new TypeDefinition[] {
+                TypeDefinition.getCmisDocument(),
+                TypeDefinition.getCmisFolder()
+        };
+        for (TypeDefinition definition: definitions) {
+            Map<String,Object> defJson = createTypeDefinitionJson(definition);
+            types.add(defJson);
+        }
+        json.put("types", types);
+        String resultjson = getMapper().writeValueAsString(types);
+        System.out.println(resultjson);
+        sendJson(resultjson, response);
     }
 
     private Map getJson(Repository source, HttpServletRequest request) throws IOException {
