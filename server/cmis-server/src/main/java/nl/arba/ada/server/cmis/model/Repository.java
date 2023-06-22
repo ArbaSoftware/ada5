@@ -2,7 +2,15 @@ package nl.arba.ada.server.cmis.model;
 
 import nl.arba.ada.client.api.Store;
 
+import java.util.Date;
+
 public class Repository extends CMISObject {
+    private Repository(String id, String name, BaseTypeId basetype, String objecttype, String path) {
+        super(id, name, basetype, objecttype, path, "me", new Date(System.currentTimeMillis()), "me", new Date(System.currentTimeMillis()));
+        this.id = id;
+        this.name = name;
+    }
+
     private String id;
     private String name;
 
@@ -23,13 +31,6 @@ public class Repository extends CMISObject {
     }
 
     public static Repository fromStore(Store store) {
-        Repository result = new Repository();
-        result.setId(store.getId());
-        result.setName(store.getName());
-        result.setObjectId("root");
-        result.setBaseTypeId("cmis:folder");
-        result.setObjectType("cmis:folder");
-        result.setProperty(PropertyValue.create(Property.createPath(), "/"));
-        return result;
+        return new Repository(store.getId(), store.getName(), BaseTypeId.CMIS_FOLDER, "cmis:folder", "/");
     }
 }

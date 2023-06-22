@@ -41,19 +41,33 @@ public class BrowserService extends CMISService {
                 if (params.containsKey("objectId")) {
                     String objectId = params.get("objectId")[0];
                     String cmisSelector = params.get("cmisselector")[0];
-                    if ("root".equals(objectId) && "object".equals(cmisSelector)) {
+                    if ("object".equals(cmisSelector)) {
                         try {
-                            sendRepository(request, response);
+                            if ("root".equals(objectId)) {
+                                sendRepository(request, response);
+                            }
+                            else {
+                                try {
+                                    Repository repo = getRepository(objectId, request);
+                                    sendObject(repo, response);
+                                }
+                                catch (StoreNotFoundException snfe) {
+                                    notFound(response);
+                                }
+                            }
                         }
                         catch (StoreNotFoundException snfe) {
                             notFound(response);
                         }
                     }
-                    else if ("root".equalsIgnoreCase(objectId) && "children".equals(cmisSelector)) {
+                    else if ("children".equalsIgnoreCase(cmisSelector)) {
                         sendJson("{\"children\": []}", response);
                     }
+                    else if ("parent".equalsIgnoreCase(cmisSelector)) {
+                        sendJson("{\"exception\": \"invalidArgument\",\"message\": \"Root folder has no parent!\"}", response);
+                    }
                     else {
-                        System.out.println("NOT FOUND: " + request.getRequestURI());
+                        System.out.println("NOT FOUND: " + request.getRequestURI()+"?" + request.getQueryString());
                         notFound(response);
                     }
                 }
@@ -189,6 +203,7 @@ public class BrowserService extends CMISService {
         json.put("description", "");
         json.put("propertyType", property.getType().getValue());
         json.put("cardinality", property.getCardinality().getValue());
+        json.put("required", property.isRequired());
         return json;
     }
 
@@ -220,6 +235,7 @@ public class BrowserService extends CMISService {
         jsoninput.put("capabilities", new Capablities());
         jsoninput.put("repositoryUrl", request.getRequestURL()+ "/" + source.getId());
         jsoninput.put("rootFolderUrl", request.getRequestURL() + "/" + source.getId() + "/root");
+        jsoninput.put("cmisVersionSupported", "1.1");
         return jsoninput;
     }
 
