@@ -5,8 +5,8 @@ import nl.arba.ada.client.api.Store;
 import java.util.Date;
 
 public class Repository extends CMISObject {
-    private Repository(String id, String name, BaseTypeId basetype, String objecttype, String path) {
-        super(id, name, basetype, objecttype, path, "me", new Date(System.currentTimeMillis()), "me", new Date(System.currentTimeMillis()));
+    private Repository(String id, String name, BaseTypeId basetype, String objecttype, String path, String createdby, Date createdon, String lastmodifier, Date lastmodifiedon) {
+        super(id, name, basetype, objecttype, path, createdby, createdon, lastmodifier, lastmodifiedon);
         this.id = id;
         this.name = name;
     }
@@ -31,6 +31,6 @@ public class Repository extends CMISObject {
     }
 
     public static Repository fromStore(Store store) {
-        return new Repository(store.getId(), store.getName(), BaseTypeId.CMIS_FOLDER, "cmis:folder", "/");
+        return new Repository(store.getId(), store.getName(), BaseTypeId.CMIS_FOLDER, "cmis:folder", "/", store.getCreator(),store.getDateCreated(), store.getLastmodifier(), store.getLastModified());
     }
 }

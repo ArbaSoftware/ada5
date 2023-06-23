@@ -1,12 +1,14 @@
 package nl.arba.ada.client.api;
 
+import com.fasterxml.jackson.annotation.JsonIdentityInfo;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import nl.arba.ada.client.api.addon.base.Folder;
 import nl.arba.ada.client.api.exceptions.*;
 import nl.arba.ada.client.api.search.PropertyFilter;
 import nl.arba.ada.client.api.search.Search;
+import nl.arba.ada.client.api.util.JsonUtils;
 
-import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.*;
 
 /**
  * Class that represents a store
@@ -17,6 +19,12 @@ public class Store {
     private Domain domain;
     private ArrayList<String> addons;
     private ArrayList<AdaClass> classes = new ArrayList<>();
+    private Date dateCreated;
+    private Date lastModified;
+    private String creator;
+    private String creatorIdentityProviderId;
+    private String lastmodifier;
+    private String lastmodifierIdentityProviderId;
 
     /**
      * Set the id of the store
@@ -169,5 +177,58 @@ public class Store {
         catch (Exception err) {
             throw new NoSearchResultsException();
         }
+    }
+
+    public void setDatecreated(Map input) {
+        if (input == null)
+            dateCreated = null;
+        else
+            dateCreated = JsonUtils.readJsonDate(input);
+    }
+
+    public Date getDateCreated() {
+        return dateCreated;
+    }
+
+    public void setCreator(String creator) {
+        this.creator = creator;
+    }
+
+    public String getCreator() {
+        return creator;
+    }
+
+    public void setCreatoridentityproviderid(String value) {
+        creatorIdentityProviderId = value;
+    }
+
+    public String getCreatorIdentityProviderId() {
+        return creatorIdentityProviderId;
+    }
+
+    public void setLastmodifier(String value) {
+        lastmodifier = value;
+    }
+
+    public String getLastmodifier() {
+        return lastmodifier;
+    }
+
+    public void setLastmodified(Map value) {
+        if (value == null)
+            lastModified = null;
+        else
+            lastModified = JsonUtils.readJsonDate(value);
+    }
+
+    public Date getLastModified() {
+        return lastModified;
+    }
+    public void setLastmodifieridentityproviderid(String value) {
+        this.lastmodifierIdentityProviderId = value;
+    }
+
+    public String getLastmodifierIdentityProviderId() {
+        return this.lastmodifierIdentityProviderId;
     }
 }

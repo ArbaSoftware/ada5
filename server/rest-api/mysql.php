@@ -28,12 +28,19 @@
         public function getStores() {
             try {
                 $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
-                $rights = $conn->query("select s.id, s.name, gr.level from stores s inner join grantedrights gr on s.id = gr.targetid where (gr.granteeid = 'everyone' or (gr.granteeid = '" . $this->userId . "' and gr.identityproviderid='" . $this->identityProviderId . "')) and gr.targettype='store' order by gr.weight desc");
+                $rights = $conn->query("select s.id, s.name, s.datecreated, s.creator, s.creatoridentityproviderid, s.lastmodifier, s.lastmodifieddate, s.lastmodifieridentityproviderid, gr.level from stores s inner join grantedrights gr on s.id = gr.targetid where (gr.granteeid = 'everyone' or (gr.granteeid = '" . $this->userId . "' and gr.identityproviderid='" . $this->identityProviderId . "')) and gr.targettype='store' order by gr.weight desc");
                 $potentials = [];
                 $potentialIds = [];
                 while ($row = $rights->fetch_object()) {
                     if (!array_key_exists($row->id, $potentialIds)) {
-                        $potentials[sizeof($potentials)] = ["store"=> new Store($row->id, $row->name), "level"=>$row->level];
+                        $newStore = new Store($row->id, $row->name);
+                        $newStore->setDateCreated(($row->datecreated));
+                        $newStore->setCreator($row->creator);
+                        $newStore->setCreatorIdentityProviderId($row->creatoridentityproviderid);
+                        $newStore->setLastModified($row->lastmodifieddate);
+                        $newStore->setLastModifier($row->lastmodifier);
+                        $newStore->setLastModifierIdentityProviderId($row->lastmodifieridentityproviderid);
+                $potentials[sizeof($potentials)] = ["store"=> $newStore, "level"=>$row->level];
                         $potentialIds[$row->id] = true;
                     }
                 }
@@ -58,13 +65,20 @@
         public function getStore($id) {
             try {
                 $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
-                $storeresult = $conn->query("select s.id, s.name, gr.level from stores s inner join grantedrights gr on s.id = gr.targetid where s.id='" . $id . "' and (gr.granteeid = 'everyone' or (gr.granteeid = '" . $this->userId . "' and gr.identityproviderid='" . $this->identityProviderId . "')) and gr.targettype='store' order by gr.weight asc limit 1");
+                $storeresult = $conn->query("select s.id, s.name, s.datecreated, s.creator, s.creatoridentityproviderid, s.lastmodifier, s.lastmodifieddate, s.lastmodifieridentityproviderid, gr.level from stores s inner join grantedrights gr on s.id = gr.targetid where s.id='" . $id . "' and (gr.granteeid = 'everyone' or (gr.granteeid = '" . $this->userId . "' and gr.identityproviderid='" . $this->identityProviderId . "')) and gr.targettype='store' order by gr.weight asc limit 1");
                 if ($storeresult) {
                     if ($row = $storeresult->fetch_object()) {
                         $readRight = $conn->query("select level from rights where systemright='read'");
                         if ($right = $readRight->fetch_object()) {
                             if (intval($row->level) & intval($right->level)) {
-                                return new Store($row->id, $row->name);
+                                $store = new Store($row->id, $row->name);
+                                $store->setDateCreated(($row->datecreated));
+                                $store->setCreator($row->creator);
+                                $store->setCreatorIdentityProviderId($row->creatoridentityproviderid);
+                                $store->setLastModified($row->lastmodifieddate);
+                                $store->setLastModifier($row->lastmodifier);
+                                $store->setLastModifierIdentityProviderId($row->lastmodifieridentityproviderid);
+                                return $store;
                             }
                             else
                                 return false;
@@ -201,7 +215,7 @@
                 $conn->begin_transaction();
                 try {
                     $succeeded = true;
-                    $succeeded = $conn->query("insert into stores (id, name) values ('" . $id . "','" . $name . "')");
+                    $succeeded = $conn->query("insert into stores (id, name, creator, creatoridentityproviderid, lastmodifier, lastmodifieridentityproviderid, lastmodifieddate) values ('" . $id . "','" . $name . "','" . $this->userId . "','" . $this->identityProviderId . "','" . $this->userId . "','" . $this->identityProviderId . "', CURRENT_TIMESTAMP())");
                     if ($succeeded) {
                         if (sizeof($grantedrights) > 0) {
                             foreach($grantedrights as $right) {
