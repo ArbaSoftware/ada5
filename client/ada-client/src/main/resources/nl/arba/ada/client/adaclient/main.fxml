@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.SplitPane?>
+<?import javafx.scene.control.ToolBar?>
+<?import javafx.scene.control.TreeView?>
+<?import javafx.scene.layout.BorderPane?>
+
+<BorderPane fx:id="main" maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="400.0" prefWidth="600.0" xmlns="http://javafx.com/javafx/20.0.1" xmlns:fx="http://javafx.com/fxml/1">
+   <top>
+      <BorderPane fx:id="topPane" BorderPane.alignment="CENTER">
+         <bottom>
+            <BorderPane BorderPane.alignment="CENTER">
+               <top>
+                  <ToolBar prefHeight="40.0" prefWidth="200.0" BorderPane.alignment="CENTER">
+                     <items>
+                        <ComboBox fx:id="cmbStores" prefWidth="150.0" promptText="%stores.label" />
+                     </items>
+                  </ToolBar>
+               </top>
+            </BorderPane>
+         </bottom></BorderPane>
+   </top>
+   <center>
+      <SplitPane dividerPositions="0.5" prefHeight="160.0" prefWidth="200.0" BorderPane.alignment="CENTER">
+         <items>
+            <BorderPane fx:id="splitLeft" prefHeight="200.0" prefWidth="200.0">
+               <center>
+                  <TreeView fx:id="tvStore" BorderPane.alignment="CENTER" />
+               </center></BorderPane>
+            <BorderPane prefHeight="200.0" prefWidth="200.0" />
+         </items>
+      </SplitPane>
+   </center>
+</BorderPane>

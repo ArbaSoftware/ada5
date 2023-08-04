@@ -56,4 +56,55 @@ public class TestClasses {
         AdaClass[] classes = store.getClasses();
     }
 
+    @Test
+    public void edit_class_property() throws Exception {
+        AdaClass folder = new AdaClass();
+        folder.setFolderClass(true);
+        folder.setDocumentClass(false);
+        folder.setName("Folder1");
+        GrantedRight right = GrantedRight.create(Everyone.create(), 9);
+        folder.addRight(right);
+        folder.addProperty(Property.create("Name", PropertyType.STRING));
+        folder = store.addClass(folder);
+
+        AdaClass refreshed = store.getAdaClass(folder.getId());
+        Property only = refreshed.getProperties()[0];
+        only.setName("Changed");
+        refreshed.editProperty(only);
+        Assert.assertTrue(refreshed.hasProperty("Changed"));
+    }
+
+    @Test
+    public void add_class_property() throws Exception {
+        AdaClass folder = new AdaClass();
+        folder.setFolderClass(true);
+        folder.setDocumentClass(false);
+        folder.setName("Folder1");
+        GrantedRight right = GrantedRight.create(Everyone.create(), 9);
+        folder.addRight(right);
+        folder.addProperty(Property.create("Name", PropertyType.STRING));
+        folder = store.addClass(folder);
+
+        AdaClass refreshed = store.getAdaClass(folder.getId());
+        Property newProperty = new Property();
+        newProperty.setName("Nieuw");
+        newProperty.setType(PropertyType.STRING);
+        newProperty.setMultiple(true);
+        newProperty.setRequired(true);
+        refreshed.addProperty(newProperty);
+
+        refreshed = store.getAdaClass(folder.getId());
+        Assert.assertTrue(refreshed.hasProperty("Nieuw"));
+
+        refreshed.deleteProperty(refreshed.getProperty("Nieuw"));
+        refreshed = store.getAdaClass(folder.getId());
+        Assert.assertFalse(refreshed.hasProperty("Nieuw"));
+    }
+
+    @Test
+    public void get_class() throws Exception{
+        Store mystore = domain.getStore("052ebd3e-310f-11ee-915b-98f2b3f20cf4");
+        mystore.getAdaClass("055bff90-310f-11ee-915b-98f2b3f20cf4");
+    }
+
 }

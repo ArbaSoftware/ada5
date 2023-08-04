@@ -38,14 +38,24 @@ public class HttpUtils {
      * @throws IOException An IOException can occur
      */
     public static InputStream doGet(String url, String user, String password) throws IOException {
+        return doGetWithAuthorizationHeader(url, "Basic " + Base64.getEncoder().encodeToString((user+":" + password).getBytes()));
+    }
+
+    public static InputStream doGet(String url, String token) throws IOException {
+        return doGetWithAuthorizationHeader(url, "Bearer " + token);
+    }
+
+    private static InputStream doGetWithAuthorizationHeader(String url, String authorizationheader) throws IOException {
         HttpGet get = new HttpGet(url);
-        get.setHeader("Authorization", "Basic " + Base64.getEncoder().encodeToString((user+":" + password).getBytes()));
+        get.setHeader("Authorization", authorizationheader);
         ResponseState response = execute(get);
         if (response.getCode() == 200) {
             return response.getStream();
         }
-        else
+        else {
+            System.out.println(StreamUtils.streamToString(response.getStream()));
             throw new IOException("Execution of get request failed");
+        }
     }
 
     private static ResponseState execute(ClassicHttpRequest request) throws IOException {
@@ -71,16 +81,25 @@ public class HttpUtils {
      * @throws IOException An IOException can occur
      */
     public static InputStream doPost(String url, String json, String user, String password) throws IOException {
+        return doPostWithAuthenticationHeader(url, json, "Basic " + Base64.getEncoder().encodeToString((user+":"+password).getBytes()));
+    }
+
+    public static InputStream doPost(String url, String json, String token) throws IOException {
+        return doPostWithAuthenticationHeader(url, json, "Bearer " + token);
+    }
+
+    private static InputStream doPostWithAuthenticationHeader(String url, String json, String authorizationheader) throws IOException {
         HttpPost post = new HttpPost(url);
-        post.setHeader("Authorization", "Basic " + Base64.getEncoder().encodeToString((user+":"+password).getBytes()));
+        post.setHeader("Authorization", authorizationheader);
         post.setHeader("Content-type", "application/json");
         post.setEntity(new StringEntity(json));
         ResponseState response = execute(post);
         if (response.getCode() == 200) {
             return response.getStream();
         }
-        else
+        else {
             throw new IOException("Error on executing post (" + response.getCode() + ")");
+        }
     }
 
     /**
@@ -93,8 +112,16 @@ public class HttpUtils {
      * @throws InsufficientRightsException When the user has no rights to perform the delete action
      */
     public static boolean doDelete(String url, String user, String password) throws IOException, InsufficientRightsException {
+        return doDeleteWithAuthorizationHeader(url, "Basic " + Base64.getEncoder().encodeToString((user+":"+password).getBytes()));
+    }
+
+    public static boolean doDelete(String url, String token) throws IOException, InsufficientRightsException {
+        return doDeleteWithAuthorizationHeader(url, "Bearer " + token);
+    }
+
+    private static boolean doDeleteWithAuthorizationHeader(String url, String header) throws IOException, InsufficientRightsException {
         HttpDelete delete = new HttpDelete(url);
-        delete.setHeader("Authorization", "Basic " + Base64.getEncoder().encodeToString((user+":"+password).getBytes()));
+        delete.setHeader("Authorization", header);
         ResponseState state = execute(delete);
         if (state.getCode() == 200) {
             return true;
@@ -114,15 +141,26 @@ public class HttpUtils {
      * @return The result as an inputstream
      * @throws IOException An IOException can occur
      */
-    public static InputStream doPut(String url, String json, String user, String password) throws IOException {
+    public static InputStream doPut(String url, String json, String user, String password) throws IOException, InsufficientRightsException {
+        return doPutWithAuthorizationHeader(url, json, "Basic " + Base64.getEncoder().encodeToString((user+":"+password).getBytes()));
+    }
+
+    public static InputStream doPut(String url, String json, String token) throws IOException, InsufficientRightsException {
+        return doPutWithAuthorizationHeader(url, json, "Bearer " + token);
+    }
+
+    private static InputStream doPutWithAuthorizationHeader(String url, String json, String authheader) throws IOException, InsufficientRightsException {
         HttpPut put = new HttpPut(url);
-        put.setHeader("Authorization", "Basic " + Base64.getEncoder().encodeToString((user+":"+password).getBytes()));
+        put.setHeader("Authorization", authheader);
         put.setHeader("Content-type", "application/json");
         put.setEntity(new StringEntity(json));
         ResponseState state = execute(put);
+        System.out.println(StreamUtils.streamToString(state.getStream()));
         if (state.getCode() == 200) {
             return state.getStream();
         }
+        else if (state.getCode() == 401)
+            throw new InsufficientRightsException();
         else
             throw new IOException("Error on executing put (" + state.getCode() + ")" + StreamUtils.streamToString(state.getStream()));
     }

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ListView?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.AnchorPane?>
+
+<AnchorPane prefHeight="294.0" prefWidth="467.0" xmlns="http://javafx.com/javafx/20.0.1" xmlns:fx="http://javafx.com/fxml/1">
+   <children>
+      <Label layoutX="14.0" layoutY="22.0" prefHeight="16.0" prefWidth="113.0" text="%searchuser.searchfor.label" />
+      <TextField fx:id="txtSearch" layoutX="143.0" layoutY="18.0" prefHeight="24.0" prefWidth="227.0" />
+      <Button fx:id="btnSearch" layoutX="377.0" layoutY="18.0" mnemonicParsing="false" prefHeight="24.0" prefWidth="79.0" text="%searchuser.searchbutton.label" />
+      <ListView fx:id="lvSearchResults" layoutX="14.0" layoutY="76.0" prefHeight="200.0" prefWidth="441.0" />
+      <Label layoutX="14.0" layoutY="52.0" text="%searchuser.searchresults.label" />
+   </children>
+</AnchorPane>

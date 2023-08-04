@@ -76,6 +76,7 @@
         else if (sizeof($urlparts) == 6 && $urlparts[1] == 'ada' && $urlparts[2] == 'store' && $urlparts[4] == 'object') {
             $object = $db->getObject($urlparts[3], $urlparts[5]);
             if ($object) {
+                header('Content-Type: text/json');
                 echo $object->toJson();
                 exit;
             }
@@ -99,6 +100,17 @@
             }
             else
                 sendState(401, "Insufficient rights");
+        }
+        else if (sizeof($urlparts) == 7 && $urlparts[1] == 'ada' && $urlparts[2] == 'store' && $urlparts[4] == 'object' && $urlparts[6] == 'path') {
+            if ($path = $db->getObjectPath($urlparts[3], $urlparts[5])) {
+                $json = json_encode($path);
+                header("Content-Type: text/json");
+                header("Content-length: " . strlen($json));
+                echo $json;
+                exit;
+            }
+            else
+                sendState(404, "Object not found");
         }
         else if (sizeof($urlparts) == 7 && $urlparts[1] == 'ada' && $urlparts[2] == 'store' && $urlparts[4] == 'object' && $urlparts[6] == 'checkout') {
             if ($db->canCheckout($urlparts[3], $urlparts[5])) {
@@ -161,6 +173,7 @@
                 $searchresults = $db->search($storeid, json_decode($search));
                 if (gettype($searchresults) == "string") {
                     sendState(200, "");
+                    header('Content-Type: text/json');
                     echo $searchresults;
                 }
                 else {
@@ -267,6 +280,24 @@
             else
                 sendState(401, "Insufficient rights");
         }
+        else if (sizeof($urlparts) == 7 && $urlparts[1] == 'ada' && $urlparts[2] == 'store' && $urlparts[4] == 'class' && $urlparts[6] == 'property') {
+            try {
+                if ($db->canEditClass($urlparts[3], $urlparts[5])) {
+                    if ($propertyId = $db->addProperty($urlparts[5], json_decode(file_get_contents('php://input'))))
+                        sendState(200, "{\"id\":\"" . $propertyId . "\"}");
+                    else
+                        sendState(500, "");
+                }
+                else {
+                    sendState(401, "Unsufficient rights");
+                }
+                exit;
+            }
+            catch (Exception $exception) {
+                sendState(500, "");
+                exit;
+            }
+        }
     }
     else if ($_SERVER['REQUEST_METHOD'] == 'DELETE') {
         if (sizeof($urlparts) == 4 && substr($url, 0, strlen('/ada/store/')) == '/ada/store/') {
@@ -282,6 +313,44 @@
             }
             else {
                 sendState(401, "Unsufficient rights");
+                exit;
+            }
+        }
+        else if (sizeof($urlparts) == 8 && $urlparts[1] == 'ada' && $urlparts[2] == 'store' && $urlparts[4] == 'class' && $urlparts[6] == 'property') {
+            try {
+                if ($db->canEditClass($urlparts[3], $urlparts[5])) {
+                    if ($db->deleteProperty($urlparts[7]))
+                        sendState(200, "OK");
+                    else
+                        sendState(500, "");
+                }
+                else {
+                    sendState(401, "Unsufficient rights");
+                }
+                exit;
+            }
+            catch (Exception $exception) {
+                sendState(500, "");
+                exit;
+            }
+        }
+    }
+    else if ($_SERVER['REQUEST_METHOD'] == 'PUT') {
+        if (sizeof($urlparts) == 8 && $urlparts[1] == 'ada' && $urlparts[2] == 'store' && $urlparts[4] == 'class' && $urlparts[6] == 'property') {
+            try {
+                if ($db->canEditClass($urlparts[3], $urlparts[5])) {
+                    if ($db->editProperty($urlparts[5], $urlparts[7], json_decode(file_get_contents('php://input'))))
+                        sendState(200, "OK");
+                    else
+                        sendState(500, "");
+                }
+                else {
+                    sendState(401, "Unsufficient rights");
+                }
+                exit;
+            }
+            catch (Exception $exception) {
+                sendState(500, "");
                 exit;
             }
         }

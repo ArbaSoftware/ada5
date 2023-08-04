@@ -139,6 +139,16 @@
                     }
                     $json .= ']';
                 }
+                if ($rights = $classes->getRights()) {
+                    $json .= ',"grantedrights":[';
+                    $first = true;
+                    foreach($rights as $right) {
+                        $json .= ($first? '': ',');
+                        $first = false;
+                        $json .= $right->toJson();
+                    }
+                    $json.=']';
+                }
                 $json .= '}';
                 return $json;
             }

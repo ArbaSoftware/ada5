@@ -3,11 +3,21 @@
         private $id;
         private $name;
         private $type;
+        private $settings;
 
         public function __construct($id, $name, $type) {
             $this->id = $id;
             $this->name = $name;
             $this->type = $type;
+            $this->settings = array();
+        }
+
+        public function addSetting($name, $value) {
+            $this->settings[$name] = $value;
+        }
+
+        public function getSetting($name) {
+            return $this->settings[$name];
         }
 
         public function getId() {

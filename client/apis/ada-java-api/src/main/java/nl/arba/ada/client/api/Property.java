@@ -78,7 +78,7 @@ public class Property {
      * @param value <code>true</code> - the property is required, <code>false</code> - the property is not required
      */
     public void setRequired(boolean value) {
-        this.required = required;
+        this.required = value;
     }
 
     /**

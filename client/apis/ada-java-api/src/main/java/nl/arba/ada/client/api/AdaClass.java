@@ -1,12 +1,12 @@
 package nl.arba.ada.client.api;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import nl.arba.ada.client.api.exceptions.AdaClassNotFoundException;
-import nl.arba.ada.client.api.exceptions.PropertyNotFoundException;
+import nl.arba.ada.client.api.exceptions.*;
 import nl.arba.ada.client.api.security.GrantedRight;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.stream.Collectors;
 
 /**
@@ -115,7 +115,14 @@ public class AdaClass {
      * @param property The property to add
      * @see Property
      */
-    public void addProperty(Property property) { properties.add(property);}
+    public void addProperty(Property property) throws PropertyNotAddedException, InsufficientRightsException {
+        if (this.getId() == null)
+            properties.add(property);
+        else {
+            //Adding property to existing class
+            getStore().getDomain().addProperty(getStore(), this, property);
+        }
+    }
 
     /**
      * Get the properties of the class
@@ -134,6 +141,25 @@ public class AdaClass {
             return properties.stream().filter(p ->p.getName().equals(name)).findFirst().get();
         else
             throw new PropertyNotFoundException();
+    }
+
+    public Property editProperty(Property changed) throws PropertyNotFoundException, PropertyNotChangedException, InsufficientRightsException {
+        if (properties.stream().anyMatch(p -> p.getId().equals(changed.getId()))) {
+            getStore().getDomain().editProperty(getStore(), this, changed);
+            try {
+                AdaClass refreshedClass = getStore().getAdaClass(getId());
+                properties.clear();
+                properties.addAll(Arrays.asList(refreshedClass.getProperties()));
+            }
+            catch (Exception err) {}
+            return null;
+        }
+        else
+            throw new PropertyNotFoundException();
+    }
+
+    public void deleteProperty(Property todelete) throws InsufficientRightsException, PropertyNotDeletedException{
+        getStore().getDomain().deleteProperty(getStore(), this, todelete);
     }
 
     /**
@@ -182,9 +208,13 @@ public class AdaClass {
      * Set the rights that applies to the class
      * @param rights The rights that applies to the class
      */
-    public void setGrantedRights(GrantedRight[] rights) {
+    public void setGrantedrights(GrantedRight[] rights) {
         this.rights.clear();
         this.rights.addAll(Arrays.asList(rights));
+    }
+
+    public List<GrantedRight> getGrantedRights() {
+        return rights;
     }
 
     public void setParentClass(AdaClass parentclass) {

@@ -100,6 +100,7 @@ public class Store {
             return result;
         }
         catch (Exception err) {
+            err.printStackTrace();
             throw new ClassNotCreatedException();
         }
     }
@@ -111,7 +112,9 @@ public class Store {
      * @throws AdaClassNotFoundException Throwed when the class is not found
      */
     public AdaClass getAdaClass(String name) throws AdaClassNotFoundException {
-        return getDomain().getAdaClass(this, name);
+        AdaClass result = getDomain().getAdaClass(this, name);
+        result.setStore(this);
+        return result;
     }
 
     /**

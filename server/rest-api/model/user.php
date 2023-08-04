@@ -25,5 +25,18 @@
         public function getEmail() {
             return $this->email;
         }
+
+        public function getFirstName() {
+            return $this->firstname;
+        }
+
+        public function getLastName() {
+            return $this->lastname;
+        }
+
+        public function toJson() {
+            return '{"id":"' . $this->getId() . '","email":"' . $this->getEmail() . '","firstname":"' . $this->getFirstName() . '","lastname": "' . $this->getLastName() . '"}';
+        }
+
     }
 ?>

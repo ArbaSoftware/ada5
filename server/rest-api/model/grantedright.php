@@ -1,19 +1,26 @@
 <?php
     class GrantedRight {
         private $granteeId;
+        private $granteeType;
         private $identityProviderId;
         private $level;
         private $weight;
+        private $user;
 
-        public function __construct($granteeid, $identityproviderid, $level, $weight) {
+        public function __construct($granteeid, $granteetype, $identityproviderid, $level, $weight) {
             $this->granteeId = $granteeid;
             $this->identityProviderId = $identityproviderid;
             $this->level = $level;
             $this->weight = $weight;
+            $this->granteeType = $granteetype;
         }
 
         public function getGranteeId() {
             return $this->granteeId;
+        }
+
+        public function getGranteeType() {
+            return $this->granteeType;
         }
 
         public function getIdentityProviderId() {
@@ -42,10 +49,22 @@
 
         public static function fromJson($json) {
             if (GrantedRight::isValidJson($json)) {
-                return new GrantedRight($json->grantee, $json->identityprovider, $json->level, ($json->grantee == 'everyone' ? 0: 1));
+                return new GrantedRight($json->grantee, $json->granteetype, $json->identityprovider, $json->level, ($json->grantee == 'everyone' ? 0: 1));
             }
             else
                 throw new Exception("Invalid right json");
+        }
+
+        public function toJson() {
+            $json = '{"granteeid":"' . $this->getGranteeId() . '","granteetype":"' . $this->getGranteeType() . '", "identityproviderid":"' . $this->getIdentityProviderId() . '","level":' . $this->getLevel();
+            if ($this->user)
+                $json .= ',"user":' . $this->user->toJson();
+            $json .= '}';
+            return $json;
+        }
+
+        public function setUser($user) {
+            $this->user = $user;
         }
     }
 ?>

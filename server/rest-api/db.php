@@ -31,4 +31,11 @@
         public function checkout($storeid, $objectid);
         public function canCheckin($storeid, $objectid);
         public function checkin($storeid, $objectid, $content);
+        public function getObjectPath($storeid, $objectid);
+        public function canEditClass($storeid, $classid);
+        public function editProperty($classid, $propertyid, $request);
+        public function addProperty($classid, $request);
+        public function deleteProperty($propertyid);
+        public function getIdentityProvider($id);
+        public function searchInternalUsers($search);
     }

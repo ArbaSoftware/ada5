@@ -13,20 +13,22 @@ import nl.arba.ada.client.api.util.StreamUtils;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
  * Class representing a Ada domain that can hold multiple stores
  */
 public class Domain {
+    private enum TYPE_CONNECTION { USERPASSWORD, TOKEN};
+
+    private TYPE_CONNECTION typeConnection;
+
     private String baseUrl;
 
     private String user;
     private String password;
+    private String token;
     private ArrayList<Store> stores;
     private ArrayList<Right> rights;
     private ArrayList<IdentityProvider> identityProviders;
@@ -56,17 +58,28 @@ public class Domain {
     public void login(String user, String password) throws IOException {
         this.user = user;
         this.password = password;
-        Right[] rightz = mapper.readValue(HttpUtils.doGet(baseUrl + "/security/right", user, password), Right[].class);
+        typeConnection = TYPE_CONNECTION.USERPASSWORD;
+        initStore();
+    }
+
+    private void initStore() throws IOException {
+        Right[] rightz = mapper.readValue(doGet(baseUrl + "/security/right"), Right[].class);
         rights = new ArrayList<>();
         rights.addAll(Arrays.asList(rightz));
-        Store[] storez = mapper.readValue(HttpUtils.doGet(baseUrl + "/store", user, password), Store[].class);
+        Store[] storez = mapper.readValue(doGet(baseUrl + "/store"), Store[].class);
         for (Store store: storez)
             store.setDomain(this);
         stores = new ArrayList<>();
         stores.addAll(Arrays.asList(storez));
-        IdentityProvider[] providerz = mapper.readValue(HttpUtils.doGet(baseUrl + "/security/identityprovider", user, password), IdentityProvider[].class);
+        IdentityProvider[] providerz = mapper.readValue(doGet(baseUrl + "/security/identityprovider"), IdentityProvider[].class);
         identityProviders = new ArrayList<>();
         identityProviders.addAll(Arrays.asList(providerz));
+    }
+
+    public void login(String token) throws IOException {
+        this.token = token;
+        typeConnection = TYPE_CONNECTION.TOKEN;
+        initStore();
     }
 
     /**
@@ -87,7 +100,7 @@ public class Domain {
      */
     public Store getStore(String id) throws StoreNotFoundException {
         try {
-            InputStream is = HttpUtils.doGet(baseUrl + "/store/" + id, user, password);
+            InputStream is = doGet(baseUrl + "/store/" + id);
             Store result = mapper.readValue(is, Store.class);
             result.setDomain(this);
             return result;
@@ -146,7 +159,7 @@ public class Domain {
             json += Arrays.asList(addons).stream().map(a -> "\"" + a + "\"").collect(Collectors.joining(","));
             json += "]";
             json += "}";
-            InputStream is = HttpUtils.doPost(baseUrl + "/store", json, user, password);
+            InputStream is = doPost(baseUrl + "/store", json);
             String storeId = StreamUtils.streamToString(is);
             return getStore(storeId);
         }
@@ -189,7 +202,8 @@ public class Domain {
             is = HttpUtils.doPost(baseUrl + "/store/" + storeid + "/class", newclass.toJson(), user, password);
             String classId = StreamUtils.streamToString(is);
             is = HttpUtils.doGet(baseUrl + "/store/" + storeid + "/class/" + classId, user, password);
-            return mapper.readValue(is, AdaClass.class);
+            String resultjson = StreamUtils.streamToString(is);
+            return mapper.readValue(resultjson, AdaClass.class);
         }
         catch (IOException io) {
             try {
@@ -209,17 +223,20 @@ public class Domain {
      */
     public AdaClass getAdaClass(Store store, String name) throws AdaClassNotFoundException {
         try {
-            InputStream is = HttpUtils.doGet(baseUrl + "/store/" + store.getId() + "/class/" + name, user, password);
-            return mapper.readValue(is, AdaClass.class);
+            InputStream is = doGet(baseUrl + "/store/" + store.getId() + "/class/" + name);
+            String json = StreamUtils.streamToString(is);
+            AdaClass result = mapper.readValue(json, AdaClass.class);
+            return result;
         }
         catch (IOException io) {
+            io.printStackTrace();
             throw new AdaClassNotFoundException();
         }
     }
 
     public AdaClass[] getAdaClasses(Store store) throws AdaClassNotFoundException {
         try {
-            InputStream is = HttpUtils.doGet(baseUrl + "/store/" + store.getId() + "/class", user, password);
+            InputStream is = doGet(baseUrl + "/store/" + store.getId() + "/class");
             return mapper.readValue(is, AdaClass[].class);
         }
         catch (IOException io) {
@@ -250,7 +267,7 @@ public class Domain {
      * @throws AddOnNotUpdatedException Throwed when the update of the addon fails
      * @see AddOn
      */
-    public void updateAddOn(AddOn definition) throws AddOnNotUpdatedException {
+    public void updateAddOn(AddOn definition) throws AddOnNotUpdatedException, InsufficientRightsException {
         try {
             InputStream is = HttpUtils.doPut(baseUrl + "/addon", definition.toJson(), user, password);
         }
@@ -271,7 +288,7 @@ public class Domain {
      */
     public AdaObject addObject(Store store, AdaObject toadd) throws ObjectNotCreatedException {
         try {
-            InputStream is = HttpUtils.doPost(baseUrl + "/store/" + store.getId() + "/class/" + toadd.getClassId() + "/object", toadd.createAddRequest(), user, password);
+            InputStream is = doPost(baseUrl + "/store/" + store.getId() + "/class/" + toadd.getClassId() + "/object", toadd.createAddRequest());
             String objectId = StreamUtils.streamToString(is);
             return store.getObject(objectId);
         }
@@ -291,18 +308,31 @@ public class Domain {
     public AdaObject getObject(Store store, String id) throws ObjectNotFoundException {
         String jsonresponse = "";
         try {
-            InputStream is = HttpUtils.doGet(baseUrl + "/store/" + store.getId() + "/object/" + id, user, password);
+            InputStream is = doGet(baseUrl + "/store/" + store.getId() + "/object/" + id);
             jsonresponse = StreamUtils.streamToString(is);
             AdaObject result = mapper.readValue(jsonresponse, AdaObject.class);
             result.setStore(store);
             return result;
         }
         catch (IOException io) {
-            System.out.println(jsonresponse);
             io.printStackTrace();
             throw new ObjectNotFoundException();
         }
     }
+
+    public void getObjectPath(Store store, String objectid) throws Exception {
+        String jsonresponse = "";
+        try {
+            InputStream is = doGet(baseUrl + "/store/" + store.getId() + "/object/" + objectid + "/path");
+            jsonresponse = StreamUtils.streamToString(is);
+            System.out.println(jsonresponse);
+        }
+        catch (IOException io) {
+            io.printStackTrace();
+            throw new ObjectNotFoundException();
+        }
+    }
+
 
     /**
      * Get the rights that are defined in the domain
@@ -325,7 +355,7 @@ public class Domain {
     public AdaObject[] search(Store store, Search search) throws NoSearchResultsException {
         String jsonresponse = "";
         try {
-            InputStream is = HttpUtils.doPost(baseUrl + "/store/" + store.getId() + "/search", search.toJson(), user, password);
+            InputStream is = doPost(baseUrl + "/store/" + store.getId() + "/search", search.toJson());
             jsonresponse = StreamUtils.streamToString(is);
             AdaObject[] results = mapper.readValue(jsonresponse, AdaObject[].class);
             for (AdaObject result: results)
@@ -366,6 +396,10 @@ public class Domain {
             throw new IdentityProviderNotFoundException();
     }
 
+    public List<IdentityProvider> getIdentityProviders() {
+        return identityProviders;
+    }
+
     public boolean checkin(String storeid, String objectid, Content content) {
         try {
             HttpUtils.doPost(baseUrl + "/store/" + storeid + "/object/" + objectid + "/checkin", content.toJson(), user, password);
@@ -373,6 +407,86 @@ public class Domain {
         }
         catch (IOException io) {
             return false;
+        }
+    }
+
+    private InputStream doGet(String url) throws IOException {
+        switch(typeConnection) {
+            case USERPASSWORD:
+                return HttpUtils.doGet(url, user, password);
+            default:
+                return HttpUtils.doGet(url, token);
+        }
+    }
+
+    private InputStream doPost(String url, String json) throws IOException {
+        switch(typeConnection) {
+            case USERPASSWORD:
+                return HttpUtils.doPost(url, json, user, password);
+            default:
+                return HttpUtils.doPost(url, json, token);
+        }
+    }
+
+    private InputStream doPut(String url, String json) throws IOException, InsufficientRightsException {
+        switch(typeConnection) {
+            case USERPASSWORD:
+                return HttpUtils.doPut(url, json, user, password);
+            default:
+                return HttpUtils.doPut(url, json, token);
+        }
+    }
+
+    public void editProperty(Store store, AdaClass adaclass, Property property) throws PropertyNotChangedException, InsufficientRightsException {
+        try {
+            HashMap<String, Object> editRequest = new HashMap<>();
+            editRequest.put("name", property.getName());
+            doPut(baseUrl + "/store/" + store.getId() + "/class/" + adaclass.getId() + "/property/" + property.getId(), mapper.writeValueAsString(editRequest));
+        }
+        catch (Exception err) {
+            throw new PropertyNotChangedException();
+        }
+    }
+
+    public void addProperty(Store store, AdaClass adaclass, Property property) throws PropertyNotAddedException, InsufficientRightsException {
+        try {
+            InputStream is = doPost(baseUrl + "/store/" + store.getId() + "/class/" + adaclass.getId() + "/property", property.toJson());
+            System.out.println(StreamUtils.streamToString(is));
+        }
+        catch (Exception e) {
+            throw new PropertyNotAddedException();
+        }
+    }
+
+    private boolean doDelete(String url) throws IOException, InsufficientRightsException {
+        switch(typeConnection) {
+            case USERPASSWORD:
+                return HttpUtils.doDelete(url, user, password);
+            default:
+                return HttpUtils.doDelete(url, token);
+        }
+    }
+
+    public void deleteProperty(Store store, AdaClass adaclass, Property property) throws InsufficientRightsException, PropertyNotDeletedException  {
+        try {
+            boolean deleted = doDelete(baseUrl + "/store/" + store.getId() + "/class/" + adaclass.getId() + "/property/" + property.getId());
+            if (!deleted)
+                throw new PropertyNotDeletedException();
+        }
+        catch (IOException io) {
+            throw new PropertyNotDeletedException();
+        }
+    }
+
+    public User[] searchUsers(IdentityProvider idp, String search) throws NoUsersFoundException {
+        try {
+            InputStream is = doGet(baseUrl + "/identityprovider/" + idp.getId() + "/user/search/" + search);
+            String userJson = StreamUtils.streamToString(is);
+            return mapper.readValue(userJson, User[].class);
+        }
+        catch (IOException io) {
+            io.printStackTrace();
+            throw new NoUsersFoundException();
         }
     }
 }

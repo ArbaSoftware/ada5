@@ -50,6 +50,9 @@ public class User implements Grantee {
     public void setFirstName(String name) {
         firstName = name;
     }
+    public void setFirstname(String name) {
+        setFirstName(name);
+    }
 
     /**
      * Get the first name of the user
@@ -65,6 +68,9 @@ public class User implements Grantee {
      */
     public void setLastName(String name) {
         this.lastName = name;
+    }
+    public void setLastname(String name) {
+        setLastName(name);
     }
 
     /**
