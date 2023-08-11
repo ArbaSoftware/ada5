@@ -20,7 +20,9 @@ import nl.arba.ada.client.api.Property;
 import nl.arba.ada.client.api.security.Right;
 
 import java.net.URL;
+import java.util.List;
 import java.util.ResourceBundle;
+import java.util.stream.Collectors;
 
 public class ClassPropertiesController implements Initializable {
     private AdaClass adaClass;
@@ -33,9 +35,11 @@ public class ClassPropertiesController implements Initializable {
     private ContextMenu cmProperty;
     private ContextMenu cmAddProperty;
     private Property editProperty;
+    private List<Right> classRights;
 
     public ClassPropertiesController(AdaClass target) {
         this.adaClass = target;
+        classRights = adaClass.getStore().getDomain().getRights().stream().filter(r -> r.isClassRight()).collect(Collectors.toList());
         initContextMenus();
     }
 
@@ -137,7 +141,7 @@ public class ClassPropertiesController implements Initializable {
         });
         refreshProperties();
 
-        RightsTable rightstable = new RightsTable(adaClass.getGrantedRights(), adaClass.getStore().getDomain());
+        RightsTable rightstable = new RightsTable(adaClass.getGrantedRights(), adaClass.getStore().getDomain(), classRights);
         rightsPane.setCenter(rightstable);
     }
 

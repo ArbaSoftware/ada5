@@ -1261,4 +1261,60 @@
     }
    }
 
+   private function getGranteeTypeWeigth($type) {
+    $weight = 0;
+    if ($type == 'user')
+        $weight = 10;
+    else if ($type == 'role')
+        $weight = 5;
+    else if ($type == 'group')
+        $weight = 3;
+    return $weight;
+   }
+
+   public function updateClass($id, $request) {
+    try {
+        $conn= mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
+
+        $conn->begin_transaction();
+        $succeeded = true;
+
+        //Update rights
+        if ($conn->query("delete from classrights where classid = '" . $id . "'")) {
+            foreach($request->rights as $right) {
+                $existing = $conn->query("select id, level from classrights where granteeid = '" . $right->grantee . "' and identityproviderid = '" . $right->identityprovider);
+                if ($existing->num_rows == 0) {
+                    $conn->query("insert into classrights (classid, granteeid, granteetype, identityproviderid, level, weight) values ('" . $id . "','" . $right->grantee . "','" . $right->granteetype . "','" . $right->identityprovider . "'," . $right->level . "," . $this->getGranteeTypeWeigth($right->type) . ")");
+                }
+                else {
+                    $savedRight = $existing->fetch_object();
+                    $savedLevel = intval($savedRight->level);
+                    $requestedLevel = intval($right->level);
+                    if (($savedLevel & $requestedLevel) == 0)
+                        $conn->query("update classrights set level = " . ($savedRight + $requestedLevel) . " where id = '" . $savedRight->id . "'");
+                }
+            }
+        }
+        else {
+            $succeeded = false;
+        }
+
+        if ($succeeded) {
+            $conn->commit();
+            return true;
+        }
+        else {
+            $conn->rollback();
+            return false;
+        }
+    }
+    catch (Exception $err) {
+        $conn->rollback();
+        return false;
+    }
+    finally {
+        $conn->close();
+    }
+   }
+
 }

@@ -4,10 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import nl.arba.ada.client.api.addon.AddOn;
 import nl.arba.ada.client.api.exceptions.*;
 import nl.arba.ada.client.api.search.Search;
-import nl.arba.ada.client.api.security.GrantedRight;
-import nl.arba.ada.client.api.security.IdentityProvider;
-import nl.arba.ada.client.api.security.Right;
-import nl.arba.ada.client.api.security.User;
+import nl.arba.ada.client.api.security.*;
 import nl.arba.ada.client.api.util.HttpUtils;
 import nl.arba.ada.client.api.util.StreamUtils;
 
@@ -225,7 +222,39 @@ public class Domain {
         try {
             InputStream is = doGet(baseUrl + "/store/" + store.getId() + "/class/" + name);
             String json = StreamUtils.streamToString(is);
+            System.out.println(json);
             AdaClass result = mapper.readValue(json, AdaClass.class);
+            for (GrantedRight r: result.getGrantedRights()) {
+                if (r.getGranteetype().equals("special")) {
+                    if (r.getGranteeId().equalsIgnoreCase("everyone"))
+                        r.setGrantee(Everyone.create());
+                }
+                else if (r.getGranteetype().equals("user")) {
+                    try {
+                        IdentityProvider idp = this.getIdentityProvider(r.getIdentityProviderId());
+                        User user = new User();
+                        user.setId(r.getGranteeId());
+                        user.setEmail(r.getGranteeId());
+                        user.setIdentityProvider(idp);
+                        r.setGrantee(user);
+                    }
+                    catch (Exception err) {
+                        err.printStackTrace();
+                    }
+                }
+                else if (r.getGranteetype().equals("role")) {
+                    try {
+                        IdentityProvider idp = this.getIdentityProvider(r.getIdentityProviderId());
+                        Role role = new Role();
+                        role.setId(r.getGranteeId());
+                        role.setIdentityProvider(idp);
+                        r.setGrantee(role);
+                    }
+                    catch (Exception err) {
+                        err.printStackTrace();
+                    }
+                }
+            }
             return result;
         }
         catch (IOException io) {
@@ -488,5 +517,36 @@ public class Domain {
             io.printStackTrace();
             throw new NoUsersFoundException();
         }
+    }
+
+    public Role[] getRoles(IdentityProvider idp) throws NoRolesFoundException {
+        try {
+            InputStream is = doGet(baseUrl + "/identityprovider/" + idp.getId() + "/roles");
+            String rolesJson = StreamUtils.streamToString(is);
+            Role[] roles = mapper.readValue(rolesJson, Role[].class);
+            for (Role role: roles)
+                role.setIdentityProvider(idp);
+            return roles;
+        }
+        catch (IOException io) {
+            io.printStackTrace();
+            throw new NoRolesFoundException();
+        }
+    }
+
+    public void updateClass(AdaClass toupdate) throws InsufficientRightsException, LostRightsException{
+        try {
+            InputStream is = doPut(baseUrl + "/store/" + toupdate.getStore().getId() + "/class/" + toupdate.getId(), toupdate.toJson());
+            try {
+                AdaClass refreshed = getAdaClass(toupdate.getStore(), toupdate.getId());
+            }
+            catch (AdaClassNotFoundException nfe) {
+                throw new LostRightsException();
+            }
+        }
+        catch (IOException err) {
+            err.printStackTrace();
+        }
+
     }
 }

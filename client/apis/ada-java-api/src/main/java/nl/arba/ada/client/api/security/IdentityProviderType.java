@@ -8,6 +8,7 @@ public enum IdentityProviderType {
      * Internal identityprovider
      */
     INTERNAL,
+    OAUTH,
     /**
      * Invalid identity provider type
      */
@@ -21,6 +22,8 @@ public enum IdentityProviderType {
     public static IdentityProviderType fromString(String value) {
         if (value.equalsIgnoreCase("internal"))
             return INTERNAL;
+        else if (value.equalsIgnoreCase("oauth"))
+            return OAUTH;
         else
             return UNKNOWN;
     }

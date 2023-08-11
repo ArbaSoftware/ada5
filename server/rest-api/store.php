@@ -354,6 +354,29 @@
                 exit;
             }
         }
+        else if (sizeof($urlparts) == 6 && $urlparts[2] == 'store' && $urlparts[4] == 'class') {
+            try {
+                if ($db->canEditClass($urlparts[3], $urlparts[5])) {
+                    if ($db->updateClass($urlparts[5], json_decode(file_get_contents('php://input'))))
+                        sendState(200, "OK");
+                    else
+                        sendState(500, "");
+                }
+                else {
+                    sendState(401, "Unsufficient rights");
+                }
+                exit;
+            }
+            catch (Exception $exception) {
+                sendState(500, "");
+                exit;
+            }
+        }
+        else {
+            print_r($urlparts);
+            sendState(404, "");
+            exit;
+        }
     }
     sendState(404, "Not found");
 

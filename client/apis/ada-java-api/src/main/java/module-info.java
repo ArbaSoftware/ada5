@@ -7,6 +7,7 @@ module nl.ada.java.api {
     requires org.apache.commons.io;
 
     opens nl.arba.ada.client.api to com.fasterxml.jackson.databind;
+    opens nl.arba.ada.client.api.security to com.fasterxml.jackson.databind;
 
     exports nl.arba.ada.client.api;
     exports nl.arba.ada.client.api.addon;

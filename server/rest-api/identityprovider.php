@@ -18,7 +18,15 @@
         if (sizeof($urlparts) == 7 && $urlparts[4] == 'user' && $urlparts[5] == 'search') {
             $idpid = $urlparts[3];
             $idp = $db->getIdentityProvider($idpid);
-            $users = $db->searchInternalUsers($urlparts[6]);
+            if ($idp->getType() == 'internal') {
+                $users = $db->searchInternalUsers($urlparts[6]);
+            }
+            else if ($idp->getType() == 'oauth') {
+                $users = $idp->searchUsers($urlparts[6]);
+            }
+            else {
+                $user = [];
+            }
             $json = "[";
             $first = true;
             foreach($users as $user) {
@@ -27,6 +35,17 @@
             }
             $json .= ']';
             echo $json;
+        }
+        else if (sizeof($urlparts) == 5 && $urlparts[4] == 'roles') {
+            $idpid = $urlparts[3];
+            $idp = $db->getIdentityProvider($idpid);
+            if ($idp->getType() == 'oauth') {
+                $roles = $idp->getRoles();
+            }
+            else {
+                $roles = [];
+            }
+            echo $roles;
         }
     }
 

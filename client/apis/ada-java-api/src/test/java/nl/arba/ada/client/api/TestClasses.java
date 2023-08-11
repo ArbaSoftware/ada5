@@ -104,7 +104,30 @@ public class TestClasses {
     @Test
     public void get_class() throws Exception{
         Store mystore = domain.getStore("052ebd3e-310f-11ee-915b-98f2b3f20cf4");
-        mystore.getAdaClass("055bff90-310f-11ee-915b-98f2b3f20cf4");
+        System.out.println(mystore.getName());
+        AdaClass clazz = mystore.getAdaClass("055bff90-310f-11ee-915b-98f2b3f20cf4");
+        System.out.println(clazz.getName());
+    }
+
+    @Test
+    public void edit_class_rights() throws Exception {
+        AdaClass[] classes = store.getClasses();
+        AdaClass clazz = new AdaClass();
+        clazz.setName("test");
+        System.out.println(clazz.toJson());
+        AdaClass refreshed = store.addClass(clazz);
+        System.out.println(refreshed.getId());
+        AdaClass again = store.getAdaClass(refreshed.getId());
+        again.getGrantedRights().get(0).setLevel(142);
+        /*
+        GrantedRight newright = new GrantedRight();
+        newright.setLevel(1);
+        newright.setGrantee(Everyone.create());
+        again.addRight(newright);
+         */
+
+        System.out.println(again.getId());
+        again.update();
     }
 
 }

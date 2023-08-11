@@ -83,10 +83,18 @@ public class GrantedRight {
         }
     }
 
+    public String getGranteeId() {
+        return granteeId;
+    }
+
     public void setIdentityproviderid(String id) {
         if (id != null) {
             identityProviderId = id;
         }
+    }
+
+    public String getIdentityProviderId() {
+        return identityProviderId;
     }
 
     private void createGrantee(Domain domain) {

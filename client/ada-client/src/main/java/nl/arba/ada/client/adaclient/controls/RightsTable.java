@@ -24,10 +24,12 @@ public class RightsTable extends TableView {
     private ContextMenu cmExisting;
     private ArrayList<TableRow> allRows;
     private GrantedRight toEdit = null;
+    private List<Right> availableRights;
 
     private Domain domain;
-    public RightsTable(List<GrantedRight> rights, Domain domain) {
+    public RightsTable(List<GrantedRight> rights, Domain domain, List<Right> availablerights) {
         super();
+        availableRights = availablerights;
         this.domain =domain;
         this.rights = new ArrayList<>();
         for (GrantedRight right: rights) {
@@ -100,7 +102,10 @@ public class RightsTable extends TableView {
         edit.setOnAction(new EventHandler<ActionEvent>() {
             @Override
             public void handle(ActionEvent actionEvent) {
-                GrantedRightDetails.create(toEdit, domain).showAndWait();
+                GrantedRightDetails details = GrantedRightDetails.create(toEdit, domain, availableRights);
+                details.showAndWait();
+                ButtonType result = (ButtonType) details.getResult();
+                System.out.println(result.getButtonData().getTypeCode());
             }
         });
         cmExisting.getItems().add(edit);

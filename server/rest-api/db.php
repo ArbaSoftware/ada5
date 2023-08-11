@@ -38,4 +38,5 @@
         public function deleteProperty($propertyid);
         public function getIdentityProvider($id);
         public function searchInternalUsers($search);
+        public function updateClass($id, $request);
     }

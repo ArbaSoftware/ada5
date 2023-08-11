@@ -184,6 +184,7 @@ public class AdaClass {
         return "{" +
                 "\"grantee\":\"" + right.getGrantee().getId() + "\"," +
                 (right.getGrantee().getIdentityProvider() == null ? "" : "\"identityprovider\":\"" + right.getGrantee().getIdentityProvider().getId() + "\",") +
+                "\"granteetype\":\"" + right.getGranteetype() + "\"," +
                 "\"level\":" + right.getLevel() +
                 "}";
     }
@@ -241,5 +242,9 @@ public class AdaClass {
 
     public void setStore(Store store) {
         this.store = store;
+    }
+
+    public void update() throws InsufficientRightsException, LostRightsException{
+        getStore().getDomain().updateClass(this);
     }
 }
