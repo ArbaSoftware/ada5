@@ -348,6 +348,10 @@ public class GrantedRightDetails extends Dialog implements Initializable {
         }
     }
 
+    public boolean isOkButtonType(ButtonType type) {
+        return getDialogPane().lookupButton(type).equals(btnOk);
+    }
+
     public GrantedRight getGrantedRight() {
         return target;
     }

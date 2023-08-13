@@ -39,6 +39,7 @@ public class EditPropertyController implements Initializable {
     private ArrayList <Change> changes;
     private OkListener onOk;
     private boolean addingProperty = false;
+    private Property newProperty;
 
     public EditPropertyController(AdaClass targetclass, Property target, OkListener onok) {
         targetProperty = target;
@@ -156,15 +157,22 @@ public class EditPropertyController implements Initializable {
             disableok(txtName.getText().isEmpty() || txtName.getText().equals(targetProperty.getName()));
     }
 
+    public Property getProperty() {
+        if (addingProperty)
+            return newProperty;
+        else
+            return targetProperty;
+    }
+
     private void onSave() {
         if (addingProperty) {
             try {
-                Property newProperty = new Property();
+                newProperty = new Property();
                 newProperty.setName(txtName.getText());
                 newProperty.setRequired(cbRequired.isSelected());
                 newProperty.setMultiple(cbMultiple.isSelected());
                 newProperty.setType( ((IdName) cmbType.getSelectionModel().getSelectedItem()).getId());
-                parentClass.addProperty(newProperty);
+                //parentClass.addProperty(newProperty);
                 onOk.onOk();
             }
             catch (Exception err) {
@@ -174,7 +182,7 @@ public class EditPropertyController implements Initializable {
         else {
             try {
                 targetProperty.setName(txtName.getText());
-                parentClass.editProperty(targetProperty);
+                //parentClass.editProperty(targetProperty);
                 onOk.onOk();
             } catch (Exception err) {
                 err.printStackTrace();

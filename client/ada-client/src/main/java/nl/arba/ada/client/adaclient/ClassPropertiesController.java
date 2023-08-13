@@ -20,6 +20,7 @@ import nl.arba.ada.client.api.Property;
 import nl.arba.ada.client.api.security.Right;
 
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.ResourceBundle;
 import java.util.stream.Collectors;
@@ -36,6 +37,10 @@ public class ClassPropertiesController implements Initializable {
     private ContextMenu cmAddProperty;
     private Property editProperty;
     private List<Right> classRights;
+    private ArrayList<Property> toDelete = new ArrayList<>();
+    private boolean save;
+    private boolean hasChanges = false;
+    private Button okButton;
 
     public ClassPropertiesController(AdaClass target) {
         this.adaClass = target;
@@ -48,13 +53,19 @@ public class ClassPropertiesController implements Initializable {
             @Override
             public void handle(ActionEvent actionEvent) {
                 try {
+                    save = false;
                     EditProperty dialog = new EditProperty(adaClass, new OkListener() {
                         @Override
                         public void onOk() {
-                            refreshProperties();
+                            save = true;
                         }
                     });
-                    dialog.show();
+                    dialog.showAndWait();
+                    if (save) {
+                        tableProperties.getItems().add(dialog.getController().getProperty());
+                        okButton.setDisable(false);
+                        hasChanges = true;
+                    }
                 }
                 catch (Exception err) {
                     err.printStackTrace();
@@ -67,13 +78,19 @@ public class ClassPropertiesController implements Initializable {
             @Override
             public void handle(ActionEvent actionEvent) {
                 try {
+                    save = false;
                     EditProperty dialog = new EditProperty(adaClass, editProperty, new OkListener() {
                         @Override
                         public void onOk() {
-                            refreshProperties();
+                            save = true;
                         }
                     });
-                    dialog.show();
+                    dialog.showAndWait();
+                    int index = tableProperties.getItems().indexOf(editProperty);
+                    tableProperties.getItems().remove(editProperty);
+                    tableProperties.getItems().add(index, dialog.getController().getProperty());
+                    okButton.setDisable(false);
+                    hasChanges = true;
                 }
                 catch (Exception err) {
                     err.printStackTrace();
@@ -97,6 +114,11 @@ public class ClassPropertiesController implements Initializable {
         MenuItem addProperty = new MenuItem(InternationalizationUtils.get("classproperties.properties.contextmenu.add"));
         addProperty.setOnAction(addHandler);
         cmAddProperty.getItems().add(addProperty);
+    }
+
+    public void setOkButton(Button ok) {
+        okButton = ok;
+        okButton.setDisable(true);
     }
 
     @Override
@@ -142,6 +164,10 @@ public class ClassPropertiesController implements Initializable {
         refreshProperties();
 
         RightsTable rightstable = new RightsTable(adaClass.getGrantedRights(), adaClass.getStore().getDomain(), classRights);
+        rightstable.addChangeListener((ObservableValue observableValue, Object o, Object t1) -> {
+            okButton.setDisable(false);
+            hasChanges = true;
+        });
         rightsPane.setCenter(rightstable);
     }
 
@@ -159,6 +185,11 @@ public class ClassPropertiesController implements Initializable {
     }
 
     private void deleteProperty(Property todelete) {
+        toDelete.add(todelete);
+        tableProperties.getItems().remove(todelete);
+        hasChanges = true;
+        okButton.setDisable(false);
+        /*
         Confirmation c = Confirmation.create(InternationalizationUtils.get("confirmation.delete.property"), InternationalizationUtils.get("confirmation.delete.property.title"));
         c.showAndWait();
         if (c.getResult().equals(Boolean.TRUE)) {
@@ -170,5 +201,6 @@ public class ClassPropertiesController implements Initializable {
                 err.printStackTrace();
             }
         }
+         */
     }
 }

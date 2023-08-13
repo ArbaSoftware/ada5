@@ -25,6 +25,7 @@ public class RightsTable extends TableView {
     private ArrayList<TableRow> allRows;
     private GrantedRight toEdit = null;
     private List<Right> availableRights;
+    private ArrayList <ChangeListener> changeListeners = new ArrayList<>();
 
     private Domain domain;
     public RightsTable(List<GrantedRight> rights, Domain domain, List<Right> availablerights) {
@@ -97,6 +98,7 @@ public class RightsTable extends TableView {
     }
 
     private void initContextMenus() {
+        RightsTable parent = this;
         cmExisting = new ContextMenu();
         MenuItem edit = new MenuItem(InternationalizationUtils.get("rightstable.contextmenu.edit"));
         edit.setOnAction(new EventHandler<ActionEvent>() {
@@ -105,7 +107,9 @@ public class RightsTable extends TableView {
                 GrantedRightDetails details = GrantedRightDetails.create(toEdit, domain, availableRights);
                 details.showAndWait();
                 ButtonType result = (ButtonType) details.getResult();
-                System.out.println(result.getButtonData().getTypeCode());
+                parent.getItems().remove(toEdit);
+                parent.getItems().add(details.getGrantedRight());
+                changeListeners.stream().forEach(l -> l.changed(null, null, null));
             }
         });
         cmExisting.getItems().add(edit);
@@ -126,5 +130,9 @@ public class RightsTable extends TableView {
                 }
             }
         });
+    }
+
+    public void addChangeListener(ChangeListener listener) {
+        changeListeners.add(listener);
     }
 }

@@ -23,6 +23,7 @@ public class EditProperty extends Dialog {
     private Property property;
     private OkListener onOk;
     private boolean addingProperty = false;
+    private EditPropertyController controller;
 
     public EditProperty(AdaClass parent, Property property, OkListener onok) {
         parentClass = parent;
@@ -46,9 +47,11 @@ public class EditProperty extends Dialog {
                 setTitle(InternationalizationUtils.get("classproperties.editproperties.dialog.title") + " " + property.getName());
             getDialogPane().getButtonTypes().add(new ButtonType(InternationalizationUtils.get("dialog.button.ok"), ButtonBar.ButtonData.OK_DONE));
             getDialogPane().getButtonTypes().add(new ButtonType(InternationalizationUtils.get("dialog.button.cancel"), ButtonBar.ButtonData.CANCEL_CLOSE));
-            EditPropertyController controller = null;
-            if (addingProperty)
+            EditProperty dialog = this;
+            controller = null;
+            if (addingProperty) {
                 controller = new EditPropertyController(parentClass, onOk);
+            }
             else
                 controller = new EditPropertyController(parentClass, property, onOk);
             controller.setDialog(this);
@@ -60,5 +63,9 @@ public class EditProperty extends Dialog {
         catch (Exception err) {
             err.printStackTrace();
         }
+    }
+
+    public EditPropertyController getController() {
+        return controller;
     }
 }

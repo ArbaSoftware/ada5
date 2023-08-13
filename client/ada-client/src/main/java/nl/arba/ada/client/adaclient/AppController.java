@@ -108,13 +108,16 @@ public class AppController implements Initializable {
             Store store = ((StoreTreeItem) tvStore.getRoot()).getStore();
             FXMLLoader loader = new FXMLLoader(App.class.getResource("classproperties.fxml"));
             loader.setResources(InternationalizationUtils.getResources());
-            loader.setController(new ClassPropertiesController(store.getAdaClass(target.getId())));
+            ClassPropertiesController controller = new ClassPropertiesController(store.getAdaClass(target.getId()));
+            loader.setController(controller);
             Dialog propertiesDialog = new Dialog();
             propertiesDialog.setTitle(InternationalizationUtils.get("classproperties.title") + " " + target.getName());
             propertiesDialog.getDialogPane().setContent(loader.load());
-            propertiesDialog.getDialogPane().getButtonTypes().add(new ButtonType(InternationalizationUtils.get("dialog.button.ok"), ButtonBar.ButtonData.OK_DONE));
+            ButtonType ok =new ButtonType(InternationalizationUtils.get("dialog.button.ok"), ButtonBar.ButtonData.OK_DONE);
+            propertiesDialog.getDialogPane().getButtonTypes().add(ok);
+            controller.setOkButton((Button) propertiesDialog.getDialogPane().lookupButton(ok));
             propertiesDialog.getDialogPane().getButtonTypes().add(new ButtonType(InternationalizationUtils.get("dialog.button.cancel"), ButtonBar.ButtonData.CANCEL_CLOSE));
-            propertiesDialog.show();
+            propertiesDialog.showAndWait();
         }
         catch (Exception err) {
             err.printStackTrace();

@@ -226,7 +226,7 @@ public class Domain {
             AdaClass result = mapper.readValue(json, AdaClass.class);
             for (GrantedRight r: result.getGrantedRights()) {
                 if (r.getGranteetype().equals("special")) {
-                    if (r.getGranteeId().equalsIgnoreCase("everyone"))
+                    if (r.getGranteeId() == null && r.getGrantee() != null && r.getGrantee().getId().equalsIgnoreCase("everyone"))
                         r.setGrantee(Everyone.create());
                 }
                 else if (r.getGranteetype().equals("user")) {
