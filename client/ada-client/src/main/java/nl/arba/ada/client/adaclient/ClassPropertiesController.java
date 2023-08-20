@@ -1,6 +1,7 @@
 package nl.arba.ada.client.adaclient;
 
 import javafx.beans.property.SimpleStringProperty;
+import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
@@ -17,6 +18,8 @@ import nl.arba.ada.client.adaclient.dialogs.OkListener;
 import nl.arba.ada.client.adaclient.utils.InternationalizationUtils;
 import nl.arba.ada.client.api.AdaClass;
 import nl.arba.ada.client.api.Property;
+import nl.arba.ada.client.api.exceptions.PropertyNotAddedException;
+import nl.arba.ada.client.api.security.GrantedRight;
 import nl.arba.ada.client.api.security.Right;
 
 import java.net.URL;
@@ -41,6 +44,7 @@ public class ClassPropertiesController implements Initializable {
     private boolean save;
     private boolean hasChanges = false;
     private Button okButton;
+    private RightsTable rightstable;
 
     public ClassPropertiesController(AdaClass target) {
         this.adaClass = target;
@@ -124,6 +128,12 @@ public class ClassPropertiesController implements Initializable {
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
         txtName.setText(adaClass.getName());
+        txtName.textProperty().addListener(new ChangeListener<String>() {
+            @Override
+            public void changed(ObservableValue<? extends String> observableValue, String s, String t1) {
+                okButton.setDisable(false);
+            }
+        });
         TableColumn nameColumn = new TableColumn();
         nameColumn.setText(InternationalizationUtils.get("classproperties.tabproperties.column.name"));
         nameColumn.prefWidthProperty().bind(tableProperties.widthProperty().multiply(0.8));
@@ -163,7 +173,7 @@ public class ClassPropertiesController implements Initializable {
         });
         refreshProperties();
 
-        RightsTable rightstable = new RightsTable(adaClass.getGrantedRights(), adaClass.getStore().getDomain(), classRights);
+        rightstable = new RightsTable(adaClass.getGrantedRights(), adaClass.getStore().getDomain(), classRights);
         rightstable.addChangeListener((ObservableValue observableValue, Object o, Object t1) -> {
             okButton.setDisable(false);
             hasChanges = true;
@@ -189,18 +199,26 @@ public class ClassPropertiesController implements Initializable {
         tableProperties.getItems().remove(todelete);
         hasChanges = true;
         okButton.setDisable(false);
-        /*
-        Confirmation c = Confirmation.create(InternationalizationUtils.get("confirmation.delete.property"), InternationalizationUtils.get("confirmation.delete.property.title"));
-        c.showAndWait();
-        if (c.getResult().equals(Boolean.TRUE)) {
+    }
+
+    public AdaClass getClassToSave() {
+        AdaClass tosave = new AdaClass();
+        tosave.setName(txtName.getText());
+        for (Object prop : tableProperties.getItems()) {
             try {
-                adaClass.deleteProperty(todelete);
-                refreshProperties();
+                Property toadd = (Property) prop;
+                tosave.addProperty(toadd);
             }
-            catch (Exception err) {
-                err.printStackTrace();
-            }
+            catch (Exception pnae) {}
         }
-         */
+        for (Object right: rightstable.getItems())
+            tosave.addRight((GrantedRight) right);
+        if (adaClass != null)
+            tosave.setId(adaClass.getId());
+        return tosave;
+    }
+
+    public boolean isAdding() {
+        return adaClass == null;
     }
 }

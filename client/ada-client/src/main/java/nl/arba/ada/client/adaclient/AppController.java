@@ -10,6 +10,7 @@ import javafx.scene.control.*;
 import javafx.scene.input.ContextMenuEvent;
 import javafx.scene.layout.BorderPane;
 import javafx.stage.Stage;
+import nl.arba.ada.client.adaclient.dialogs.Confirmation;
 import nl.arba.ada.client.adaclient.treeview.AdaClientTreeItem;
 import nl.arba.ada.client.adaclient.treeview.ClassTreeItem;
 import nl.arba.ada.client.adaclient.treeview.StoreTreeItem;
@@ -118,6 +119,25 @@ public class AppController implements Initializable {
             controller.setOkButton((Button) propertiesDialog.getDialogPane().lookupButton(ok));
             propertiesDialog.getDialogPane().getButtonTypes().add(new ButtonType(InternationalizationUtils.get("dialog.button.cancel"), ButtonBar.ButtonData.CANCEL_CLOSE));
             propertiesDialog.showAndWait();
+
+            if (propertiesDialog.getResult().equals(ok)) {
+                AdaClass tosave = controller.getClassToSave();
+                if (controller.isAdding()) {
+                    //Add class
+                }
+                else {
+                    Confirmation c = Confirmation.create(InternationalizationUtils.get("confirmation.save.class"), InternationalizationUtils.get("confirmation.delete.property.title"));
+                    c.showAndWait();
+                    if (c.getResult().equals(Boolean.TRUE)) {
+                        try {
+                            tosave.update();
+                        }
+                        catch (Exception err) {
+                            err.printStackTrace();
+                        }
+                    }
+                }
+            }
         }
         catch (Exception err) {
             err.printStackTrace();

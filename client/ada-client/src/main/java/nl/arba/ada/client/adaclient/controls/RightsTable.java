@@ -8,6 +8,7 @@ import javafx.event.EventHandler;
 import javafx.scene.Node;
 import javafx.scene.control.*;
 import javafx.scene.input.ContextMenuEvent;
+import javafx.scene.input.MouseEvent;
 import javafx.util.Callback;
 import nl.arba.ada.client.adaclient.dialogs.GrantedRightDetails;
 import nl.arba.ada.client.adaclient.utils.InternationalizationUtils;
@@ -22,10 +23,11 @@ import java.util.List;
 public class RightsTable extends TableView {
     private ArrayList<GrantedRight> rights;
     private ContextMenu cmExisting;
-    private ArrayList<TableRow> allRows;
+    private ContextMenu cmAdd;
     private GrantedRight toEdit = null;
     private List<Right> availableRights;
     private ArrayList <ChangeListener> changeListeners = new ArrayList<>();
+    private TableRow selectedRow = null;
 
     private Domain domain;
     public RightsTable(List<GrantedRight> rights, Domain domain, List<Right> availablerights) {
@@ -46,7 +48,11 @@ public class RightsTable extends TableView {
             @Override
             public ObservableValue call(TableColumn.CellDataFeatures<GrantedRight, String> cellDataFeatures) {
                 GrantedRight right = (GrantedRight) cellDataFeatures.getValue();
-                return new SimpleStringProperty(right.getGrantee().getDisplayName());
+                if (right.getGrantee() == null) {
+                    return new SimpleStringProperty("?");
+                }
+                else
+                    return new SimpleStringProperty(right.getGrantee().getDisplayName());
             }
         });
         getColumns().add(grantee);
@@ -57,7 +63,9 @@ public class RightsTable extends TableView {
             @Override
             public ObservableValue call(TableColumn.CellDataFeatures<GrantedRight, String> cellDataFeatures) {
                 GrantedRight right = (GrantedRight) cellDataFeatures.getValue();
-                if (right.getGranteetype().equals("user"))
+                if (right.getGranteetype() == null)
+                    return new SimpleStringProperty("?");
+                else if (right.getGranteetype().equals("user"))
                     return new SimpleStringProperty(InternationalizationUtils.get("grantedright.type.user"));
                 else if (right.getGranteetype().equals("role"))
                     return new SimpleStringProperty(InternationalizationUtils.get("grantedright.type.role"));
@@ -82,12 +90,22 @@ public class RightsTable extends TableView {
         });
         getColumns().add(rightscolumn);
 
-        allRows = new ArrayList<>();
         this.setRowFactory(new Callback<TableView, TableRow>() {
             @Override
             public TableRow call(TableView tableView) {
                 TableRow newRow = new TableRow();
-                allRows.add(newRow);
+                newRow.setOnMouseEntered(new EventHandler<MouseEvent>() {
+                    @Override
+                    public void handle(MouseEvent mouseEvent) {
+                        selectedRow = newRow;
+                    }
+                });
+                newRow.setOnMouseExited(new EventHandler<MouseEvent>() {
+                    @Override
+                    public void handle(MouseEvent mouseEvent) {
+                        selectedRow = null;
+                    }
+                });
                 return newRow;
             }
         });
@@ -99,6 +117,18 @@ public class RightsTable extends TableView {
 
     private void initContextMenus() {
         RightsTable parent = this;
+        EventHandler addEventHandler = new EventHandler<ActionEvent>() {
+            @Override
+            public void handle(ActionEvent actionEvent) {
+                GrantedRightDetails details = GrantedRightDetails.create(domain, availableRights);
+                details.showAndWait();
+                ButtonType result = (ButtonType) details.getResult();
+                if (details.isOkButtonType(result)) {
+                    parent.getItems().add(details.getGrantedRight());
+                    changeListeners.stream().forEach(l -> l.changed(null, null, null));
+                }
+            }
+        };
         cmExisting = new ContextMenu();
         MenuItem edit = new MenuItem(InternationalizationUtils.get("rightstable.contextmenu.edit"));
         edit.setOnAction(new EventHandler<ActionEvent>() {
@@ -107,25 +137,31 @@ public class RightsTable extends TableView {
                 GrantedRightDetails details = GrantedRightDetails.create(toEdit, domain, availableRights);
                 details.showAndWait();
                 ButtonType result = (ButtonType) details.getResult();
-                parent.getItems().remove(toEdit);
-                parent.getItems().add(details.getGrantedRight());
-                changeListeners.stream().forEach(l -> l.changed(null, null, null));
+                if (details.isOkButtonType(result)) {
+                    parent.getItems().remove(toEdit);
+                    parent.getItems().add(details.getGrantedRight());
+                    changeListeners.stream().forEach(l -> l.changed(null, null, null));
+                }
             }
         });
         cmExisting.getItems().add(edit);
+        MenuItem addOnExisting = new MenuItem(InternationalizationUtils.get("rightstable.contextmenu.add"));
+        addOnExisting.setOnAction(addEventHandler);
+        cmExisting.getItems().add(addOnExisting);
+
+        cmAdd = new ContextMenu();
+        MenuItem add = new MenuItem(InternationalizationUtils.get("rightstable.contextmenu.add"));
+        add.setOnAction(addEventHandler);
+        cmAdd.getItems().add(add);
 
         this.setOnContextMenuRequested(new EventHandler<ContextMenuEvent>() {
             @Override
             public void handle(ContextMenuEvent e) {
-                TableRow selectedRow = null;
-                for (TableRow row: allRows) {
-                    if (row.getBoundsInParent().contains(e.getX(), e.getY())) {
-                        selectedRow = row;
-                        break;
-                    }
-                }
-                if (selectedRow.getIndex() <= rights.size()) {
-                    toEdit = rights.get(selectedRow.getIndex()-1);
+                System.out.println("Target item: "+ selectedRow.itemProperty());
+                if (selectedRow.itemProperty().getValue() == null)
+                    cmAdd.show((Node) e.getSource(), e.getScreenX(), e.getScreenY());
+                else {
+                    toEdit = (GrantedRight) selectedRow.getItem();
                     cmExisting.show((Node) e.getSource(), e.getScreenX(), e.getScreenY());
                 }
             }

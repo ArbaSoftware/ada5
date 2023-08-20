@@ -50,12 +50,15 @@ public class GrantedRightDetails extends Dialog implements Initializable {
         super();
         availableRights = availablerights;
         target = new GrantedRight();
-        if (target.getGrantee() != null) {
-            target.setGrantee(right.getGrantee());
-            target.setIdentityproviderid(right.getGrantee().getIdentityProvider().getId());
+        if (right != null) {
+            if (right.getGrantee() != null) {
+                target.setGrantee(right.getGrantee());
+                if (right.getGrantee().getIdentityProvider() != null)
+                    target.setIdentityproviderid(right.getGrantee().getIdentityProvider().getId());
+            }
+            target.setGranteetype(right.getGranteetype());
+            target.setLevel(right.getLevel());
         }
-        target.setGranteetype(right.getGranteetype());
-        target.setLevel(right.getLevel());
         this.domain = domain;
         setTitle(InternationalizationUtils.get("grantedrightdetails.title"));
         try {
@@ -68,6 +71,8 @@ public class GrantedRightDetails extends Dialog implements Initializable {
             getDialogPane().getButtonTypes().add(ok);
             getDialogPane().getButtonTypes().add(cancel);
             btnOk = (Button) getDialogPane().lookupButton(ok);
+            if (right == null)
+                btnOk.setDisable(true);
         }
         catch (Exception err) {
             err.printStackTrace();
@@ -78,6 +83,9 @@ public class GrantedRightDetails extends Dialog implements Initializable {
         return new GrantedRightDetails(right, domain, availablerights);
     }
 
+    public static GrantedRightDetails create(Domain domain, List<Right> availablerights) {
+        return new GrantedRightDetails(null, domain, availablerights);
+    }
 
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
@@ -240,6 +248,10 @@ public class GrantedRightDetails extends Dialog implements Initializable {
                             target.setGrantee(optRole.get());
                     }
                     catch (Exception err) {}
+                }
+                else if (cmbGranteeType.getSelectionModel().getSelectedIndex() == 3) {
+                    if (cmbGranteeSelect.getSelectionModel().getSelectedIndex() == 0)
+                        target.setGrantee(Everyone.create());
                 }
                 evaluateOkButton();
             }
