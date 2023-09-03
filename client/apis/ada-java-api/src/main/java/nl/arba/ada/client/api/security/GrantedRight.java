@@ -40,7 +40,10 @@ public class GrantedRight {
      * @see Grantee
      */
     public Grantee getGrantee() {
-        return grantee;
+        if (grantee == null && user != null)
+            return user;
+        else
+            return grantee;
     }
 
     /**
@@ -130,6 +133,7 @@ public class GrantedRight {
         this.user.setId((String) user.get("id"));
         this.user.setFirstName((String) user.get("firstname"));;
         this.user.setLastName((String) user.get("lastname"));
+        setGrantee(this.user);
     }
 
     public User getUser() {

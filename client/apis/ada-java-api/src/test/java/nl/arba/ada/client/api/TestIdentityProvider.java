@@ -18,6 +18,7 @@ import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.Base64;
+import java.util.HashMap;
 import java.util.Map;
 
 public class TestIdentityProvider {
@@ -70,5 +71,19 @@ public class TestIdentityProvider {
         CloseableHttpResponse response = HttpClients.createDefault().execute(get);
         System.out.println(response.getCode());
         System.out.println(StreamUtils.streamToString(response.getEntity().getContent()));
+    }
+
+    @Test
+    public void test_get_user() throws Exception {
+        Domain domain = Domain.create("http://192.168.2.74:9601/ada");
+        domain.login(token);
+        IdentityProvider internal = domain.getIdentityProviders().stream().filter(idp -> idp.getType().equals(IdentityProviderType.INTERNAL)).findFirst().get();
+        //domain.searchUsers(internal, "Bas");
+        //domain.getUser(internal, "43bbb23a-07a2-4726-af26-32ba43570898");
+        domain.getUser(internal, "0017ca80-ce5a-11ed-905d-98f2b3f20cf4");
+
+        Store cmis = domain.getStore("cmis");
+        AdaClass clazz = cmis.getAdaClass("Folder");
+        System.out.println(clazz);
     }
 }

@@ -171,6 +171,7 @@ public class Store {
             Property parentFolder = folderClass.getProperty("ParentFolder");
             Search search = Search.create(getAdaClass("Folder"));
             search.addFilter(PropertyFilter.createNullFilter("ParentFolder", parentFolder.getType()));
+            search.addProperty("Name");
             AdaObject[] results = domain.search(this, search);
             Folder[] folderResults = new Folder[results.length];
             for (int index = 0; index < folderResults.length; index++)

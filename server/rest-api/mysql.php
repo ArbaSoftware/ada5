@@ -175,6 +175,23 @@
             }
         }
 
+        public function getInternalUserById($id) {
+            try {
+                $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
+                $users = $conn->query("select id,firstname,lastname from users where id='" . $id ."'");
+                if ($user = $users->fetch_object()) {
+                    return new User($user->id, $mail, $user->firstname, $user->lastname, $idpid);
+                }
+                else {
+                    return false;
+                }
+            }
+            finally {
+                $conn->close();
+            }
+            return false;
+        }
+
         public function isStoreNameUnique($name) {
             try {
                 $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
@@ -238,13 +255,21 @@
         public function canCreateClass($storeid) {
             try {
                 $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
+                Logger::log("canCreateClass: ". "select level from grantedrights where (granteeid = 'everyone' or (granteeid = '" . $this->userId . "' and identityproviderid = '" . $this->identityProviderId . "')) and targettype = 'store' and targetid='" . $storeid . "' order by weight desc limit 1");
                 $results = $conn->query("select level from grantedrights where (granteeid = 'everyone' or (granteeid = '" . $this->userId . "' and identityproviderid = '" . $this->identityProviderId . "')) and targettype = 'store' and targetid='" . $storeid . "' order by weight desc limit 1");
-                if ($results->num_rows == 0)
+                if ($results->num_rows == 0) {
+                    Logger::log('canCreateClass: No rights found');
                     return false;
+                }
                 else {
                     $rights = $conn->query("select level from rights where systemright='createclass'");
+                    Logger::log("canCreateClass: Number of rights " . $rights->num_rows);
+                    $right = $rights->fetch_object();
+                    Logger::log("canCreateClass: Right level: " . $right->level);
+                    $grantedright = $results->fetch_object();
+                    Logger::log("canCreateClass: Granted level: " . $grantedright->level);
                     if ($rights->num_rows == 1) 
-                        return intval($rights->fetch_object()->level) & intval($results->fetch_object()->level);
+                        return (intval($grantedright->level) & intval($right->level) == intval($right->level));
                     else
                         return false;
                 }
@@ -407,8 +432,11 @@
 
                     }
                     if ($succeeded)
+                        Logger::log('Create class: Add rights ' . sizeof($class->getRights()));
                         if (sizeof($class->getRights()) == 0) {
-                            $succeeded = $conn->query("insert into classrights (granteeid, granteetype, identityproviderid, classid, level, weight) values ('" . $this->userId . "','user','" . $this->identityProviderId . "','". $id . "',(select sum(level) from rights where classright = 1), 1)");
+                            $defaultRightsQuery = "insert into classrights (granteeid, granteetype, identityproviderid, classid, level, weight) values ('" . $this->userId . "','user','" . $this->identityProviderId . "','". $id . "',(select sum(level) from rights where classright = 1), 1)";
+                            Logger::log('Create class: Default rights query: ' . $defaultRightsQuery);
+                            $succeeded = $conn->query($defaultRightsQuery);
                         }
                         else {
                             foreach($class->getRights() as $right) {
@@ -475,8 +503,9 @@
 
         public function getClasses($storeid) {
             try {
+                Logger::log('getClasses: userId: ' . $this->userId);
                 $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
-                $potentialrows = $conn->query("select c.id, c.name, c.folderclass, c.contentclass, r.level from classes c inner join classrights r on c.id = r.classid where (r.granteeid = 'everyone' or (r.granteeid = '" . $this->userId . "' and r.identityproviderid = '" . $this->identityProviderId . "')) and c.storeid = '" . $storeid . "' order by r.weight desc");
+                $potentialrows = $conn->query("select c.id, c.name, c.folderclass, c.contentclass, r.level, c.parentclassid from classes c inner join classrights r on c.id = r.classid where (r.granteeid = 'everyone' or (r.granteeid = '" . $this->userId . "' and r.identityproviderid = '" . $this->identityProviderId . "')) and c.storeid = '" . $storeid . "' order by r.weight desc");
                 $potentials = [];
                 $potentialIds = [];
                 while ($potentialrow = $potentialrows->fetch_object()) {
@@ -484,10 +513,13 @@
                         $newpotential = new AdaClass($potentialrow->id, $potentialrow->name);
                         $newpotential->setIsDocumentClass($potentialrow->contentclass == 1);
                         $newpotential->setIsFolderClass($potentialrow->folderclass == 1);
+                        if (!is_null($potentialrow->parentclassid))
+                            $newpotential->setParentClass($potentialrow->parentclassid);
                         $potentials[sizeof($potentials)] = ["class" => $newpotential, "level" => $potentialrow->level];
                         $potentialIds[$potentialrow->id] = true;
                     }
                 }
+                Logger::log("getClasses: potential: " . sizeof($potentials). ' rows');
                 $readRight = $conn->query("select level from rights where systemright='read'");
                 if ($right = $readRight->fetch_object()) {
                     $classes = [];
@@ -516,7 +548,7 @@
                     $readRight = $conn->query("select level from rights where systemright='read'");
                     if ($readRight) {
                         if ($right = $readRight->fetch_object()) {
-                            if (intval($row->level) & intval($right->level)) {
+                            if ((intval($row->level) & intval($right->level)) == intval($right->level)) {
                                 $newClass = new AdaClass($row->id, $row->name);
                                 $newClass->setIsFolderClass($row->folderclass == 1);
                                 $newClass->setIsDocumentClass($row->contentclass == 1);
@@ -534,7 +566,7 @@
                                     }
                                 }
 
-                                $rights = $conn->query("select r.id, r.granteeid, r.granteetype, r.identityproviderid, r.level, r.weight, idp.type, u.id userid, u.email, u.firstname, u.lastname from classrights r left outer join identityproviders idp on idp.id = r.identityproviderid left outer join users u on u.email = r.granteeid where r.classid = '" . $classid . "'");
+                                $rights = $conn->query("select r.id, r.granteeid, r.granteetype, r.identityproviderid, r.level, r.weight, idp.type, u.id userid, u.email, u.firstname, u.lastname from classrights r left outer join identityproviders idp on idp.id = r.identityproviderid left outer join users u on u.id = r.granteeid where r.classid = '" . $classid . "'");
                                 if ($rights) {
                                     while ($right = $rights->fetch_object()) {
                                         $newRight = new GrantedRight($right->granteeid, $right->granteetype, $right->identityproviderid, $right->level, $right->weight);
@@ -912,7 +944,28 @@
         if ($storesearchresult) {
             $storeid = $storesearchresult->fetch_object()->id;
             $class = $this->getClass($storeid, $search->class);
-            $query = "select o.id, r.level, o.classid from objects o inner join objectrights r on o.id = r.objectid";
+            $query = "select o.id, r.level, o.classid";
+            $from = "";
+            if (isset($search->properties)) {
+                $propertyIndex = 1;
+                foreach($search->properties as $property) {
+                    foreach($class->getProperties() as $classproperty) {
+                        if ($classproperty->getName() == $property) {
+                            $query .= ",op" . $propertyIndex . ".";
+                            if ($classproperty->getType() == 'string')
+                                $query .= "string_value";
+                            else if ($classproperty->getType() == 'date')
+                                $query .= "date_value";
+                            $query .= " PropertyValue" . $propertyIndex;
+                            $query .= ", cp" . $propertyIndex . ".id PropertyId" . $propertyIndex;
+                            $query .= ", cp" . $propertyIndex . ".type PropertyType" . $propertyIndex;
+                            $from .= " inner join objectproperties op". $propertyIndex . " on o.id = op" . $propertyIndex . ".objectid inner join classproperties cp" . $propertyIndex . " on op" . $propertyIndex . ".propertyid = cp" . $propertyIndex . ".id and cp" . $propertyIndex . ".name = '" . $property . "'";
+                            $propertyIndex++;
+                        }
+                    }
+                }
+            }
+            $query .= " from objects o inner join objectrights r on o.id = r.objectid" . $from;
             $filterindex = 1;
             $where = "o.storeid = '" . $storeid . "' and (r.granteeid = 'everyone' or (r.granteeid = '" . $this->userId . "' and r.identityproviderid = '" . $this->identityProviderId . "'))";
             $errors = [];
@@ -947,6 +1000,7 @@
                 }
             }
             $query .= " where " . $where . " order by o.id, r.weight";
+            Logger::log("Search: " . $query);
 
             if (sizeof($errors) == 0) {
                 $lastObjectId = "";
@@ -960,7 +1014,16 @@
                                 if (intval($row->level) & intval($right->level)) {
                                     $objectId = $row->id;
                                     if ($objectId != $lastObjectId) {
-                                        $foundObjects[sizeof($foundObjects)] = new AdaObject($objectId, $row->classid);
+                                        $newResult = new AdaObject($objectId, $row->classid);
+                                        $propertyIndex = 1;
+                                        foreach($search->properties as $property) {
+                                            $propertyId = 'PropertyId' . $propertyIndex;
+                                            $propertyValue = 'PropertyValue' . $propertyIndex;
+                                            $propertyType = 'PropertyType' . $propertyIndex;
+                                            $newResult->addProperty($row->$propertyId, $property, $row->$propertyType, $row->$propertyValue);
+                                            $propertyIndex++;
+                                        }
+                                        $foundObjects[sizeof($foundObjects)] = $newResult;
                                         $lastObjectId = $objectId;
                                     }
                                 }
@@ -1297,6 +1360,28 @@
         }
         else {
             $succeeded = false;
+        }
+
+        //Update properties
+        foreach ($request->properties as $property) {
+            if (isset($property->id)) {
+                if ($conn->query("update classproperties set name='" . $property->name . "' where id = '" . $property->id . "'")) {
+                    // 
+                }
+                else
+                    $succeeded = false;
+            }
+            else {
+                $classid = $id;
+                $idquery = $conn->query("select UUID() newid from INFORMATION_SCHEMA.TABLES LIMIT 1");
+                $id = $idquery->fetch_object()->newid;
+                if ($conn->query("insert into classproperties (name, `type`, required, multiple, classid) values ('" . $property->name . "','" . $property->type . "'," . ($property->required ? 1 : 0) . "," . ($property->multiple? 1 : 0) . ",'" . $classid . "')")) {
+                    //
+                }
+                else {
+                    $succeeded = false;
+                }
+            }
         }
 
         if ($succeeded) {

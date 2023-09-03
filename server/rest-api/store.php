@@ -2,16 +2,18 @@
     include('db.php');
     include('mysql.php');
     include('model.php');
+    include('logger.php');
     include('auth.php');
     define('CHUNK_SIZE', 1024*1024);
 
     $auth = new Auth();
     if (!$user = $auth->isAuthorized()) {
+        Logger::log("Unauthorized request " + $_SERVER['REQUEST_URI']);
         header("HTTP/1.1 401 Unauthorized");
         exit;
     }
 
-    $db = new MySql('192.168.2.74', 'ada', 'ada', 'ada5', $user->getEmail(), $user->getIdentifyProviderId());
+    $db = new MySql('192.168.2.74', 'ada', 'ada', 'ada5', $user->getId(), $user->getIdentifyProviderId());
 
     $url = $_SERVER['REQUEST_URI'];
     $urlparts = explode('/', $url);
@@ -48,6 +50,7 @@
             }
         }
         else if (sizeof($urlparts) == 6 && $urlparts[1] == 'ada' && $urlparts[2] == 'store' && $urlparts[4] == 'class') {
+            Logger::log('Get class with id '. $urlparts[5]);
             try {
                 $class = $db->getClass($urlparts[3], $urlparts[5]);
                 if ($class) {
@@ -209,6 +212,7 @@
                                 }
                             }
                             else {
+                                Logger::log('No rights to create class');
                                 sendState(401, "Insufficient rights");
                                 exit;
                             }

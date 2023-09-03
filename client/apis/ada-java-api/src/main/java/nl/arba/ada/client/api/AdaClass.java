@@ -183,7 +183,7 @@ public class AdaClass {
     private String rightToJson(GrantedRight right) {
         return "{" +
                 "\"grantee\":\"" + right.getGrantee().getId() + "\"," +
-                (right.getGrantee().getIdentityProvider() == null ? "" : "\"identityprovider\":\"" + right.getGrantee().getIdentityProvider().getId() + "\",") +
+                (right.getGrantee().getIdentityProvider() == null ? "\"identityprovider\":\"" + right.getIdentityProviderId() + "\"," : "\"identityprovider\":\"" + right.getGrantee().getIdentityProvider().getId() + "\",") +
                 "\"granteetype\":\"" + right.getGranteetype() + "\"," +
                 "\"level\":" + right.getLevel() +
                 "}";
@@ -224,6 +224,10 @@ public class AdaClass {
 
     public void setParentclass(String classid) {
         parentClassId = classid;
+    }
+
+    public String getParentClassId() {
+        return parentClassId;
     }
 
     public AdaClass getParentClass() {

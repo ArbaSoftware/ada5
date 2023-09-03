@@ -17,10 +17,12 @@ import nl.arba.ada.client.adaclient.dialogs.EditProperty;
 import nl.arba.ada.client.adaclient.dialogs.OkListener;
 import nl.arba.ada.client.adaclient.utils.InternationalizationUtils;
 import nl.arba.ada.client.api.AdaClass;
+import nl.arba.ada.client.api.Domain;
 import nl.arba.ada.client.api.Property;
 import nl.arba.ada.client.api.exceptions.PropertyNotAddedException;
 import nl.arba.ada.client.api.security.GrantedRight;
 import nl.arba.ada.client.api.security.Right;
+import nl.arba.ada.client.api.security.User;
 
 import java.net.URL;
 import java.util.ArrayList;
@@ -45,10 +47,20 @@ public class ClassPropertiesController implements Initializable {
     private boolean hasChanges = false;
     private Button okButton;
     private RightsTable rightstable;
+    private boolean adding = false;
+    private AdaClass parentClass;
+    private Domain domain;
 
     public ClassPropertiesController(AdaClass target) {
-        this.adaClass = target;
-        classRights = adaClass.getStore().getDomain().getRights().stream().filter(r -> r.isClassRight()).collect(Collectors.toList());
+        this(target, false);
+    }
+
+    public ClassPropertiesController(AdaClass target, boolean adding) {
+        this.adding = adding;
+        this.adaClass = (adding ? null: target);
+        this.parentClass = (adding ? target: null);
+        domain = target.getStore().getDomain();
+        classRights = target.getStore().getDomain().getRights().stream().filter(r -> r.isClassRight()).collect(Collectors.toList());
         initContextMenus();
     }
 
@@ -127,7 +139,7 @@ public class ClassPropertiesController implements Initializable {
 
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
-        txtName.setText(adaClass.getName());
+        txtName.setText(adding ? "": adaClass.getName());
         txtName.textProperty().addListener(new ChangeListener<String>() {
             @Override
             public void changed(ObservableValue<? extends String> observableValue, String s, String t1) {
@@ -173,7 +185,7 @@ public class ClassPropertiesController implements Initializable {
         });
         refreshProperties();
 
-        rightstable = new RightsTable(adaClass.getGrantedRights(), adaClass.getStore().getDomain(), classRights);
+        rightstable = new RightsTable(adding ? new ArrayList<GrantedRight>(): adaClass.getGrantedRights(), domain, classRights);
         rightstable.addChangeListener((ObservableValue observableValue, Object o, Object t1) -> {
             okButton.setDisable(false);
             hasChanges = true;
@@ -182,15 +194,16 @@ public class ClassPropertiesController implements Initializable {
     }
 
     private void refreshProperties() {
-        try {
-            adaClass = adaClass.getStore().getAdaClass(adaClass.getId());
-            tableProperties.getItems().clear();
-            for (Property property : adaClass.getProperties()) {
-                tableProperties.getItems().add(property);
+        if (!adding) {
+            try {
+                adaClass = adaClass.getStore().getAdaClass(adaClass.getId());
+                tableProperties.getItems().clear();
+                for (Property property : adaClass.getProperties()) {
+                    tableProperties.getItems().add(property);
+                }
+            } catch (Exception err) {
+                err.printStackTrace();
             }
-        }
-        catch (Exception err) {
-            err.printStackTrace();
         }
     }
 
@@ -203,6 +216,7 @@ public class ClassPropertiesController implements Initializable {
 
     public AdaClass getClassToSave() {
         AdaClass tosave = new AdaClass();
+        tosave.setStore(adaClass == null ? parentClass.getStore(): adaClass.getStore());
         tosave.setName(txtName.getText());
         for (Object prop : tableProperties.getItems()) {
             try {
@@ -211,10 +225,16 @@ public class ClassPropertiesController implements Initializable {
             }
             catch (Exception pnae) {}
         }
-        for (Object right: rightstable.getItems())
+        for (Object right: rightstable.getItems()) {
             tosave.addRight((GrantedRight) right);
+        }
         if (adaClass != null)
             tosave.setId(adaClass.getId());
+        else {
+            tosave.setFolderClass(parentClass.isFolderClass());
+            tosave.setDocumentClass(parentClass.isDocumentClass());
+            tosave.setParentClass(parentClass);
+        }
         return tosave;
     }
 

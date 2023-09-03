@@ -44,7 +44,7 @@ public class Folder extends AdaObject {
      */
     public String getName() {
         Optional <PropertyValue> propertyValue = super.getProperties().stream().filter(p -> p.getName().equals(NAME)).findFirst();
-        return propertyValue.isPresent() ? propertyValue.get().getName() : null;
+        return propertyValue.isPresent() ? (String) propertyValue.get().getValue() : null;
     }
 
     /**
@@ -110,6 +110,7 @@ public class Folder extends AdaObject {
         try {
             AdaObject[] searchresults = getStore().getDomain().search(getStore(), Search
                     .create(getStore().getAdaClass("Folder"))
+                    .addProperty("Name")
                     .addFilter(PropertyFilter.createEqualFilter(PARENT_FOLDER, PropertyType.OBJECT, getId()))
             );
             Folder[] result = new Folder[searchresults.length];

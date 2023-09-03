@@ -89,6 +89,7 @@ public class HttpUtils {
     }
 
     private static InputStream doPostWithAuthenticationHeader(String url, String json, String authorizationheader) throws IOException {
+        System.out.println("POST: " + authorizationheader);
         HttpPost post = new HttpPost(url);
         post.setHeader("Authorization", authorizationheader);
         post.setHeader("Content-type", "application/json");
@@ -161,8 +162,9 @@ public class HttpUtils {
         }
         else if (state.getCode() == 401)
             throw new InsufficientRightsException();
-        else
+        else {
             throw new IOException("Error on executing put (" + state.getCode() + ")" + StreamUtils.streamToString(state.getStream()));
+        }
     }
 
     private static class ResponseState {

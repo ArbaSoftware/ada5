@@ -182,6 +182,10 @@
                 "type": "arrayofobjects",
                 "required": true,
                 "schema": "propertyfilter"
+            },
+            "properties": {
+                "type": "arrayofstrings",
+                "required": false
             }
         },
         "propertyfilter": { 

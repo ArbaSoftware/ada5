@@ -166,13 +166,17 @@ public class GrantedRightDetails extends Dialog implements Initializable {
         }
         else if (target.getGranteetype().equals("user")) {
             cmbGranteeType.getSelectionModel().select(0);
-            cmbIdentityProvider.getSelectionModel().select(target.getGrantee().getIdentityProvider());
+            //cmbIdentityProvider.getSelectionModel().select(target.getGrantee().getIdentityProvider());
+            System.out.println("GRANTEE: " + target.getGrantee());
+            System.out.println("GRANTEE/IDP: " + target.getGrantee().getIdentityProvider());
+            System.out.println("IDP id: " + target.getIdentityProviderId());
             if (target.getGrantee() != null) {
                 lblSearchResult.setText(target.getGrantee().getDisplayName());
-                for (int index = 0; index < cmbIdentityProvider.getItems().size(); index++) {
-                    if (((IdName) cmbIdentityProvider.getItems().get(index)).getId().equals(target.getGrantee().getIdentityProvider().getId())) {
-                        cmbIdentityProvider.getSelectionModel().select(index);
-                        System.out.println(index + " selected");
+                if (target.getGrantee().getIdentityProvider() != null) {
+                    for (int index = 0; index < cmbIdentityProvider.getItems().size(); index++) {
+                        if (((IdName) cmbIdentityProvider.getItems().get(index)).getId().equals(target.getGrantee().getIdentityProvider().getId())) {
+                            cmbIdentityProvider.getSelectionModel().select(index);
+                        }
                     }
                 }
             }
@@ -221,6 +225,7 @@ public class GrantedRightDetails extends Dialog implements Initializable {
                         target.setGrantee(selectedUser);
                         target.setGranteeid(selectedUser.getEmail());
                         target.setGranteetype("user");
+                        target.setIdentityproviderid( ((IdName) cmbIdentityProvider.getSelectionModel().getSelectedItem()).getId());
                         lblSearchResult.setText(selectedUser.getDisplayName());
                         evaluateOkButton();
                     }

@@ -47,6 +47,20 @@
             }
             echo $roles;
         }
+        else if (sizeof($urlparts) == 6 && $urlparts[4] == 'user') {
+            $idpid = $urlparts[3];
+            $idp = $db->getIdentityProvider($idpid);
+            $userId = $urlparts[5];
+            if ($idp->getType() == 'oauth') {
+                echo $idp->getOAuthUser($userId)->toJson();
+            }
+            else if ($idp->getType() == 'internal') {
+                echo $db->getInternalUserById($userId)->toJson();
+            }
+        }
+        else {
+            print_r($urlparts);
+        }
     }
 
 ?>

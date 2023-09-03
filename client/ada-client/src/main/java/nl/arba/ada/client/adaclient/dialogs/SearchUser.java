@@ -102,7 +102,7 @@ public class SearchUser extends Dialog implements Initializable {
                 lvSearchResults.getItems().clear();
                 for (User user: foundUsers) {
                     user.setIdentityProvider(idp);
-                    lvSearchResults.getItems().add(new IdName(user.getEmail(), user.getDisplayName()));
+                    lvSearchResults.getItems().add(new IdName(user.getId(), user.getDisplayName()));
                 }
             }
             catch (Exception err) {

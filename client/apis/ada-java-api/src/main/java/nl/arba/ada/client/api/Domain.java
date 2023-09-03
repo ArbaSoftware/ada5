@@ -31,6 +31,7 @@ public class Domain {
     private ArrayList<IdentityProvider> identityProviders;
     private ObjectMapper mapper;
     private User currentUser;
+    private static HashMap <String, Map<String, User>> userCache = new HashMap<>();
 
     private Domain(String baseurl) {
         baseUrl = baseurl;
@@ -63,6 +64,7 @@ public class Domain {
         Right[] rightz = mapper.readValue(doGet(baseUrl + "/security/right"), Right[].class);
         rights = new ArrayList<>();
         rights.addAll(Arrays.asList(rightz));
+        String result = StreamUtils.streamToString(doGet(baseUrl + "/store"));
         Store[] storez = mapper.readValue(doGet(baseUrl + "/store"), Store[].class);
         for (Store store: storez)
             store.setDomain(this);
@@ -177,7 +179,7 @@ public class Domain {
      */
     public void deleteStore(String id) throws StoreNoteDeletedException, InsufficientRightsException {
         try {
-            boolean result = HttpUtils.doDelete(baseUrl + "/store/" + id, user,password);
+            boolean result = doDelete(baseUrl + "/store/" + id);
             if (!result)
                 throw new StoreNoteDeletedException();
         }
@@ -196,13 +198,16 @@ public class Domain {
     public AdaClass addClass(String storeid, AdaClass newclass) throws ClassNotCreatedException {
         InputStream is = null;
         try {
-            is = HttpUtils.doPost(baseUrl + "/store/" + storeid + "/class", newclass.toJson(), user, password);
+            System.out.println("Adding class");
+            is = doPost(baseUrl + "/store/" + storeid + "/class", newclass.toJson());
             String classId = StreamUtils.streamToString(is);
-            is = HttpUtils.doGet(baseUrl + "/store/" + storeid + "/class/" + classId, user, password);
+            System.out.println("Add class response: " + classId);
+            is = doGet(baseUrl + "/store/" + storeid + "/class/" + classId);
             String resultjson = StreamUtils.streamToString(is);
             return mapper.readValue(resultjson, AdaClass.class);
         }
         catch (IOException io) {
+            io.printStackTrace();
             try {
                 System.out.println(StreamUtils.streamToString(is));
             }
@@ -232,13 +237,10 @@ public class Domain {
                 else if (r.getGranteetype().equals("user")) {
                     try {
                         IdentityProvider idp = this.getIdentityProvider(r.getIdentityProviderId());
-                        User user = new User();
-                        user.setId(r.getGranteeId());
-                        user.setEmail(r.getGranteeId());
-                        user.setIdentityProvider(idp);
-                        r.setGrantee(user);
+                        r.setGrantee(getUser(idp, r.getGranteeId()));
                     }
                     catch (Exception err) {
+                        System.out.println("User right: " + err.getMessage());
                         err.printStackTrace();
                     }
                 }
@@ -266,7 +268,15 @@ public class Domain {
     public AdaClass[] getAdaClasses(Store store) throws AdaClassNotFoundException {
         try {
             InputStream is = doGet(baseUrl + "/store/" + store.getId() + "/class");
-            return mapper.readValue(is, AdaClass[].class);
+            AdaClass[] classes = mapper.readValue(is, AdaClass[].class);
+            HashMap <String, AdaClass> mapClasses = new HashMap<>();
+            for (AdaClass current: classes)
+                mapClasses.put(current.getId(), current);
+            for (AdaClass current: classes) {
+                if (current.getParentClassId() != null)
+                    current.setParentClass(mapClasses.get(current.getParentClassId()));
+            }
+            return classes;
         }
         catch (IOException io) {
             throw new AdaClassNotFoundException();
@@ -281,7 +291,7 @@ public class Domain {
      */
     public AddOn addAddOn(AddOn definition) throws AddOnNotCreatedException{
         try {
-            HttpUtils.doPost(baseUrl + "/addon", definition.toJson(), user, password);
+            doPost(baseUrl + "/addon", definition.toJson());
             return definition;
         }
         catch (IOException io) {
@@ -298,7 +308,7 @@ public class Domain {
      */
     public void updateAddOn(AddOn definition) throws AddOnNotUpdatedException, InsufficientRightsException {
         try {
-            InputStream is = HttpUtils.doPut(baseUrl + "/addon", definition.toJson(), user, password);
+            InputStream is = doPut(baseUrl + "/addon", definition.toJson());
         }
         catch (IOException io) {
             io.printStackTrace();
@@ -399,7 +409,7 @@ public class Domain {
 
     public InputStream getContent(Store store, String docid) {
         try {
-            return HttpUtils.doGet(baseUrl + "/store/" + store.getId() + "/object/" + docid + "/content/current", user, password);
+            return doGet(baseUrl + "/store/" + store.getId() + "/object/" + docid + "/content/current");
         }
         catch (IOException io) {
 
@@ -409,7 +419,7 @@ public class Domain {
 
     public boolean checkout(Store store, String docid) {
         try {
-            HttpUtils.doGet(baseUrl + "/store/" + store.getId() + "/object/" + docid + "/checkout", user, password);
+            doGet(baseUrl + "/store/" + store.getId() + "/object/" + docid + "/checkout");
             return true;
         }
         catch (IOException io) {
@@ -431,7 +441,7 @@ public class Domain {
 
     public boolean checkin(String storeid, String objectid, Content content) {
         try {
-            HttpUtils.doPost(baseUrl + "/store/" + storeid + "/object/" + objectid + "/checkin", content.toJson(), user, password);
+            doPost(baseUrl + "/store/" + storeid + "/object/" + objectid + "/checkin", content.toJson());
             return true;
         }
         catch (IOException io) {
@@ -511,6 +521,7 @@ public class Domain {
         try {
             InputStream is = doGet(baseUrl + "/identityprovider/" + idp.getId() + "/user/search/" + search);
             String userJson = StreamUtils.streamToString(is);
+            System.out.println(userJson);
             return mapper.readValue(userJson, User[].class);
         }
         catch (IOException io) {
@@ -548,5 +559,29 @@ public class Domain {
             err.printStackTrace();
         }
 
+    }
+
+    public User getUser(IdentityProvider idp, String userid) throws UserNotFoundException {
+        try {
+            User user = null;
+            if (userCache.containsKey(idp.getId())) {
+                Map <String, User> idpUsers = userCache.get(idp.getId());
+                if (userCache.containsKey(userid))
+                    user = idpUsers.get(userid);
+            }
+            if (user != null)
+                return user;
+            else {
+                User result = mapper.readValue(doGet(baseUrl + "/identityprovider/" + idp.getId() + "/user/" + userid), User.class);
+                result.setIdentityProvider(idp);
+                if (!userCache.containsKey(idp.getId()))
+                    userCache.put(idp.getId(), new HashMap<String, User>());
+                userCache.get(idp.getId()).put(result.getId(), result);
+                return result;
+            }
+        }
+        catch (IOException err) {
+            throw new UserNotFoundException();
+        }
     }
 }

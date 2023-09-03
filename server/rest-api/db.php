@@ -39,4 +39,5 @@
         public function getIdentityProvider($id);
         public function searchInternalUsers($search);
         public function updateClass($id, $request);
+        public function getInternalUserById($id);
     }

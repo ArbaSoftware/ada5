@@ -127,7 +127,36 @@ public class TestClasses {
          */
 
         System.out.println(again.getId());
-        again.update();
+        //again.update();
+
+        again = store.getAdaClass(again.getId());
+        AdaClass updateClass = new AdaClass();
+        updateClass.setStore(again.getStore());
+        updateClass.setProperties(again.getProperties());
+        Property newProperty = new Property();
+        newProperty.setName("Toegevoegddoor");
+        newProperty.setType(PropertyType.STRING);
+        updateClass.addProperty(newProperty);
+        updateClass.setId(again.getId());
+        updateClass.setGrantedrights(again.getGrantedRights().toArray(new GrantedRight[0]));
+        updateClass.update();
+
+    }
+
+    @Test
+    public void test_parent_class() throws Exception {
+        Store cmis = store.getDomain().getStore("cmis");
+        cmis.getClasses();
+        AdaClass parentclass = cmis.getAdaClass("3b997608-085f-11ee-905d-98f2b3f20cf4");
+        //{"name" : "Vergaderdossier", "documentclass": false,"folderclass": true,"parentclass": "3b997608-085f-11ee-905d-98f2b3f20cf4","rights":[],"properties":[]}
+        AdaClass newClass = new AdaClass();
+        newClass.setParentClass(parentclass);
+        newClass.setName("Vergaderdossier");
+        newClass.setFolderClass(true);
+        System.out.println(newClass.toJson());
+        cmis.addClass(newClass);
+
+
     }
 
 }

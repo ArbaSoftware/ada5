@@ -52,4 +52,13 @@ public class TestFolders {
         Folder[] subfolders2 = rootFolder.getSubFolders();
     }
 
+    @Test
+    public void cmis() throws Exception {
+        Store cmis = domain.getStore("cmis");
+        //Folder[] root = cmis.getRootFolders();
+        Folder parent = Folder.create(cmis.getObject("792b8acf-48f0-11ee-915b-98f2b3f20cf4"));
+        Folder[] subfolders = parent.getSubFolders();
+        System.out.println(subfolders.length);
+    }
+
 }

@@ -11,9 +11,11 @@ import java.util.stream.Collectors;
 public class Search {
     private ArrayList<PropertyFilter> filters;
     private AdaClass searchClass;
+    private ArrayList <String> propertyNames;
 
     private Search(AdaClass searchclass) {
         this.searchClass = searchclass;
+        propertyNames = new ArrayList<>();
         filters = new ArrayList<>();
     }
 
@@ -37,6 +39,11 @@ public class Search {
         return this;
     }
 
+    public Search addProperty(String property) {
+        propertyNames.add(property);
+        return this;
+    }
+
     /**
      * Get the json representation of the search
      * @return The json representation of the search
@@ -44,7 +51,7 @@ public class Search {
     public String toJson() {
         return "{\"class\":\"" + searchClass.getName() + "\",\"filters\":[" +
                 filters.stream().map(f -> f.toJson()).collect(Collectors.joining(",")) +
-                "]}";
+                "],\"properties\":[" + propertyNames.stream().map(p -> "\""+ p + "\"").collect(Collectors.joining(",")) + "]}";
     }
 
 

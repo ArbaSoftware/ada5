@@ -48,6 +48,7 @@ public class RightsTable extends TableView {
             @Override
             public ObservableValue call(TableColumn.CellDataFeatures<GrantedRight, String> cellDataFeatures) {
                 GrantedRight right = (GrantedRight) cellDataFeatures.getValue();
+                //System.out.println("Right: " + right.getGrantee());
                 if (right.getGrantee() == null) {
                     return new SimpleStringProperty("?");
                 }
@@ -157,8 +158,7 @@ public class RightsTable extends TableView {
         this.setOnContextMenuRequested(new EventHandler<ContextMenuEvent>() {
             @Override
             public void handle(ContextMenuEvent e) {
-                System.out.println("Target item: "+ selectedRow.itemProperty());
-                if (selectedRow.itemProperty().getValue() == null)
+                if (selectedRow == null || selectedRow.itemProperty().getValue() == null)
                     cmAdd.show((Node) e.getSource(), e.getScreenX(), e.getScreenY());
                 else {
                     toEdit = (GrantedRight) selectedRow.getItem();
