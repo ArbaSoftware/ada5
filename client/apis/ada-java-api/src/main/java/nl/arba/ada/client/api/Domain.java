@@ -350,6 +350,34 @@ public class Domain {
             InputStream is = doGet(baseUrl + "/store/" + store.getId() + "/object/" + id);
             jsonresponse = StreamUtils.streamToString(is);
             AdaObject result = mapper.readValue(jsonresponse, AdaObject.class);
+            for (GrantedRight r: result.getRights()) {
+                if (r.getGranteetype().equals("special")) {
+                    if (r.getGranteeId() == null && r.getGrantee() != null && r.getGrantee().getId().equalsIgnoreCase("everyone"))
+                        r.setGrantee(Everyone.create());
+                }
+                else if (r.getGranteetype().equals("user")) {
+                    try {
+                        IdentityProvider idp = this.getIdentityProvider(r.getIdentityProviderId());
+                        r.setGrantee(getUser(idp, r.getGranteeId()));
+                    }
+                    catch (Exception err) {
+                        System.out.println("User right: " + err.getMessage());
+                        err.printStackTrace();
+                    }
+                }
+                else if (r.getGranteetype().equals("role")) {
+                    try {
+                        IdentityProvider idp = this.getIdentityProvider(r.getIdentityProviderId());
+                        Role role = new Role();
+                        role.setId(r.getGranteeId());
+                        role.setIdentityProvider(idp);
+                        r.setGrantee(role);
+                    }
+                    catch (Exception err) {
+                        err.printStackTrace();
+                    }
+                }
+            }
             result.setStore(store);
             return result;
         }

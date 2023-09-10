@@ -376,6 +376,8 @@
                 exit;
             }
         }
+        else if (sizeof($urlparts) == 6 && $urlparts[2] == 'store' && $urlparts[4] == 'object') {
+        }
         else {
             print_r($urlparts);
             sendState(404, "");

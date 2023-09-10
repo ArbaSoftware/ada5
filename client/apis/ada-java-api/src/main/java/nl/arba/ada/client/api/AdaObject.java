@@ -79,7 +79,7 @@ public class AdaObject {
                 else if (prop.getType().equals(PropertyType.DATE)) {
                     Calendar calendarValue = Calendar.getInstance();
                     calendarValue.setTime((Date) prop.getValue());
-                    json += prefix + "{\"day\":" + calendarValue.get(Calendar.DAY_OF_MONTH) + ",\"month\":" + (calendarValue.get(Calendar.MONTH)+1) + ",\"year\":" + calendarValue.get(Calendar.YEAR) + "}";
+                    json += prefix + "\"" + prop.getName() + "\":{\"day\":" + calendarValue.get(Calendar.DAY_OF_MONTH) + ",\"month\":" + (calendarValue.get(Calendar.MONTH)+1) + ",\"year\":" + calendarValue.get(Calendar.YEAR) + "}";
                     prefix = ",";
                 }
                 else if (prop.getType().equals(PropertyType.OBJECT)) {

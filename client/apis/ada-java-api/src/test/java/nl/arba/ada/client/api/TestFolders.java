@@ -59,6 +59,14 @@ public class TestFolders {
         Folder parent = Folder.create(cmis.getObject("792b8acf-48f0-11ee-915b-98f2b3f20cf4"));
         Folder[] subfolders = parent.getSubFolders();
         System.out.println(subfolders.length);
+
+        AdaClass vdclass = cmis.getAdaClass("c70d7912-48d0-11ee-915b-98f2b3f20cf4");
+        AdaObject vergaderdossier = new AdaObject();
+        vergaderdossier.setClassid(vdclass.getId());
+        vergaderdossier.setStringProperty("Name", "Vergaderdossier");
+        vergaderdossier.setObjectProperty("ParentFolder", parent.getId());
+        System.out.println(vergaderdossier.createAddRequest());
+        cmis.createObject(vergaderdossier);
     }
 
 }

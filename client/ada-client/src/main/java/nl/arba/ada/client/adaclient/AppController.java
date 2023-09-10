@@ -196,6 +196,7 @@ public class AppController implements Initializable {
             propertiesDialog.showAndWait();
 
             if (propertiesDialog.getResult().equals(ok)) {
+                System.out.println(controller.getUpdateRequest());
             }
         }
         catch (Exception err) {

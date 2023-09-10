@@ -556,13 +556,24 @@
                                     $newClass->setParentClass($row->parentclassid);
                                 }
 
-                                $props = $conn->query("select id, name, `type`, required, multiple from classproperties where classid = '" . $classid . "'");
-                                if ($props) {
-                                    while ($prop = $props->fetch_object()) {
-                                        $newProp = new Property($prop->id, $prop->name, $prop->type);
-                                        $newProp->setMultiple($prop->multiple == 1);
-                                        $newProp->setRequired($prop->required == 1);
-                                        $newClass->addProperty($newProp);
+                                $currentId = $classid;
+                                while (!is_null($currentId)) {
+                                    $props = $conn->query("select id, name, `type`, required, multiple from classproperties where classid = '" . $currentId . "'");
+                                    if ($props) {
+                                        while ($prop = $props->fetch_object()) {
+                                            $newProp = new Property($prop->id, $prop->name, $prop->type);
+                                            $newProp->setMultiple($prop->multiple == 1);
+                                            $newProp->setRequired($prop->required == 1);
+                                            $newClass->addProperty($newProp);
+                                        }
+                                    }
+                                    $parentClassRow = $conn->query("select parentclassid from classes where id = '" . $currentId . "'");
+                                    if ($parentClassRow && $parentClassRow->num_rows == 1) {
+                                        $parentRow = $parentClassRow->fetch_object();
+                                        $currentId = $parentRow->parentclassid;
+                                    }
+                                    else {
+                                        $currentId = NULL;
                                     }
                                 }
 
@@ -727,47 +738,69 @@
                 $succeeded = $conn->query("insert into objects (id, classid, storeid, creator, creatoridentityproviderid) values ('" . $id . "','" . $class->getId() . "','" . $storeid . "','" . $this->userId . "','" . $this->identityProviderId . "')");
                 if ($succeeded) {
                     if (gettype($request->rights) == "NULL" or sizeof($request->rights) == 0) {
-                        $succeeded = $conn->query("insert into objectrights (granteeid, identityproviderid, objectid, level, weight) values ('" . $this->userId . "','" . $this->identityProviderId . "','". $id . "',(select sum(level) from rights where objectright = 1), 1)");
+                        $succeeded = $conn->query("insert into objectrights (granteeid, granteetype, identityproviderid, objectid, level, weight) values ('" . $this->userId . "','user','" . $this->identityProviderId . "','". $id . "',(select sum(level) from rights where objectright = 1), 1)");
                     }
                     else {
                         foreach($request->rights as $right) {
                             if ($succeeded) {
                                 if ($right->grantee == 'everyone') 
-                                    $succeeded = $conn->query("insert into objectrights (granteeid, objectid, level, weight) values ('everyone', '" . $id . "'," . $right->level . ",0)");
+                                    $succeeded = $conn->query("insert into objectrights (granteeid, granteetype, objectid, level, weight) values ('everyone', 'user', '" . $id . "'," . $right->level . ",0)");
                                 else {
-                                    $succeeded = $conn->query("insert into objectrights (granteeid, identityproviderid, objectid, level, weight) values ('" . $right->grantee . "','" . $right->identityprovider . "','" . $id . "'," . $right->level . ",0)");
+                                    $succeeded = $conn->query("insert into objectrights (granteeid, granteetype, identityproviderid, objectid, level, weight) values ('" . $right->grantee . "','" . $right->granteetype . "','" . $right->identityprovider . "','" . $id . "'," . $right->level . ",0)");
                                 }
                             }
                         }
                     }
                     if ($succeeded) {
                         if (gettype($request->properties) == 'object') {
+                            //Collect all properties
+                            $currentId = $class->getId();
+                            $propertyDefs = [];
+                            while (!is_null($currentId)) {
+                                $propNames = $conn->query("select name from classproperties where classid = '" . $currentId . "'");
+                                if ($propNames) {
+                                    while ($propDef = $propNames->fetch_object()) {
+                                        $propertyDefs[$propDef->name] = $currentId;
+                                    }
+                                }
+                                $parentRow = $conn->query("select parentclassid from classes where id = '" . $currentId . "'");
+                                if ($parentRow) {
+                                    $parent = $parentRow->fetch_object();
+                                    $currentId = $parent->parentclassid;
+                                }
+                            }
                             $propertyNames = array_keys( get_object_vars($request->properties));
                             foreach($propertyNames as $property) {
-                                $propertyProps = $conn->query("select id, type from classproperties where classid = '" . $class->getId() . "' and name ='" . $property . "'");
-                                if ($propertyProps->num_rows == 1) {
-                                    $props = $propertyProps->fetch_object();
-                                    $type = $props->type;
-                                    $propid = $props->id;
-                                    if ($type == 'string') {
-                                        $succeeded = $conn->query("insert into objectproperties (objectid,propertyid,string_value) values ('" . $id . "','" . $propid . "','" . $request->properties->$property . "')");
-                                    }
-                                    else if ($type == 'date') {
-                                        $succeeded = $conn->query("insert into objectproperties (objectid,propertyid, date_value) values('" . $id . "','" . $propid . "','" . $request->properties->$property->year . '-' . $request->properties->$property->month . '-' . $request->properties->$property->day . "')");
-                                    }
-                                    else if ($type == 'object') {
-                                        $checkObject = $conn->query("select count(*) count from objects where id = '" . $request->properties->$property . "' and storeid = '" . $storeid . "'");
-                                        if ($checkObject->fetch_object()->count == 1) {
+                                if (array_key_exists($property, $propertyDefs)) {
+                                    $propertyProps = $conn->query("select id, type from classproperties where classid = '" . $propertyDefs[$property] . "' and name ='" . $property . "'");
+                                    if ( $propertyProps->num_rows == 1) {
+                                        $props = $propertyProps->fetch_object();
+                                        $type = $props->type;
+                                        $propid = $props->id;
+                                        if ($type == 'string') {
                                             $succeeded = $conn->query("insert into objectproperties (objectid,propertyid,string_value) values ('" . $id . "','" . $propid . "','" . $request->properties->$property . "')");
+                                        }
+                                        else if ($type == 'date') {
+                                            $succeeded = $conn->query("insert into objectproperties (objectid,propertyid, date_value) values('" . $id . "','" . $propid . "','" . $request->properties->$property->year . '-' . $request->properties->$property->month . '-' . $request->properties->$property->day . "')");
+                                        }
+                                        else if ($type == 'object') {
+                                            $checkObject = $conn->query("select count(*) count from objects where id = '" . $request->properties->$property . "' and storeid = '" . $storeid . "'");
+                                            if ($checkObject->fetch_object()->count == 1) {
+                                                $succeeded = $conn->query("insert into objectproperties (objectid,propertyid,string_value) values ('" . $id . "','" . $propid . "','" . $request->properties->$property . "')");
+                                            }
+                                            else {
+                                                $succeeded = false;
+                                                $detailErrorMessage = "Invalid valid for property '" . $property . "'";
+                                            }
                                         }
                                         else {
                                             $succeeded = false;
-                                            $detailErrorMessage = "Invalid valid for property '" . $property . "'";
+                                            $detailErrorMessage = "Unsupported property type (" . $type . ")";
                                         }
                                     }
                                     else {
                                         $succeeded = false;
-                                        $detailErrorMessage = "Unsupported property type (" . $type . ")";
+                                        $detailErrorMessage = "Unknown property (" . $property . ")";
                                     }
                                 }
                                 else {
@@ -854,7 +887,20 @@
                                     else
                                         $newObject->setContent($row->majorversion, $row->minorversion, $row->mimetype, true, $row->userid, $row->identityproviderid);
                                 }
-                                return $newObject;
+                                //Rights
+                                $rights = $conn->query("select r.id, r.granteeid, r.granteetype, r.identityproviderid, r.level, r.weight, idp.type, u.id userid, u.email, u.firstname, u.lastname from objectrights r left outer join identityproviders idp on idp.id = r.identityproviderid left outer join users u on u.id = r.granteeid where r.objectid = '" . $newObject->getId() . "'");
+                                if ($rights) {
+                                    while ($grantedright = $rights->fetch_object()) {
+                                        $newRight = new GrantedRight($grantedright->granteeid, $grantedright->granteetype, $grantedright->identityproviderid, $grantedright->level, $grantedright->weight);
+                                        if ($right->type == 'internal') {
+                                            $newRight->setUser(new User($grantedright->userid, $grantedright->email, $grantedright->firstname, $right->grantedlastname, $grantedright->identityproviderid));
+                                        }
+                                        $newObject->addRight($newRight);
+                                    }
+                                    return $newObject;
+                                }
+                                else
+                                    return false;
                             }
                             else
                                 return false;

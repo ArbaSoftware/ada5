@@ -48,7 +48,7 @@ public class RightsTable extends TableView {
             @Override
             public ObservableValue call(TableColumn.CellDataFeatures<GrantedRight, String> cellDataFeatures) {
                 GrantedRight right = (GrantedRight) cellDataFeatures.getValue();
-                //System.out.println("Right: " + right.getGrantee());
+                System.out.println("Right: " + right.getGrantee());
                 if (right.getGrantee() == null) {
                     return new SimpleStringProperty("?");
                 }

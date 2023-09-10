@@ -99,6 +99,7 @@ public class HttpUtils {
             return response.getStream();
         }
         else {
+            System.out.println(StreamUtils.streamToString(response.getStream()));
             throw new IOException("Error on executing post (" + response.getCode() + ")");
         }
     }

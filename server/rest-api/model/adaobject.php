@@ -4,11 +4,13 @@
         private $classid;
         private $properties;
         private $content;
+        private $rights;
 
         public function __construct($id, $classid) {
             $this->id = $id;
             $this->classid = $classid;
             $this->properties = [];
+            $this->rights = [];
             $this->content = null;
         }
 
@@ -36,6 +38,13 @@
                     $json .= ",\"value\":\"" . $property['value'] . "\"}";
                 }
                 $prefix = ",";
+            }
+            $json .= "],";
+            $json .= "\"rights\":[";
+            $first = TRUE;
+            foreach ($this->rights as $right) {
+                $json .= ($first ? "" : ",") . $right->toJson();
+                $first = FALSE;
             }
             $json .= "]";
             if (!is_null($this->content)) {
@@ -65,6 +74,10 @@
             $this->content["checkedout"] = $checkedout;
             $this->content['checkedoutuser'] = $checkoutuser;
             $this->content['checkedoutidentityproviderid'] = $checkoutidentityproviderid;
+        }
+
+        public function addRight($right) {
+            $this->rights[sizeof($this->rights)] = $right;
         }
 
     }
