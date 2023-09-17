@@ -62,6 +62,31 @@
             }
         }
 
+        public function canGetStore($id) {
+            try {
+                $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
+                $storeresult = $conn->query("select s.id, s.name, s.datecreated, s.creator, s.creatoridentityproviderid, s.lastmodifier, s.lastmodifieddate, s.lastmodifieridentityproviderid, gr.level from stores s inner join grantedrights gr on s.id = gr.targetid where (s.id='" . $id . "' or s.name='" . $id . "') and (gr.granteeid = 'everyone' or (gr.granteeid = '" . $this->userId . "' and gr.identityproviderid='" . $this->identityProviderId . "')) and gr.targettype='store' order by gr.weight asc limit 1");
+                if ($storeresult) {
+                    if ($row = $storeresult->fetch_object()) {
+                        $readRight = $conn->query("select level from rights where systemright='read'");
+                        if ($right = $readRight->fetch_object()) {
+                            return TRUE;
+                        }
+                        else {
+                            return FALSE;
+                        }
+                    }
+                    else
+                        return FALSE;
+                }
+                else
+                    return FALSE;
+            }
+            finally {
+                $conn->close();
+            }
+        }
+
         public function getStore($id) {
             try {
                 $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
@@ -857,6 +882,21 @@
             }
        }
 
+       public function getObjectClassId($objectid) {
+        try {
+            $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
+            $idquery = $conn->query("select classid from objects where id = '" . $objectid . "'");
+            if ($idquery) {
+                return $idquery->fetch_object()->classid;
+            }
+            else
+                return NULL;
+        }
+        finally {
+            $conn->close();
+        }
+       }
+
        public function getObject($storeidorname, $objectid) {
         try {
             $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
@@ -1447,5 +1487,136 @@
         $conn->close();
     }
    }
+
+   public function canEditObject($objectid) {
+    try {
+        $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
+        $results = $conn->query("select level from objectrights where (granteeid = 'everyone' or (granteeid = '" . $this->userId . "' and identityproviderid = '" . $this->identityProviderId . "')) and objectid='" . $objectid . "' order by weight desc limit 1");
+        if ($results->num_rows == 0)
+            return false;
+        else {
+            $rights = $conn->query("select level from rights where systemright='Update'");
+            if ($rights->num_rows == 1) {
+                return intval($rights->fetch_object()->level) & intval($results->fetch_object()->level);
+            }
+            else
+                return false;
+        }
+    }
+    finally {
+        $conn->close();
+    }
+   }
+
+   public function updateObject($id, $request) {
+    try {
+        $conn= mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
+
+        $conn->begin_transaction();
+        $succeeded = true;
+
+        //Update rights
+        if ($conn->query("delete from objectrights where objectid = '" . $id . "'")) {
+            foreach($request->rights as $right) {
+                if ($conn->query("insert into objectrights (objectid, granteeid, granteetype, identityproviderid, level, weight) values ('" . $id . "','" . $right->grantee . "','" . $right->granteetype . "','" . $right->identityprovider . "'," . $right->level . "," . $this->getGranteeTypeWeigth($right->type) . ")")) {
+                    //
+                }
+                else {
+                    $succeeded = FALSE;
+                }
+            }
+        }
+        else {
+            $succeeded = false;
+        }
+
+        //Update properties
+        $foundPropIds = [];
+        $foundPropNames = [];
+        $existingproperties = $conn->query("select op.propertyid, cp.name from objectproperties op inner join classproperties cp on op.propertyid = cp.id where op.objectid = '" . $id . "'");
+        while ($prop = $existingproperties->fetch_object()) {
+            $foundPropIds[sizeof($foundPropIds)] = $prop->propertyid;
+            $foundPropNames[sizeof($foundPropNames)] = $prop->name;
+        }
+        $handledPropertyIds = [];
+        foreach ($request->properties as $property) {
+            if (isset($property->id)) {
+                $propertyId = $property->id;
+            }
+            else {
+                $propertyId = $foundPropIds[array_search($property->name, $foundPropNames)];
+            }
+            if (in_array($propertyId, $foundPropIds)) {
+                if ($property->type == 'string' || $property->type == 'object') {
+                    if ($conn->query("update objectproperties set string_value = '" . $conn->real_escape_string($property->value) . "' where objectid = '" . $id . "' and propertyid = '" . $propertyId . "'")) {
+                        //
+                    }
+                    else {
+                        $succeeded = FALSE;
+                    }
+                }
+                else if ($property->type == 'date') {
+                    if ($conn->query("update objectproperties set date_value = date('" . $property->value->year . '-' . $property->value->month . '-' . $property->value->day . "') where objectid = '" . $id . "' and propertyid = '" . $propertyId . "'")) {
+                        //
+                    }
+                    else {
+                        $succeeded = FALSE;
+                    }
+                }
+            }
+            else {
+                if ($property->type == 'string' || $property->type == 'object') {
+                    if ($conn->query("insert into objectproperties (objectid, propertyid, string_value) values ('" . $id . "','" . $propertyId . "','" . $conn->real_escape_string($property->value) . "'")) {
+                        //
+                    }
+                    else {
+                        $succeeded = FALSE;
+                    }
+                }
+                else if ($property->type == 'date') {
+                    if ($conn->query("insert into objectproperties (objectid, propertyid, date_value) values ('" . $id . "','" . $propertyId . "',date('" . $property->value->year . '-' . $property->value->month . '-' . $property->value->day . "')")) {
+                        //
+                    }
+                    else {
+                        $succeeded = FALSE;
+                    }
+                }
+            }
+            $handledPropertyIds[sizeof($handledPropertyIds)] = $propertyId;
+        }
+        $deleteQuery = "delete from objectproperties where objectid = '" . $id . "' and propertyid not in (";
+        $first = TRUE;
+        foreach($handledPropertyIds as $handledId) {
+            $deleteQuery .= ($first ? "" : ",") . "'" . $handledId . "'";
+            $first = FALSE;
+        }
+        $deleteQuery .= ")";
+        Logger::log("Update object: " . $deleteQuery);
+        if ($conn->query($deleteQuery)) {
+            //
+        }
+        else {
+            $succeeded = FALSE;
+        }
+
+
+        if ($succeeded) {
+            $conn->commit();
+            return true;
+        }
+        else {
+            $conn->rollback();
+            return false;
+        }
+    }
+    catch (Exception $err) {
+        $conn->rollback();
+        return false;
+    }
+    finally {
+        $conn->close();
+    }
+   }
+
 
 }

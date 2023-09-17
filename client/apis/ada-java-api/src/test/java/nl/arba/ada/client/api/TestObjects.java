@@ -39,16 +39,41 @@ public class TestObjects {
 
     @Test
     public void doTest() throws Exception {
+        AdaClass[] classes = store.getClasses();
         AdaObject newObject = new AdaObject();
         newObject.setClassid(folder.getId());
         newObject.setStringProperty("Name", "Eerste folder");
         newObject = domain.addObject(store, newObject);
 
+        newObject.setStringProperty("Name", "Allereerste folder");
+        AdaObject refreshed = newObject.update();
+
+
+        System.out.println(refreshed.getStringProperty("Name"));
+
+        /*
+
+        AdaClass clazz = new AdaClass();
+        clazz.setName("Vergaderdossier");
+        clazz.addProperty(Property.create("Vergaderdatum", PropertyType.DATE));
+        System.out.println(clazz.toJson());
+        AdaClass refreshedClass = store.addClass(clazz);
+
+        newObject = new AdaObject();
+        newObject.setClassid(refreshedClass.getId());
+        newObject.setDateProperty("Vergaderdatum", new java.util.Date());
+        newObject = domain.addObject(store, newObject);
+        System.out.println(newObject.getDateProperty("Vergaderdatum"));
+        */
+
+
+        /*
         AdaObject childFolder = new AdaObject();
         childFolder.setClassid(folder.getId());
         childFolder.setStringProperty("Name", "Subfolder");
         childFolder.setObjectProperty("ParentFolder", newObject.getId());
         childFolder = domain.addObject(store, childFolder);
+         */
     }
 
 }

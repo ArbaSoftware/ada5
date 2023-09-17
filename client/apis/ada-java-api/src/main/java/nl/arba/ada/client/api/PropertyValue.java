@@ -2,6 +2,10 @@ package nl.arba.ada.client.api;
 
 import nl.arba.ada.client.api.exceptions.InvalidPropertyTypeException;
 
+import java.util.Calendar;
+import java.util.Date;
+import java.util.Map;
+
 /**
  * Class that holds a property value
  */
@@ -76,7 +80,16 @@ public class PropertyValue {
      * @param value The value of the property
      */
     public void setValue(Object value) {
-        this.value = value;
+        if (value instanceof Map) {
+            Map <String, Integer> dateInput = (Map <String, Integer>) value;
+            Calendar c = Calendar.getInstance();
+            c.set(Calendar.DATE, dateInput.get("day"));
+            c.set(Calendar.MONTH, dateInput.get("month")-1);
+            c.set(Calendar.YEAR, dateInput.get("year"));
+            this.value = c.getTime();
+        }
+        else
+            this.value = value;
     }
 
     /**
@@ -85,5 +98,39 @@ public class PropertyValue {
      */
     public Object getValue() {
         return value;
+    }
+
+    public String toJson() {
+        String json = "{";
+        String prefix = "";
+        if (getId() != null) {
+            json += "\"id\":\"" + getId() + "\"";
+            prefix = ",";
+        }
+        if (getName() != null) {
+            json += prefix + "\"name\":\"" + getName() + "\"";
+            prefix = ",";
+        }
+        json += prefix + "\"type\":\"" + getType().toString() + "\"";
+        prefix = ",";
+        if (getValue() != null) {
+            json += prefix + "\"value\":";
+            if (getType().equals(PropertyType.STRING))
+                json += "\"" + getValue() + "\"";
+            else if (getType().equals(PropertyType.DATE)) {
+                Map<String,Integer> dateValue = (Map<String,Integer>) getValue();
+                json += "{\"day\":" + dateValue.get("day") + ",";
+                json += "\"month\":" + dateValue.get("month") + ",";
+                json += "\"year\":" + dateValue.get("year");
+                json += "}";
+            }
+            else if (getType().equals(PropertyType.OBJECT)) {
+                json += "\""+ getValue() + "\"";
+            }
+            else if (getType().equals(PropertyType.INTEGER))
+                json += getValue();
+        }
+        json += "}";
+        return json;
     }
 }

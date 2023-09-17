@@ -172,21 +172,12 @@ public class AdaClass {
             "\"folderclass\": " + folderClass + "," +
             (getParentClass() == null ? "": ("\"parentclass\": \"" + getParentClass().getId() + "\",")) +
             "\"rights\":[" +
-                rights.stream().map(r -> rightToJson(r)).collect(Collectors.joining(",")) +
+                rights.stream().map(r -> r.toJson()).collect(Collectors.joining(",")) +
             "]," +
             "\"properties\":[" +
                 properties.stream().map(p ->p.toJson()).collect(Collectors.joining(",")) +
             "]" +
             "}";
-    }
-
-    private String rightToJson(GrantedRight right) {
-        return "{" +
-                "\"grantee\":\"" + right.getGrantee().getId() + "\"," +
-                (right.getGrantee().getIdentityProvider() == null ? "\"identityprovider\":\"" + right.getIdentityProviderId() + "\"," : "\"identityprovider\":\"" + right.getGrantee().getIdentityProvider().getId() + "\",") +
-                "\"granteetype\":\"" + right.getGranteetype() + "\"," +
-                "\"level\":" + right.getLevel() +
-                "}";
     }
 
     /**

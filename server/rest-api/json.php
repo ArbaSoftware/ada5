@@ -25,7 +25,7 @@
                             return $validationErrors;
                     }
                     else {
-                        $errors[sizeof($errors)] = 'Invalid schema';
+                        $errors[sizeof($errors)] = 'Invalid schema (' . $schema . ')';
                     }
                 }
             }
@@ -33,6 +33,9 @@
         }
 
         private static function validateObject($object, $schema, $allschemas) {
+            if (gettype($object) == 'array') {
+                debug_print_backtrace();
+            }
             $errors = [];
             $objectProperties = get_object_vars($object);
             $schemaProperties = get_object_vars($schema);

@@ -139,4 +139,13 @@ public class GrantedRight {
     public User getUser() {
         return user;
     }
+
+    public String toJson() {
+        return "{" +
+                "\"grantee\":\"" + getGrantee().getId() + "\"," +
+                (getGrantee().getIdentityProvider() == null ? "\"identityprovider\":\"" + getIdentityProviderId() + "\"," : "\"identityprovider\":\"" + getGrantee().getIdentityProvider().getId() + "\",") +
+                "\"granteetype\":\"" + getGranteetype() + "\"," +
+                "\"level\":" + getLevel() +
+                "}";
+    }
 }

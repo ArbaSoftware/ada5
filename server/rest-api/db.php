@@ -40,4 +40,6 @@
         public function searchInternalUsers($search);
         public function updateClass($id, $request);
         public function getInternalUserById($id);
+        public function canEditObject($objectid);
+        public function updateObject($objectid, $request);
     }

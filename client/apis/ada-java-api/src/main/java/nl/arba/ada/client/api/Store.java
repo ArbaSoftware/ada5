@@ -235,4 +235,8 @@ public class Store {
     public String getLastmodifierIdentityProviderId() {
         return this.lastmodifierIdentityProviderId;
     }
+
+    public AdaObject updateObject(AdaObject toupdate) throws AdaObjectNotUpdatedException, InsufficientRightsException, LostRightsException {
+        return getDomain().updateObject(toupdate);
+    }
 }

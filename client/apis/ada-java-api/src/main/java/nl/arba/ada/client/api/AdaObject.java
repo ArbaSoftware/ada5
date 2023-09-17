@@ -1,14 +1,13 @@
 package nl.arba.ada.client.api;
 
-import nl.arba.ada.client.api.exceptions.IdentityProviderNotFoundException;
-import nl.arba.ada.client.api.exceptions.InvalidPropertyTypeException;
-import nl.arba.ada.client.api.exceptions.PropertyNotFoundException;
+import nl.arba.ada.client.api.exceptions.*;
 import nl.arba.ada.client.api.security.GrantedRight;
 import nl.arba.ada.client.api.security.IdentityProvider;
 import nl.arba.ada.client.api.security.User;
 
 import java.io.IOException;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * This class represents an object
@@ -183,6 +182,27 @@ public class AdaObject {
     }
 
     /**
+     * Get the value of a date property
+     * @param name The name of the property to get the value for
+     * @return The date value for the property
+     * @throws InvalidPropertyTypeException Throwed when the property has not the string type
+     * @throws PropertyNotFoundException Throwed when the property is not found in the collection
+     */
+    public Date getDateProperty(String name) throws InvalidPropertyTypeException, PropertyNotFoundException {
+        Optional<PropertyValue> existing = findProperty(name);
+        if (existing.isPresent()) {
+            PropertyValue value = existing.get();
+            if (value.getType().equals(PropertyType.DATE)) {
+                return (Date) value.getValue();
+            }
+            else
+                throw new InvalidPropertyTypeException("");
+        }
+        else
+            throw new PropertyNotFoundException();
+    }
+
+    /**
      * Sets the value for an object property
      * @param name The name of the property
      * @param objectid The value of the property (an objectid)
@@ -198,6 +218,25 @@ public class AdaObject {
             value.setValue(objectid);
             properties.add(value);
         }
+    }
+
+    public void setDateProperty(String name, Date datevalue) {
+        Optional <PropertyValue> optValue = findProperty(name);
+        if (optValue.isPresent())
+            optValue.get().setValue(datevalue);
+        else {
+            PropertyValue value = new PropertyValue();
+            value.setName(name);
+            value.setType(PropertyType.DATE);
+            value.setValue(datevalue);
+            properties.add(value);
+        }
+    }
+
+    public void setNullProperty(String name) {
+        Optional optValue = findProperty(name);
+        if (optValue.isPresent())
+            properties.remove(optValue.get());
     }
 
     /**
@@ -273,5 +312,18 @@ public class AdaObject {
         return checkoutUser;
     }
 
+    public AdaObject update() throws AdaObjectNotUpdatedException, InsufficientRightsException, LostRightsException {
+        return getStore().updateObject(this);
+    }
+
+    public String toJson() {
+        String json = "{\"id\":\"" + getId() + "\", \"classid\":\"" + this.getClassId() + "\",";
+        json += "\"properties\":[";
+        json += properties.stream().map(p -> p.toJson()).collect(Collectors.joining(","));
+        json += "], \"rights\":[";
+        json += getRights().stream().map(r -> r.toJson()).collect(Collectors.joining(","));
+        json += "]}";
+        return json;
+    }
 
 }

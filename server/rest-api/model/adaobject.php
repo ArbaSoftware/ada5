@@ -32,7 +32,7 @@
                 else if ($property['type'] == "date") {
                     $json .= ",\"value\":{\"day\":" . $property['value']['day'] . ",";
                     $json .= "\"month\":" . $property['value']['month'] . ",";
-                    $json .= "\"year\":" . $property['value']['year'] . "}";
+                    $json .= "\"year\":" . $property['value']['year'] . "}}";
                 }
                 else if ($property['type'] == "object") {
                     $json .= ",\"value\":\"" . $property['value'] . "\"}";

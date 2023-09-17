@@ -4,52 +4,37 @@
     include('model.php');
     include('logger.php');
     include('auth.php');
+    include('model/httprequest.php');
+    include('model/httpresponse.php');
     define('CHUNK_SIZE', 1024*1024);
 
-    $auth = new Auth();
-    if (!$user = $auth->isAuthorized()) {
-        Logger::log("Unauthorized request " + $_SERVER['REQUEST_URI']);
+    $request = new HttpRequest();
+    $handler = new StoreHandler($request);
+
+    if (!$request->isAuthorized()) {
         header("HTTP/1.1 401 Unauthorized");
         exit;
     }
 
-    $db = new MySql('192.168.2.74', 'ada', 'ada', 'ada5', $user->getId(), $user->getIdentifyProviderId());
+    $db = $handler->getDb(); //new MySql('192.168.2.74', 'ada', 'ada', 'ada5', $request->getUser()->getId(), $request->getUser()->getIdentifyProviderId());
+
+    if ($request->matches("GET", "/ada/store")) {
+        $handler->getStores();
+        exit;
+    }
+    else if ($request->matches("GET", "/ada/store/*")) {
+        $handler->getStore($request->getUrlPart(3));
+        exit;
+    }
+    else if ($request->matches("GET", "/ada/store/*/class")) {
+        $handler->getClasses($request->getUrlPart(3));
+        exit;
+    }
 
     $url = $_SERVER['REQUEST_URI'];
     $urlparts = explode('/', $url);
     if ($_SERVER['REQUEST_METHOD'] == 'GET') {
-        if ($url == '/ada/store') {
-            echo Store::toJsons($db->getStores());
-            exit;
-        }
-        else if (sizeof($urlparts) == 4 && substr($url, 0, strlen('/ada/store/')) == '/ada/store/') {
-            try {
-                $store = $db->getStore($urlparts[3]);
-                if ($store) {
-                    echo $store->toJson();
-                    exit;
-                }
-            }
-            catch (Exception $exception) {
-                header("HTTP/1.1 500 ". $exception->getMessage());
-                exit;
-            }
-        }
-        else if (sizeof($urlparts) == 5 && $urlparts[1] == 'ada' && $urlparts[2] == 'store' && $urlparts[4] == 'class') {
-            try {
-                $classes = $db->getClasses($urlparts[3]);
-                if (sizeof($classes) == 0)
-                    echo '[]';
-                else
-                    echo AdaClass::toJson($classes);
-                exit;
-            }
-            catch (Exception $exception) {
-                sendState(500, "");
-                exit;
-            }
-        }
-        else if (sizeof($urlparts) == 6 && $urlparts[1] == 'ada' && $urlparts[2] == 'store' && $urlparts[4] == 'class') {
+        if (sizeof($urlparts) == 6 && $urlparts[1] == 'ada' && $urlparts[2] == 'store' && $urlparts[4] == 'class') {
             Logger::log('Get class with id '. $urlparts[5]);
             try {
                 $class = $db->getClass($urlparts[3], $urlparts[5]);
@@ -377,6 +362,35 @@
             }
         }
         else if (sizeof($urlparts) == 6 && $urlparts[2] == 'store' && $urlparts[4] == 'object') {
+            $classId = $db->getObjectClassId($urlparts[5]);
+            $objectClass = $db->getClass($urlparts[3], $classId);
+            $request = file_get_contents('php://input');
+            $validationerrors = JsonUtils::validate($request, $objectClass->updateObjectSchema());
+            if ($validationerrors && gettype($validationerrors == 'boolean')) {
+                if ($db->canEditObject($urlparts[5])) {
+                    $jsonRequest = json_decode($request);
+                    if ($db->updateObject($urlparts[5], json_decode($request))) {
+                        sendState(200, 'OK');
+                    }
+                    else {
+                        sendState(500, "");
+                    }
+                }
+                else
+                    sendState(401, "Unsufficient rights");
+                exit;
+            }
+            else {
+                $errorJson = "{\"error\": \"Invalid request\", \"messages\": [";
+                $prefix = "";
+                foreach($errors as $error) {
+                    $errorJson .= $prefix . '"'. $error . '"';
+                    $prefix = ',';
+                }
+                $errorJson .= "]}";
+                sendState(500, $errorJson);
+                exit;
+            }
         }
         else {
             print_r($urlparts);
@@ -417,4 +431,54 @@
         }
     
         return $status;
-    }?>
+    }
+
+    class StoreHandler {
+        public function __construct($request) {
+            $this->db = new MySql('192.168.2.74', 'ada', 'ada', 'ada5', $request->getUser()->getId(), $request->getUser()->getIdentifyProviderId());
+        }
+
+        public function getDb() {
+            return $this->db;
+        }
+
+        public function getStores() {
+            try {
+                HttpResponse::createResponse(200, "text/json", Store::toJsons($this->db->getStores()))->expose();
+            }
+            catch (Exception $err) {
+                HttpResponse::createErrorResponse(500, $err->message)->expose();
+            }
+        }
+
+        public function getStore($id) {
+            try {
+                if ($this->db->canGetStore($id)) {
+                    $store = $this->db->getStore($id);
+                    if ($store) {
+                        HttpResponse::createResponse(200, "text/json", $store->toJson())->expose();
+                    }
+                    else {
+                        HttpResponse::createErrorResponse(404,"Store not found")->expose();
+                    }
+                }
+                else {
+                    HttpResponse::createErrorResponse(401,"Unsufficient rights")->expose();
+                }
+            }
+            catch (Exception $err) {
+                HttpResponse::createErrorResponse(500, $err->message)->expose();
+            }
+        }
+
+        public function getClasses($storeid) {
+            try {
+                $classes = $this->db->getClasses($storeid);
+                HttpResponse::createResponse(200, "text/json", sizeof($classes) == 0 ? "[]": AdaClass::toJson($classes))->expose();
+            }
+            catch (Exception $err) {
+                HttpResponse::createErrorResponse(500, $err->message)->expose();
+            }
+        }
+    }
+?>

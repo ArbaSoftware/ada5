@@ -64,7 +64,6 @@ public class Domain {
         Right[] rightz = mapper.readValue(doGet(baseUrl + "/security/right"), Right[].class);
         rights = new ArrayList<>();
         rights.addAll(Arrays.asList(rightz));
-        String result = StreamUtils.streamToString(doGet(baseUrl + "/store"));
         Store[] storez = mapper.readValue(doGet(baseUrl + "/store"), Store[].class);
         for (Store store: storez)
             store.setDomain(this);
@@ -586,8 +585,27 @@ public class Domain {
         catch (IOException err) {
             err.printStackTrace();
         }
-
     }
+
+    public AdaObject updateObject(AdaObject toupdate) throws AdaObjectNotUpdatedException, InsufficientRightsException, LostRightsException {
+        try {
+            System.out.println(toupdate.toJson());
+            InputStream is = doPut(baseUrl + "/store/" + toupdate.getStore().getId() + "/object/" + toupdate.getId(), toupdate.toJson());
+            System.out.println(StreamUtils.streamToString(is));
+            try {
+                AdaObject refreshed = getObject(toupdate.getStore(), toupdate.getId());
+                return refreshed;
+            }
+            catch (ObjectNotFoundException nfe) {
+                throw new LostRightsException();
+            }
+        }
+        catch (IOException err) {
+            err.printStackTrace();
+            throw new AdaObjectNotUpdatedException();
+        }
+    }
+
 
     public User getUser(IdentityProvider idp, String userid) throws UserNotFoundException {
         try {
