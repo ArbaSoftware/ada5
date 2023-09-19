@@ -566,63 +566,48 @@
         public function getClass($storeid, $classid) {
             try {
                 $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
-                $rows = $conn->query("select c.id, c.name, c.folderclass, c.contentclass, r.level, c.parentclassid from classes c inner join classrights r on c.id = r.classid where c.storeid = '" . $storeid . "' and (c.id = '" . $classid . "' or c.name = '" . $classid . "') and (r.granteeid = 'everyone' or (r.granteeid = '" . $this->userId . "' and r.identityproviderid = '" . $this->identityProviderId . "')) order by r.weight asc limit 1");
+                $rows = $conn->query("select id, name, folderclass, contentclass, parentclassid from classes where storeid = '" . $storeid . "' and (id = '" . $classid . "' or name = '" . $classid . "')");
                 if ($rows) {
                     $row = $rows->fetch_object();
-                    $classid = $row->id;
-                    $readRight = $conn->query("select level from rights where systemright='read'");
-                    if ($readRight) {
-                        if ($right = $readRight->fetch_object()) {
-                            if ((intval($row->level) & intval($right->level)) == intval($right->level)) {
-                                $newClass = new AdaClass($row->id, $row->name);
-                                $newClass->setIsFolderClass($row->folderclass == 1);
-                                $newClass->setIsDocumentClass($row->contentclass == 1);
-                                if (!is_null($row->parentclassid)) {
-                                    $newClass->setParentClass($row->parentclassid);
-                                }
+                    $newClass = new AdaClass($row->id, $row->name);
+                    $newClass->setIsFolderClass($row->folderclass == 1);
+                    $newClass->setIsDocumentClass($row->contentclass == 1);
+                    if (!is_null($row->parentclassid)) {
+                        $newClass->setParentClass($row->parentclassid);
+                    }
 
-                                $currentId = $classid;
-                                while (!is_null($currentId)) {
-                                    $props = $conn->query("select id, name, `type`, required, multiple from classproperties where classid = '" . $currentId . "'");
-                                    if ($props) {
-                                        while ($prop = $props->fetch_object()) {
-                                            $newProp = new Property($prop->id, $prop->name, $prop->type);
-                                            $newProp->setMultiple($prop->multiple == 1);
-                                            $newProp->setRequired($prop->required == 1);
-                                            $newClass->addProperty($newProp);
-                                        }
-                                    }
-                                    $parentClassRow = $conn->query("select parentclassid from classes where id = '" . $currentId . "'");
-                                    if ($parentClassRow && $parentClassRow->num_rows == 1) {
-                                        $parentRow = $parentClassRow->fetch_object();
-                                        $currentId = $parentRow->parentclassid;
-                                    }
-                                    else {
-                                        $currentId = NULL;
-                                    }
-                                }
-
-                                $rights = $conn->query("select r.id, r.granteeid, r.granteetype, r.identityproviderid, r.level, r.weight, idp.type, u.id userid, u.email, u.firstname, u.lastname from classrights r left outer join identityproviders idp on idp.id = r.identityproviderid left outer join users u on u.id = r.granteeid where r.classid = '" . $classid . "'");
-                                if ($rights) {
-                                    while ($right = $rights->fetch_object()) {
-                                        $newRight = new GrantedRight($right->granteeid, $right->granteetype, $right->identityproviderid, $right->level, $right->weight);
-                                        if ($right->type == 'internal') {
-                                            $newRight->setUser(new User($right->userid, $right->email, $right->firstname, $right->lastname, $right->identityproviderid));
-                                        }
-                                        $newClass->addRight($newRight);
-                                    }
-                                }
-                                return $newClass;
+                    $currentId = $classid;
+                    while (!is_null($currentId)) {
+                        $props = $conn->query("select id, name, `type`, required, multiple from classproperties where classid = '" . $currentId . "'");
+                        if ($props) {
+                            while ($prop = $props->fetch_object()) {
+                                $newProp = new Property($prop->id, $prop->name, $prop->type);
+                                $newProp->setMultiple($prop->multiple == 1);
+                                $newProp->setRequired($prop->required == 1);
+                                $newClass->addProperty($newProp);
                             }
-                            else
-                                return false;
+                        }
+                        $parentClassRow = $conn->query("select parentclassid from classes where id = '" . $currentId . "'");
+                        if ($parentClassRow && $parentClassRow->num_rows == 1) {
+                            $parentRow = $parentClassRow->fetch_object();
+                            $currentId = $parentRow->parentclassid;
                         }
                         else {
-                            return false;
+                            $currentId = NULL;
                         }
                     }
-                    else
-                        return false;
+
+                    $rights = $conn->query("select r.id, r.granteeid, r.granteetype, r.identityproviderid, r.level, r.weight, idp.type, u.id userid, u.email, u.firstname, u.lastname from classrights r left outer join identityproviders idp on idp.id = r.identityproviderid left outer join users u on u.id = r.granteeid where r.classid = '" . $classid . "'");
+                    if ($rights) {
+                        while ($right = $rights->fetch_object()) {
+                            $newRight = new GrantedRight($right->granteeid, $right->granteetype, $right->identityproviderid, $right->level, $right->weight);
+                            if ($right->type == 'internal') {
+                                $newRight->setUser(new User($right->userid, $right->email, $right->firstname, $right->lastname, $right->identityproviderid));
+                            }
+                            $newClass->addRight($newRight);
+                        }
+                    }
+                    return $newClass;
                 }
                 else
                     return false;
@@ -904,50 +889,37 @@
             if ($storesearchresult) {
                 $store = $storesearchresult->fetch_object();
                 $storeid = $store->id;
-                $rows = $conn->query("select o.id, o.classid, r.level, c.majorversion, c.minorversion, c.mimetype, co.userid, co.identityproviderid from objects o inner join objectrights r on o.id = r.objectid left outer join content c on c.objectid = o.id left outer join checkouts co on co.objectid = o.id where o.storeid = '" . $storeid . "' and o.id = '" . $objectid . "' and (r.granteeid = 'everyone' or (r.granteeid = '" . $this->userId . "' and r.identityproviderid = '" . $this->identityProviderId . "')) order by r.weight asc, c.majorversion desc, c.minorversion desc limit 1");
+                $rows = $conn->query("select o.id, o.classid, c.majorversion, c.minorversion, c.mimetype, co.userid, co.identityproviderid from objects o left outer join content c on c.objectid = o.id left outer join checkouts co on co.objectid = o.id where o.storeid = '" . $storeid . "' and o.id = '" . $objectid . "' order by c.majorversion desc, c.minorversion desc limit 1");
                 if ($rows) {
                     $row = $rows->fetch_object();
-                    $readRight = $conn->query("select level from rights where systemright='read'");
-                    if ($readRight) {
-                        if ($right = $readRight->fetch_object()) {
-                            if (intval($row->level) & intval($right->level)) {
-                                $newObject = new AdaObject($row->id, $row->classid);
-                                $propRows = $conn->query("select pd.id, pd.name, pd.type, p.string_value, p.date_value from objectproperties p inner join classproperties pd on p.propertyid = pd.id where p.objectid = '" . $objectid . "'");
-                                while ($propRow = $propRows->fetch_object()) {
-                                    if ($propRow->type == 'string')
-                                        $newObject->addProperty($propRow->id, $propRow->name, $propRow->type, $propRow->string_value);
-                                    else {
-                                        $dateItems = explode('-', $propRow->date_value);
-                                        $newObject->addProperty($propRow->id, $propRow->name, $propRow->type, ["day" => intval($dateItems[2]), "month"=>intval($dateItems[1]), "year"=>intval($dateItems[0])]);
-                                    }
-                                }
-                                if (!is_null($row->majorversion)) {
-                                    if (is_null($row->userid))
-                                        $newObject->setContent($row->majorversion, $row->minorversion, $row->mimetype, false);
-                                    else
-                                        $newObject->setContent($row->majorversion, $row->minorversion, $row->mimetype, true, $row->userid, $row->identityproviderid);
-                                }
-                                //Rights
-                                $rights = $conn->query("select r.id, r.granteeid, r.granteetype, r.identityproviderid, r.level, r.weight, idp.type, u.id userid, u.email, u.firstname, u.lastname from objectrights r left outer join identityproviders idp on idp.id = r.identityproviderid left outer join users u on u.id = r.granteeid where r.objectid = '" . $newObject->getId() . "'");
-                                if ($rights) {
-                                    while ($grantedright = $rights->fetch_object()) {
-                                        $newRight = new GrantedRight($grantedright->granteeid, $grantedright->granteetype, $grantedright->identityproviderid, $grantedright->level, $grantedright->weight);
-                                        if ($right->type == 'internal') {
-                                            $newRight->setUser(new User($grantedright->userid, $grantedright->email, $grantedright->firstname, $right->grantedlastname, $grantedright->identityproviderid));
-                                        }
-                                        $newObject->addRight($newRight);
-                                    }
-                                    return $newObject;
-                                }
-                                else
-                                    return false;
-                            }
-                            else
-                                return false;
-                        }
+                    $newObject = new AdaObject($row->id, $row->classid);
+                    $propRows = $conn->query("select pd.id, pd.name, pd.type, p.string_value, p.date_value from objectproperties p inner join classproperties pd on p.propertyid = pd.id where p.objectid = '" . $objectid . "'");
+                    while ($propRow = $propRows->fetch_object()) {
+                        if ($propRow->type == 'string')
+                            $newObject->addProperty($propRow->id, $propRow->name, $propRow->type, $propRow->string_value);
                         else {
-                            return false;
+                            $dateItems = explode('-', $propRow->date_value);
+                            $newObject->addProperty($propRow->id, $propRow->name, $propRow->type, ["day" => intval($dateItems[2]), "month"=>intval($dateItems[1]), "year"=>intval($dateItems[0])]);
                         }
+                    }
+                    if (!is_null($row->majorversion)) {
+                        if (is_null($row->userid))
+                            $newObject->setContent($row->majorversion, $row->minorversion, $row->mimetype, false);
+                        else
+                            $newObject->setContent($row->majorversion, $row->minorversion, $row->mimetype, true, $row->userid, $row->identityproviderid);
+                    }
+
+                    //Rights
+                    $rights = $conn->query("select r.id, r.granteeid, r.granteetype, r.identityproviderid, r.level, r.weight, idp.type, u.id userid, u.email, u.firstname, u.lastname from objectrights r left outer join identityproviders idp on idp.id = r.identityproviderid left outer join users u on u.id = r.granteeid where r.objectid = '" . $newObject->getId() . "'");
+                    if ($rights) {
+                        while ($grantedright = $rights->fetch_object()) {
+                            $newRight = new GrantedRight($grantedright->granteeid, $grantedright->granteetype, $grantedright->identityproviderid, $grantedright->level, $grantedright->weight);
+                            if ($right->type == 'internal') {
+                                $newRight->setUser(new User($grantedright->userid, $grantedright->email, $grantedright->firstname, $right->grantedlastname, $grantedright->identityproviderid));
+                            }
+                            $newObject->addRight($newRight);
+                        }
+                        return $newObject;
                     }
                     else
                         return false;
@@ -955,7 +927,7 @@
                 else
                     return false;
             }
-            else
+            else 
                 return false;
         }
         finally {
@@ -1615,6 +1587,76 @@
     }
     finally {
         $conn->close();
+    }
+   }
+
+   public function canGetClass($storeid, $classid) {
+    try {
+        $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
+        $rows = $conn->query("select c.id, r.level from classes c inner join classrights r on c.id = r.classid where c.storeid = '" . $storeid . "' and (c.id = '" . $classid . "' or c.name = '" . $classid . "') and (r.granteeid = 'everyone' or (r.granteeid = '" . $this->userId . "' and r.identityproviderid = '" . $this->identityProviderId . "')) order by r.weight asc limit 1");
+        if ($rows) {
+            $row = $rows->fetch_object();
+            $classid = $row->id;
+            $readRight = $conn->query("select level from rights where systemright='read'");
+            if ($readRight) {
+                if ($right = $readRight->fetch_object()) {
+                    if ((intval($row->level) & intval($right->level)) == intval($right->level)) {
+                        return TRUE;
+                    }
+                    else {
+                        return FALSE;
+                    }
+                }
+                else {
+                    return FALSE;
+                }
+            }
+            else {
+                return FALSE;
+            }
+        }
+        else {
+            return FALSE;
+        }
+    }
+    finally {
+        $conn->close();
+    }
+
+   }
+
+   public function canGetObject($storeid, $objectid) {
+    $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
+    $storerows = $conn->query("select id from stores where id = '" . $storeid . "' or name = '" . $storeid . "'");
+    if ($storerows) {
+        $storeid = $storerows->fetch_object()->id;
+        $rows = $conn->query("select o.id, o.classid, r.level, c.majorversion, c.minorversion, c.mimetype, co.userid, co.identityproviderid from objects o inner join objectrights r on o.id = r.objectid left outer join content c on c.objectid = o.id left outer join checkouts co on co.objectid = o.id where o.storeid = '" . $storeid . "' and o.id = '" . $objectid . "' and (r.granteeid = 'everyone' or (r.granteeid = '" . $this->userId . "' and r.identityproviderid = '" . $this->identityProviderId . "')) order by r.weight asc, c.majorversion desc, c.minorversion desc limit 1");
+        if ($rows) {
+            $row = $rows->fetch_object();
+            $readRight = $conn->query("select level from rights where systemright='read'");
+            if ($readRight) {
+                if ($right = $readRight->fetch_object()) {
+                    if (intval($row->level) & intval($right->level)) {
+                        return TRUE;
+                    }
+                    else { 
+                        return FALSE;
+                    }
+                }
+                else {
+                    return FALSE;
+                }
+            }
+            else {
+                return FALSE;
+            }
+        }
+        else {
+            return FALSE;
+        }
+    }
+    else {
+        return FALSE;
     }
    }
 

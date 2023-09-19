@@ -42,4 +42,6 @@
         public function getInternalUserById($id);
         public function canEditObject($objectid);
         public function updateObject($objectid, $request);
+        public function canGetClass($storeid, $classid);
+        public function canGetObject($storeid, $objectid);
     }

@@ -30,28 +30,20 @@
         $handler->getClasses($request->getUrlPart(3));
         exit;
     }
+    else if ($request->matches("GET", "/ada/store/*/class/*")) {
+        $handler->getClass($request->getUrlPart(3), $request->getUrlPart(5));
+        exit;
+    }
+    else if ($request->matches("GET", '/ada/store/*/object/*')) {
+        $handler->getObject($request->getUrlPart(3), $request->getUrlPart(5));
+        exit;
+    }
 
     $url = $_SERVER['REQUEST_URI'];
     $urlparts = explode('/', $url);
     if ($_SERVER['REQUEST_METHOD'] == 'GET') {
-        if (sizeof($urlparts) == 6 && $urlparts[1] == 'ada' && $urlparts[2] == 'store' && $urlparts[4] == 'class') {
-            Logger::log('Get class with id '. $urlparts[5]);
-            try {
-                $class = $db->getClass($urlparts[3], $urlparts[5]);
-                if ($class) {
-                    echo AdaClass::toJson($class);
-                }
-                else {
-                    sendState(404, "Class not found");
-                }
-                exit;
-            }
-            catch (Exception $exception) {
-                sendState(500, "");
-                exit;
-            }
-        }
-        else if (sizeof($urlparts) == 7 && $urlparts[1] == 'ada' && $urlparts[2] == 'store' && $urlparts[4] == 'class' && $urlparts[6] == 'schema') {
+        /*
+        if  (sizeof($urlparts) == 7 && $urlparts[1] == 'ada' && $urlparts[2] == 'store' && $urlparts[4] == 'class' && $urlparts[6] == 'schema') {
             $class = $db->getClass($urlparts[3], $urlparts[5]);
             if ($class) {
                 echo $class->createObjectSchema();
@@ -61,19 +53,9 @@
             }
             exit;
         }
-        else if (sizeof($urlparts) == 6 && $urlparts[1] == 'ada' && $urlparts[2] == 'store' && $urlparts[4] == 'object') {
-            $object = $db->getObject($urlparts[3], $urlparts[5]);
-            if ($object) {
-                header('Content-Type: text/json');
-                echo $object->toJson();
-                exit;
-            }
-            else {
-                sendState(404, "Object not found");
-            }
+        else */
 
-        }
-        else if (sizeof($urlparts) == 8 && $urlparts[1] == 'ada' && $urlparts[2] == 'store' && $urlparts[4] == 'object' && $urlparts[6] == 'content') {
+        if (sizeof($urlparts) == 8 && $urlparts[1] == 'ada' && $urlparts[2] == 'store' && $urlparts[4] == 'object' && $urlparts[6] == 'content') {
             if ($db->canGetContent($urlparts[3], $urlparts[5])) {
                 $content = $db->getContent($urlparts[3], $urlparts[5], $urlparts[7]);
                 if ($content) {
@@ -479,6 +461,49 @@
             catch (Exception $err) {
                 HttpResponse::createErrorResponse(500, $err->message)->expose();
             }
+        }
+
+        public function getClass($storeid, $classid) {
+            try {
+                if ($this->db->canGetClass($storeid, $classid)) {
+                    $class = $this->db->getClass($storeid, $classid);
+                    if ($class) {
+                        $json = AdaClass::toJson($class);
+                        HttpResponse::createResponse(200, "text/json", $json)->expose();
+                    }
+                    else {
+                        HttpResponse::createErrorResponse(404, "Class not found");
+                    }
+                }
+                else {
+                    HttpResponse::createErrorResponse(401, "Insufficient rights");
+                }
+            }
+            catch (Exception $exception) {
+                HttpResponse::createErrorResponse(500, $exception->message)->expose();
+            }
+        }
+
+        public function getObject($storeid, $objectid) {
+            try {
+                if ($this->db->canGetObject($storeid, $objectid)) {
+                    $object = $this->db->getObject($storeid, $objectid);
+
+                    if ($object) {
+                        HttpResponse::createResponse(200, 'text/json', $object->toJson())->expose();
+                    }
+                    else {
+                        HttpResponse::createErrorResponse(400, "Object not found")->expose();
+                    }
+                }
+                else {
+                    HttpResponse::createErrorResponse(401, "Insufficient rights")->expose();
+                }
+            }
+            catch (Exception $err) {
+                HttpResponse::createErrorResponse(500, $err->message)->expose();
+            }
+
         }
     }
 ?>
