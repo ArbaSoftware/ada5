@@ -144,8 +144,17 @@ public class GrantedRight {
         return "{" +
                 "\"grantee\":\"" + getGrantee().getId() + "\"," +
                 (getGrantee().getIdentityProvider() == null ? "\"identityprovider\":\"" + getIdentityProviderId() + "\"," : "\"identityprovider\":\"" + getGrantee().getIdentityProvider().getId() + "\",") +
-                "\"granteetype\":\"" + getGranteetype() + "\"," +
+                (getGranteetype() != null ? "\"granteetype\":\"" + getGranteetype() + "\"," : (getGrantee() != null ? getTypeFromGrantee(getGrantee()): "")) +
                 "\"level\":" + getLevel() +
                 "}";
+    }
+
+    private String getTypeFromGrantee(Grantee grantee) {
+        if (grantee instanceof Everyone)
+            return "special";
+        else if (grantee instanceof User)
+            return "user";
+        else
+            return "";
     }
 }

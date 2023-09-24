@@ -43,13 +43,16 @@ public class TestDocuments {
         store.delete();
     }
 
-    public void test() throws ObjectNotCreatedException, IOException {
+    @Test
+    public void test() throws ObjectNotCreatedException, IOException, Exception {
         Document newDoc = new Document();
-        newDoc.setTitle("Eerste document");
-        newDoc.setContent(Content.create(new File("/home/arjanbas/test.txt"), "text/text", false ));
+        //newDoc.setTitle("Eerste document");
+        newDoc.setContent(Content.create(new File("/home/arjan/test.txt"), "text/text", false ));
         newDoc.refresh(store.createObject(newDoc));
         newDoc.checkout();
-        newDoc.checkin(Content.create(new File("/home/arjanbas/test.txt"), "text/text", false ));
+        newDoc.checkin(Content.create(new File("/home/arjan/test.txt"), "text/text", false ));
+        System.out.println(StreamUtils.streamToString(store.getDomain().getContent(store, newDoc.getId())));
+        newDoc.getStore().getDomain().getObjectPath(newDoc.getStore(), newDoc.getId());
         System.out.println(newDoc.getMajorVersion() + "." + newDoc.getMinorVersion() + " (" + newDoc.getMimetype() + ")");
         System.out.println(newDoc.getStore().getId() + " / " + newDoc.getId());
         System.out.println(newDoc.isCheckedOut() + " -> " + newDoc.getCheckOutUser().getEmail());

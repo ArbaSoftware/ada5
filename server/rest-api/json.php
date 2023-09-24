@@ -8,7 +8,7 @@
             }
             else {
                 $allschemas = json_decode(file_get_contents('schemas.json'));
-                if ($allschemas->schemas->$schema) {
+                if (isset($allschemas->schemas->$schema)) {
                     $validationErrors = JsonUtils::validateObject($parsed, $allschemas->schemas->$schema, $allschemas);
                     if (sizeof($validationErrors) == 0)
                         return true;
@@ -51,7 +51,7 @@
             }
             foreach (array_keys($schemaProperties) as $property) {
                 $definition = $schemaProperties[$property];
-                if ($definition->required) {
+                if (isset($definition->required) && $definition->required) {
                     if (!array_key_exists($property, $objectProperties)) {
                         $errors[sizeof($errors)] = "Required property '" . $property . "' missing";
                     }
@@ -77,7 +77,11 @@
                     }
                 }
             }
-            else if ($definition->type == "enumeration" ) {
+            else if (isset($definition->type) && $definition->type == "string") {
+                if ($propertytype != "string")
+                    $errors[sizeof($errors)] = 'Invalid value for property ' . $name;
+            }
+            else if (isset($definition->type) && $definition->type == "enumeration" ) {
                 if (gettype($definition->values) == "string") {
                     $enum = $definition->values;
                     $values = $allschemas->enumerations->$enum;
@@ -89,12 +93,12 @@
                     $errors[sizeof($errors)] = "Invalid value for property ´" . $name . "´";
                 }
             }
-            else if ($definition->type == "fixed") {
+            else if (isset($definition->type) && $definition->type == "fixed") {
                 if ($value != $definition->fixedvalue) {
                     $errors[sizeof($errors)] = "Invalid value for property '" . $name . "'";
                 }
             }
-            else if ($definition->type == "date") {
+            else if (isset($definition->type) && $definition->type == "date") {
                 if (gettype($value) == "object") {
                     $validationErrors = JsonUtils::validateObject($value, $allschemas->schemas->date, $allschemas);
                     if (sizeof($validationErrors) == 0) {
@@ -118,12 +122,12 @@
                     $errors[sizeof($errors)] = "Invalid date value for property '" . $name . "'";
                 }
             }
-            else if ($definition->type == "object") {
+            else if (isset($definition->type) && $definition->type == "object") {
                 if (gettype($value) != "string") {
                     $errors[sizeof($errors)] = "Invalid value for property '" . $name . "'";
                 }
             }
-            else if ($definition->type == "base64") {
+            else if (isset($definition->type) && $definition->type == "base64") {
                 if (gettype($value) != "string") {
                     $errors[sizeof($errors)] = "Invalid value for property '" . $name . "'";
                 }
@@ -132,10 +136,10 @@
                         $errors[sizeof($errors)] = "Invalid value for property '" . $name . "'";
                 }
             }
-            else if ($definition->type == "any") { 
+            else if (isset($definition->type) && $definition->type == "any") { 
                 //No validation
             }
-            else if ($definition->schema) {
+            else if (isset($definition->schema)) {
                 if (gettype($definition->schema) == "string") {
                     $schemaName = $definition->schema;
                     $objectErrors = JsonUtils::validateObject($value, $allschemas->schemas->$schemaName, $allschemas);
@@ -177,14 +181,19 @@
             return $errors;
         }
         public static function createErrorJson($errors) {
-            $result = '{"errors":[';
-            $prefix = "";
-            foreach($errors as $error) {
-                $result .= $prefix . '"' . $error . '"';
-                $prefix = ",";
+            try {
+                $result = '{"errors":[';
+                $prefix = "";
+                foreach($errors as $error) {
+                    $result .= $prefix . '"' . $error . '"';
+                    $prefix = ",";
+                }
+                $result .= "]}";
+                return $result;
             }
-            $result .= "]}";
-            return $result;
+            catch (Exception $err) {
+                return "[]";
+            }
         }
     }
 ?>

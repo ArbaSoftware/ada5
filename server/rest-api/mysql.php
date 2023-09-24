@@ -567,8 +567,9 @@
             try {
                 $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
                 $rows = $conn->query("select id, name, folderclass, contentclass, parentclassid from classes where storeid = '" . $storeid . "' and (id = '" . $classid . "' or name = '" . $classid . "')");
-                if ($rows) {
+                if ($rows && $rows->num_rows > 0) {
                     $row = $rows->fetch_object();
+                    $classid = $row->id;
                     $newClass = new AdaClass($row->id, $row->name);
                     $newClass->setIsFolderClass($row->folderclass == 1);
                     $newClass->setIsDocumentClass($row->contentclass == 1);
@@ -721,15 +722,22 @@
         public function canCreateObject($classid) {
             try {
                 $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
-                $results = $conn->query("select level from classrights where (granteeid = 'everyone' or (granteeid = '" . $this->userId . "' and identityproviderid = '" . $this->identityProviderId . "')) and classid='" . $classid . "' order by weight desc limit 1");
-                if ($results->num_rows == 0)
-                    return false;
-                else {
-                    $rights = $conn->query("select level from rights where systemright='createobject'");
-                    if ($rights->num_rows == 1) 
-                        return intval($rights->fetch_object()->level) & intval($results->fetch_object()->level);
-                    else
+                $classrows = $conn->query("select id from classes where id = '" . $classid . "' or name = '" . $classid . "'");
+                if ($classrows->num_rows > 0) {
+                    $classid = $classrows->fetch_object()->id;
+                    $results = $conn->query("select level from classrights where (granteeid = 'everyone' or (granteeid = '" . $this->userId . "' and identityproviderid = '" . $this->identityProviderId . "')) and classid='" . $classid . "' order by weight desc limit 1");
+                    if ($results->num_rows == 0)
                         return false;
+                    else {
+                        $rights = $conn->query("select level from rights where systemright='createobject'");
+                        if ($rights->num_rows == 1) 
+                            return intval($rights->fetch_object()->level) & intval($results->fetch_object()->level);
+                        else
+                            return false;
+                    }
+                }
+                else {
+                    return false;
                 }
             }
             finally {
@@ -747,7 +755,7 @@
                 $conn->begin_transaction();
                 $succeeded = $conn->query("insert into objects (id, classid, storeid, creator, creatoridentityproviderid) values ('" . $id . "','" . $class->getId() . "','" . $storeid . "','" . $this->userId . "','" . $this->identityProviderId . "')");
                 if ($succeeded) {
-                    if (gettype($request->rights) == "NULL" or sizeof($request->rights) == 0) {
+                    if (!isset($request->rights) || gettype($request->rights) == "NULL" or sizeof($request->rights) == 0) {
                         $succeeded = $conn->query("insert into objectrights (granteeid, granteetype, identityproviderid, objectid, level, weight) values ('" . $this->userId . "','user','" . $this->identityProviderId . "','". $id . "',(select sum(level) from rights where objectright = 1), 1)");
                     }
                     else {
@@ -762,7 +770,7 @@
                         }
                     }
                     if ($succeeded) {
-                        if (gettype($request->properties) == 'object') {
+                        if (isset($request->properties) && gettype($request->properties) == 'object') {
                             //Collect all properties
                             $currentId = $class->getId();
                             $propertyDefs = [];
@@ -822,7 +830,7 @@
                             }
                         }
                         if ($succeeded) {
-                            if (gettype($request->content) == "object" && $class->isDocumentClass()) {
+                            if (isset($request->content) && gettype($request->content) == "object" && $class->isDocumentClass()) {
                                 $date = new DateTime();
                                 $saveDir = $this->contentDir . "/" . $date->format("Y") . "/" . $date->format("m") . "/" . $date->format("d");
                                 if (!is_dir($saveDir))
@@ -914,8 +922,8 @@
                     if ($rights) {
                         while ($grantedright = $rights->fetch_object()) {
                             $newRight = new GrantedRight($grantedright->granteeid, $grantedright->granteetype, $grantedright->identityproviderid, $grantedright->level, $grantedright->weight);
-                            if ($right->type == 'internal') {
-                                $newRight->setUser(new User($grantedright->userid, $grantedright->email, $grantedright->firstname, $right->grantedlastname, $grantedright->identityproviderid));
+                            if ($grantedright->type == 'internal') {
+                                $newRight->setUser(new User($grantedright->userid, $grantedright->email, $grantedright->firstname, $grantedright->lastname, $grantedright->identityproviderid));
                             }
                             $newObject->addRight($newRight);
                         }
@@ -1490,7 +1498,7 @@
         //Update rights
         if ($conn->query("delete from objectrights where objectid = '" . $id . "'")) {
             foreach($request->rights as $right) {
-                if ($conn->query("insert into objectrights (objectid, granteeid, granteetype, identityproviderid, level, weight) values ('" . $id . "','" . $right->grantee . "','" . $right->granteetype . "','" . $right->identityprovider . "'," . $right->level . "," . $this->getGranteeTypeWeigth($right->type) . ")")) {
+                if ($conn->query("insert into objectrights (objectid, granteeid, granteetype, identityproviderid, level, weight) values ('" . $id . "','" . $right->grantee . "','" . $right->granteetype . "','" . $right->identityprovider . "'," . $right->level . "," . $this->getGranteeTypeWeigth($right->granteetype) . ")")) {
                     //
                 }
                 else {
@@ -1631,7 +1639,7 @@
     if ($storerows) {
         $storeid = $storerows->fetch_object()->id;
         $rows = $conn->query("select o.id, o.classid, r.level, c.majorversion, c.minorversion, c.mimetype, co.userid, co.identityproviderid from objects o inner join objectrights r on o.id = r.objectid left outer join content c on c.objectid = o.id left outer join checkouts co on co.objectid = o.id where o.storeid = '" . $storeid . "' and o.id = '" . $objectid . "' and (r.granteeid = 'everyone' or (r.granteeid = '" . $this->userId . "' and r.identityproviderid = '" . $this->identityProviderId . "')) order by r.weight asc, c.majorversion desc, c.minorversion desc limit 1");
-        if ($rows) {
+        if ($rows->num_rows > 0) {
             $row = $rows->fetch_object();
             $readRight = $conn->query("select level from rights where systemright='read'");
             if ($readRight) {

@@ -64,6 +64,7 @@ public class Domain {
         Right[] rightz = mapper.readValue(doGet(baseUrl + "/security/right"), Right[].class);
         rights = new ArrayList<>();
         rights.addAll(Arrays.asList(rightz));
+        System.out.println(StreamUtils.streamToString(doGet(baseUrl + "/store")));
         Store[] storez = mapper.readValue(doGet(baseUrl + "/store"), Store[].class);
         for (Store store: storez)
             store.setDomain(this);

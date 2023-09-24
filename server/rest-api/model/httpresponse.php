@@ -24,7 +24,7 @@
             if ($this->responseCode == 200) {
                 header("HTTP/1.1 200");
                 if (!is_null($this->contentType))
-                    header("Content-Type: " . $this->contenttype);
+                    header("Content-Type: " . $this->contentType);
                 if (!is_null($this->content)) {
                     if (gettype($this->content) == 'string')
                         header("Content-Length:" . strlen($this->content));

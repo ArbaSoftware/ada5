@@ -1,4 +1,6 @@
 <?php
+    error_reporting(E_ALL);
+    ini_set('display_errors', '1');
     include('db.php');
     include('mysql.php');
     include('model.php');
@@ -38,352 +40,65 @@
         $handler->getObject($request->getUrlPart(3), $request->getUrlPart(5));
         exit;
     }
-
-    $url = $_SERVER['REQUEST_URI'];
-    $urlparts = explode('/', $url);
-    if ($_SERVER['REQUEST_METHOD'] == 'GET') {
-        /*
-        if  (sizeof($urlparts) == 7 && $urlparts[1] == 'ada' && $urlparts[2] == 'store' && $urlparts[4] == 'class' && $urlparts[6] == 'schema') {
-            $class = $db->getClass($urlparts[3], $urlparts[5]);
-            if ($class) {
-                echo $class->createObjectSchema();
-            }
-            else {
-                sendState(404, "Class not found");
-            }
-            exit;
-        }
-        else */
-
-        if (sizeof($urlparts) == 8 && $urlparts[1] == 'ada' && $urlparts[2] == 'store' && $urlparts[4] == 'object' && $urlparts[6] == 'content') {
-            if ($db->canGetContent($urlparts[3], $urlparts[5])) {
-                $content = $db->getContent($urlparts[3], $urlparts[5], $urlparts[7]);
-                if ($content) {
-                    header("Content-Type: " . $content->getMimetype());
-                    header("Content-Length: " . $content->getSize());
-                    header('Content-Disposition: attachment; filename="' . $content->getFileName() . "'");
-                    streamfile_chunked($content->getContentFile());
-                }
-                else {
-                    sendState(404, "Content not found");
-                }
-            }
-            else
-                sendState(401, "Insufficient rights");
-        }
-        else if (sizeof($urlparts) == 7 && $urlparts[1] == 'ada' && $urlparts[2] == 'store' && $urlparts[4] == 'object' && $urlparts[6] == 'path') {
-            if ($path = $db->getObjectPath($urlparts[3], $urlparts[5])) {
-                $json = json_encode($path);
-                header("Content-Type: text/json");
-                header("Content-length: " . strlen($json));
-                echo $json;
-                exit;
-            }
-            else
-                sendState(404, "Object not found");
-        }
-        else if (sizeof($urlparts) == 7 && $urlparts[1] == 'ada' && $urlparts[2] == 'store' && $urlparts[4] == 'object' && $urlparts[6] == 'checkout') {
-            if ($db->canCheckout($urlparts[3], $urlparts[5])) {
-                if ($db->checkout($urlparts[3], $urlparts[5])) {
-                    sendState(200, "Checked out");
-                    echo "OK";
-                }
-                else 
-                    sendState(500, "Checkout failed");
-            }
-            else
-                sendState(401, "Insufficient rights");
-        }
+    else if ($request->matches("GET", '/ada/store/*/object/*/content/*')) {
+        $handler->getContent($request->getUrlPart(3), $request->getUrlPart(5), $request->getUrlPart(7));
+        exit;
     }
-    else if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-        if ($url == '/ada/store') {
-            try {
-                $json = file_get_contents('php://input');
-                $request = json_decode($json);
-                if ($errors = JsonUtils::validate($json, 'addstorerequest')) {
-                    if ($db->isStoreNameUnique($request->name)) {
-                        if ($db->canCreateStore()) {
-                            if ($newStoreId = $db->createStore($request->name, $request->grantedrights, $request->addons)) {
-                                echo $newStoreId;
-                            }
-                            else
-                                sendState(500, "Store creation failed");
-                        }
-                        else
-                            sendState(401, "Insufficient rights");
-                        exit;
-                    }
-                    else {
-                        sendState(500, "Store name not unique");
-                        exit;
-                    }
-                }
-                else {
-                    $errorJson = "{\"error\": \"Invalid request\", \"messages\": [";
-                    $prefix = "";
-                    foreach($errors as $error) {
-                        $errorJson .= $prefix . '"'. $error . '"';
-                        $prefix = ',';
-                    }
-                    $errorJson .= "]}";
-                    sendState(500, $errorJson);
-                    exit;
-                }
-            }
-            catch (Exception $err) {
-                header("HTTP/1.1 500 " . $err->getMessage());
-                exit;
-            }
-        }
-        else if (sizeof($urlparts) == 5 && $urlparts[1] == 'ada' && $urlparts[2] == 'store' && $urlparts[4] == 'search') {
-            $storeid = $urlparts[3];
-            $search = file_get_contents('php://input');
-            $validationerrors = JsonUtils::validate($search, "search");
-            if ($validationerrors && gettype($validationerrors) == 'boolean') {
-                $searchresults = $db->search($storeid, json_decode($search));
-                if (gettype($searchresults) == "string") {
-                    sendState(200, "");
-                    header('Content-Type: text/json');
-                    echo $searchresults;
-                }
-                else {
-                    sendState(500, "No searchresults");
-                    echo JsonUtils::createErrorJson($searchresults);
-                }
-            }
-            else {
-                sendState(500, "Invalid request");
-                echo JsonUtils::createErrorJson($validationerrors);
-            }
-            exit;
-        }
-        else if (sizeof($urlparts) == 5 && $urlparts[1] == 'ada' && $urlparts[2] == 'store' && $urlparts[4] == 'class') {
-            $storeId = $urlparts[3];
-            if ($db->getStore($storeId)) {
-                $json = file_get_contents("php://input");
-                $validationErrors = JsonUtils::validate($json, "addclassrequest");
-                if ($validationErrors && gettype($validationErrors) == "boolean") {
-                    $request = json_decode($json);
-                    if ($db->areValidRights($request->rights)) {
-                        if ($db->isUniqueClassName($storeId, $request->name)) {
-                            if ($db->canCreateClass($storeId)) {
-                                $class = AdaClass::fromJson($request);
-                                $newClassId = $db->createClass($storeId, $class);
-                                if (gettype($newClassId) == 'array') {
-                                    sendState(500, "Class not added");
-                                    echo JsonUtils::createErrorJson($newClassId);
-                                }
-                                else {
-                                    echo $newClassId;
-                                    exit;
-                                }
-                            }
-                            else {
-                                Logger::log('No rights to create class');
-                                sendState(401, "Insufficient rights");
-                                exit;
-                            }
-                        }
-                        else {
-                            sendState(500, "Class name not unique");
-                            exit;
-                        }
-                    }
-                    else {
-                        sendState(500, "Invalid request");
-                        echo JsonUtils::createErrorJson(["Invalid rights specification"]);
-                    }
-                }
-                else {
-                    sendState(500, "Invalid request");
-                    echo JsonUtils::createErrorJson($validationErrors);
-                    exit;
-                }
-            }
-            else {
-                header("HTTP/1.1 500 Invalid request");
-                echo JsonUtils::createErrorJson(["Invalid storeid (" . $storeId . ")"]);
-                exit;
-            }
-        }
-        else if (sizeof($urlparts) == 7 && $urlparts[1] == 'ada' && $urlparts[2] == 'store' && $urlparts[4] == 'class' && $urlparts[6] == 'object') {
-            $class = $db->getClass($urlparts[3], $urlparts[5]);
-            if ($class) {
-                $json = file_get_contents("php://input");
-                $validationErrors = Jsonutils::validate($json, $class->createObjectSchema());
-                if ($validationErrors && gettype($validationErrors) == 'boolean') {
-                    $storeId = $urlparts[3];
-                    if ($db->canCreateObject($class->getId())) {
-                        try {
-                            $newObject = $db->createObject($storeId, $class, json_decode($json));
-                            sendState(200, "Object created");
-                            echo $newObject->getId();
-                        }
-                        catch (Exception $err) {
-                            sendState(500, "Object not created");
-                            echo JsonUtils::createErrorJson([$err->getMessage()]);
-                        }
-                    }
-                    else {
-                        sendState(401, "Insufficient rights");
-                    }
-                }
-                else {
-                    sendState(500, "Invalid request");
-                    echo JsonUtils::createErrorJson($validationErrors);
-                }
-                exit;
-            }
-            else {
-                sendState(404, "Class not found");
-            }
-            exit;
-        }
-        else if (sizeof($urlparts) == 7 && $urlparts[1] == 'ada' && $urlparts[2] == 'store' && $urlparts[4] == 'object' && $urlparts[6] == 'checkin') {
-            if ($db->canCheckin($urlparts[3], $urlparts[5])) {
-                if ($db->checkin($urlparts[3], $urlparts[5], json_decode(file_get_contents('php://input')))) {
-                    sendState(200, "Checked in");
-                    echo "OK";
-                }
-                else 
-                    sendState(500, "Checkin failed");
-            }
-            else
-                sendState(401, "Insufficient rights");
-        }
-        else if (sizeof($urlparts) == 7 && $urlparts[1] == 'ada' && $urlparts[2] == 'store' && $urlparts[4] == 'class' && $urlparts[6] == 'property') {
-            try {
-                if ($db->canEditClass($urlparts[3], $urlparts[5])) {
-                    if ($propertyId = $db->addProperty($urlparts[5], json_decode(file_get_contents('php://input'))))
-                        sendState(200, "{\"id\":\"" . $propertyId . "\"}");
-                    else
-                        sendState(500, "");
-                }
-                else {
-                    sendState(401, "Unsufficient rights");
-                }
-                exit;
-            }
-            catch (Exception $exception) {
-                sendState(500, "");
-                exit;
-            }
-        }
+    else if ($request->matches("GET", '/ada/store/*/object/*/path')) {
+        $handler->getObjectPath($request->getUrlPart(3), $request->getUrlPart(5));
+        exit;
     }
-    else if ($_SERVER['REQUEST_METHOD'] == 'DELETE') {
-        if (sizeof($urlparts) == 4 && substr($url, 0, strlen('/ada/store/')) == '/ada/store/') {
-            $storeId = $urlparts[3];
-            if ($db->canDeleteStore($storeId)) {
-                if ($db->deleteStore($storeId)) {
-                    sendState(200, "Store deleted");
-                }
-                else {
-                    sendState(500, "");
-                }
-                exit();
-            }
-            else {
-                sendState(401, "Unsufficient rights");
-                exit;
-            }
-        }
-        else if (sizeof($urlparts) == 8 && $urlparts[1] == 'ada' && $urlparts[2] == 'store' && $urlparts[4] == 'class' && $urlparts[6] == 'property') {
-            try {
-                if ($db->canEditClass($urlparts[3], $urlparts[5])) {
-                    if ($db->deleteProperty($urlparts[7]))
-                        sendState(200, "OK");
-                    else
-                        sendState(500, "");
-                }
-                else {
-                    sendState(401, "Unsufficient rights");
-                }
-                exit;
-            }
-            catch (Exception $exception) {
-                sendState(500, "");
-                exit;
-            }
-        }
+    else if ($request->matches("GET", "/ada/store/*/object/*/checkout")) {
+        $handler->checkoutObject($request->getUrlPart(3), $request->getUrlPart(5));
+        exit;
     }
-    else if ($_SERVER['REQUEST_METHOD'] == 'PUT') {
-        if (sizeof($urlparts) == 8 && $urlparts[1] == 'ada' && $urlparts[2] == 'store' && $urlparts[4] == 'class' && $urlparts[6] == 'property') {
-            try {
-                if ($db->canEditClass($urlparts[3], $urlparts[5])) {
-                    if ($db->editProperty($urlparts[5], $urlparts[7], json_decode(file_get_contents('php://input'))))
-                        sendState(200, "OK");
-                    else
-                        sendState(500, "");
-                }
-                else {
-                    sendState(401, "Unsufficient rights");
-                }
-                exit;
-            }
-            catch (Exception $exception) {
-                sendState(500, "");
-                exit;
-            }
-        }
-        else if (sizeof($urlparts) == 6 && $urlparts[2] == 'store' && $urlparts[4] == 'class') {
-            try {
-                if ($db->canEditClass($urlparts[3], $urlparts[5])) {
-                    if ($db->updateClass($urlparts[5], json_decode(file_get_contents('php://input'))))
-                        sendState(200, "OK");
-                    else
-                        sendState(500, "");
-                }
-                else {
-                    sendState(401, "Unsufficient rights");
-                }
-                exit;
-            }
-            catch (Exception $exception) {
-                sendState(500, "");
-                exit;
-            }
-        }
-        else if (sizeof($urlparts) == 6 && $urlparts[2] == 'store' && $urlparts[4] == 'object') {
-            $classId = $db->getObjectClassId($urlparts[5]);
-            $objectClass = $db->getClass($urlparts[3], $classId);
-            $request = file_get_contents('php://input');
-            $validationerrors = JsonUtils::validate($request, $objectClass->updateObjectSchema());
-            if ($validationerrors && gettype($validationerrors == 'boolean')) {
-                if ($db->canEditObject($urlparts[5])) {
-                    $jsonRequest = json_decode($request);
-                    if ($db->updateObject($urlparts[5], json_decode($request))) {
-                        sendState(200, 'OK');
-                    }
-                    else {
-                        sendState(500, "");
-                    }
-                }
-                else
-                    sendState(401, "Unsufficient rights");
-                exit;
-            }
-            else {
-                $errorJson = "{\"error\": \"Invalid request\", \"messages\": [";
-                $prefix = "";
-                foreach($errors as $error) {
-                    $errorJson .= $prefix . '"'. $error . '"';
-                    $prefix = ',';
-                }
-                $errorJson .= "]}";
-                sendState(500, $errorJson);
-                exit;
-            }
-        }
-        else {
-            print_r($urlparts);
-            sendState(404, "");
-            exit;
-        }
+    else if ($request->matches("POST", "/ada/store")) {
+        $handler->createStore(file_get_contents("php://input"));
+        exit;
     }
-    sendState(404, "Not found");
-
-    function sendState($code, $message) {
-        header("HTTP/1.1 " . $code . " " . $message);
+    else if ($request->matches("POST", "/ada/store/*/search")) {
+        $handler->search($request->getUrlPart(3), file_get_contents('php://input'));
+        exit;
+    }
+    else if ($request->matches("POST", "/ada/store/*/class")) {
+        $handler->createClass($request->getUrlPart(3), file_get_contents('php://input'));
+        exit;
+    }
+    else if ($request->matches("POST", "/ada/store/*/class/*/object")) {
+        $handler->createObject($request->getUrlPart(3), $request->getUrlPart(5), file_get_contents("php://input"));
+        exit;
+    }
+    else if ($request->matches("POST", "/ada/store/*/object/*/checkin")) {
+        $handler->checkin($request->getUrlPart(3), $request->getUrlPart(5), file_get_contents('php://input'));
+        exit;
+    }
+    else if ($request->matches("POST", "/ada/store/*/class/*/property")) {
+        $handler->addProperty($request->getUrlPart(3), $request->getUrlPart(5), file_get_contents('php://input'));
+        exit;
+    }
+    else if ($request->matches("DELETE", "/ada/store/*")) {
+        $handler->deleteStore($request->getUrlPart(3));
+        exit;
+    }
+    else if ($request->matches("DELETE", "/ada/store/*/class/*/property/*")) {
+        $handler->deleteProperty($request->getUrlPart(3), $request->getUrlPart(5), $request->getUrlPart(7));
+        exit;
+    }
+    else if ($request->matches("PUT", "/ada/store/*/class/*/property/*")) {
+        $handler->updateProperty($request->getUrlPart(3), $request->getUrlPart(5), $request->getUrlPart(7), file_get_contents('php://input'));
+        exit;
+    }
+    else if ($request->matches("PUT", "/ada/store/*/class/*")) {
+        $handler->updateClass($request->getUrlPart(3), $request->getUrlPart(5), file_get_contents("php://input"));
+        exit;
+    }
+    else if ($request->matches("PUT", "/ada/store/*/object/*")) {
+        $handler->updateObject($request->getUrlPart(3), $request->getUrlPart(5), file_get_contents("php://input"));
+        exit;
+    }
+    else {
+        HttpResponse::createErrorResponse(404, "Not found")->expose();
+        exit;
     }
 
     function streamfile_chunked($filename, $retbytes = TRUE) {
@@ -503,7 +218,297 @@
             catch (Exception $err) {
                 HttpResponse::createErrorResponse(500, $err->message)->expose();
             }
+        }
 
+        public function getContent($storeid, $objectid, $version) {
+            if ($this->db->canGetContent($storeid, $objectid)) {
+                $content = $this->db->getContent($storeid, $objectid, $version);
+                if ($content) {
+                    header("Content-Type: " . $content->getMimetype());
+                    header("Content-Length: " . $content->getSize());
+                    header('Content-Disposition: attachment; filename="' . $content->getFileName() . "'");
+                    streamfile_chunked($content->getContentFile());
+                }
+                else {
+                    HttpResponse::createErrorResponse(404, "Content not found")->expose();
+                }
+            }
+            else
+                HttpResponse::createErrorResponse(401, "Insufficient rights")->expose();
+    
+        }
+
+        public function getObjectPath($storeid, $objectid) {
+            if ($this->db->canGetObject($storeid, $objectid)) {
+                if ($path = $this->db->getObjectPath($storeid, $objectid)) {
+                    $json = json_encode($path);
+                    HttpResponse::createResponse(200, "text/json", $json)->expose();
+                }
+            }
+            else {
+                HttpResponse::createErrorResponse(404, "Object not found")->expose();
+            }
+        }
+
+        public function checkoutObject($storeid, $objectid) {
+            if ($this->db->canCheckout($storeid, $objectid)) {
+                if ($this->db->checkout($storeid, $objectid)) {
+                    HttpResponse::createResponse(200, "text/text", "OK")->expose();
+                }
+                else 
+                    HttpResponse::createErrorResponse(500, "Checkout failed")->expose();
+            }
+            else
+                HttpResponse::createErrorResponse(401, "Insufficient rights")->expose();
+        }
+
+        public function createStore($json) {
+            try {
+                $request = json_decode($json);
+                if ($errors = JsonUtils::validate($json, 'addstorerequest')) {
+                    if ($this->db->isStoreNameUnique($request->name)) {
+                        if ($this->db->canCreateStore()) {
+                            if ($newStoreId = $this->db->createStore($request->name, $request->grantedrights, $request->addons)) {
+                                HttpResponse::createResponse(200, "text/text", $newStoreId)->expose();
+                            }
+                            else
+                                HttpResponse::createErrorResponse(500, "Store creation failed")->expose();
+                        }
+                        else
+                            HttpResponse::createErrorResponse(401, "Insufficient rights")->expose();
+                    }
+                    else {
+                        HttpResponse::createErrorResponse(500, "Store name not unique")->expose();
+                    }
+                }
+                else {
+                    $errorJson = "{\"error\": \"Invalid request\", \"messages\": [";
+                    $prefix = "";
+                    foreach($errors as $error) {
+                        $errorJson .= $prefix . '"'. $error . '"';
+                        $prefix = ',';
+                    }
+                    $errorJson .= "]}";
+                    HttpResponse::createErrorResponse(500, $errorJson)->expose();
+                    exit;
+                }
+            }
+            catch (Exception $err) {
+                HttpResponse::createErrorResponse(500, $err->getMessage())->expose();
+            }
+        }
+
+        public function search($storeid, $search) {
+            $validationerrors = JsonUtils::validate($search, "search");
+            if ($validationerrors && gettype($validationerrors) == 'boolean') {
+                $searchresults = $this->db->search($storeid, json_decode($search));
+                if (gettype($searchresults) == "string") {
+                    HttpResponse::createResponse(200, "text/json", $searchresults)->expose();
+                }
+                else {
+                    HttpResponse::createErrorResponse(500, JsonUtils::createErrorJson($searchresults));
+                }
+            }
+            else {
+                HttpResponse::createErrorResponse(500,JsonUtils::createErrorJson($validationerrors));
+            }
+        }
+
+        public function createClass($storeId, $json) {
+            if ($this->db->getStore($storeId)) {
+                $validationErrors = JsonUtils::validate($json, "addclassrequest");
+                if ($validationErrors && gettype($validationErrors) == "boolean") {
+                    $request = json_decode($json);
+                    if ($this->db->areValidRights($request->rights)) {
+                        if ($this->db->isUniqueClassName($storeId, $request->name)) {
+                            if ($this->db->canCreateClass($storeId)) {
+                                $class = AdaClass::fromJson($request);
+                                $newClassId = $this->db->createClass($storeId, $class);
+                                if (gettype($newClassId) == 'array') {
+                                    HttpResponse::createErrorResponse(500, JsonUtils::createErrorJson($newClassId))->expose();
+                                }
+                                else {
+                                    HttpResponse::createResponse(200, "text/text", $newClassId)->expose();
+                                }
+                            }
+                            else {
+                                Logger::log('No rights to create class');
+                                HttpResponse::createErrorResponse(401, "Insufficient rights")->expose();
+                            }
+                        }
+                        else {
+                            HttpResponse::createErrorResponse(500, "Class name not unique")->expose();
+                        }
+                    }
+                    else {
+                        HttpResponse::createErrorResponse(500, JsonUtils::createErrorJson(["Invalid rights specification"]))->expose();
+                    }
+                }
+                else {
+                    HttpResponse::createErrorResponse(500, JsonUtils::createErrorJson($validationErrors))->expose();
+                }
+            }
+            else {
+                HttpResponse::createErrorResponse(500, JsonUtils::createErrorJson(["Invalid storeid (" . $storeId . ")"]))->expose();
+            }
+        }
+
+        public function createObject($storeId, $classid, $json) {
+            try {
+                $class = $this->db->getClass($storeId, $classid);
+                if ($class) {
+                    $validationErrors = Jsonutils::validate($json, $class->createObjectSchema());
+                    if (isset($validationErrors) && gettype($validationErrors) == 'boolean') {
+                        if ($this->db->canCreateObject($classid)) {
+                            try {
+                                $newObject = $this->db->createObject($storeId, $class, json_decode($json));
+                                HttpResponse::createResponse(200, "text/text", $newObject->getId())->expose();
+                            }
+                            catch (Exception $err) {
+                                HttpResponse::createErrorResponse(500, JsonUtils::createErrorJson([$err->getMessage()]))->expose();
+                            }
+                        }
+                        else {
+                            HttpResponse::createErrorResponse(401, "Insufficient rights")->expose();
+                        }
+                    }
+                    else {
+                        HttpResponse::createErrorResponse(500, "Invalid request")->expose();
+                    }
+                }
+                else {
+                    HttpResponse::createErrorResponse(404, "Class not found")->expose();
+                }
+            }
+            catch (Exception $err) {
+                HttpResponse::createErrorResponse(500, $err->getMessage())->expose();
+            }
+        }
+
+        public function checkin($storeid, $objectid, $content) {
+            if ($this->db->canCheckin($storeid, $objectid)) {
+                if ($this->db->checkin($storeid, $objectid, json_decode($content))) {
+                    HttpResponse::createResponse(200, "text/text", "OK")->expose();
+                }
+                else 
+                    HttpResponse::createErrorResponse(500, "Checkin failed")->expose();
+            }
+            else
+                HttpResponse::createErrorResponse(401, "Insufficient rights");
+        }
+
+        public function addProperty($storeid, $classid, $json) {
+            try {
+                if ($this->db->canEditClass($storeid, $classid)) {
+                    if ($propertyId = $this->db->addProperty($classid, json_decode($json)))
+                        HttpResponse::createResponse(200, "text/json", "{\"id\":\"" . $propertyId . "\"}")->expose();
+                    else
+                        HttpResponse::createErrorResponse(500, "")->expose();
+                }
+                else {
+                    HttpResponse::createErrorResponse(401, "Insufficient rights")->expose();
+                }
+            }
+            catch (Exception $exception) {
+                HttpResponse::createErrorResponse(500, "")->expose();
+            }
+
+        }
+
+        public function deleteStore($storeId) {
+            if ($this->db->canDeleteStore($storeId)) {
+                if ($this->db->deleteStore($storeId)) {
+                    HttpResponse::createResponse(200, "text/text", "Store deleted")->expose();
+                }
+                else {
+                    HttpResponse::createErrorResponse(500, "")->expose();
+                }
+            }
+            else {
+                HttpResponse::createErrorResponse(401, "Unsufficient rights")->expose();
+            }
+        }
+
+        public function deleteProperty($storeid, $classid, $propertyid) {
+            try {
+                if ($this->db->canEditClass($storeid, $classid)) {
+                    if ($this->db->deleteProperty($propertyid))
+                        HttpResponse::createResponse(200, "text/text", "OK")->expose();
+                    else
+                        HttpResponse::createErrorResponse(500, "")->expose();
+                }
+                else {
+                    HttpResponse::createErrorResponse(401, "Insufficient rights")->expose();
+                }
+            }
+            catch (Exception $exception) {
+                HttpResponse::createErrorResponse(500, $exception->getMessage())->expose();
+            }
+
+        }
+
+        public function updateProperty($storeid, $classid, $propertyid, $json) {
+            try {
+                if ($this->db->canEditClass($storeid, $classid)) {
+                    if ($this->db->editProperty($classid, $propertyid, json_decode($json)))
+                        HttpResponse::createResponse(200, "text/text", "OK")->expose();
+                    else
+                        HttpResponse::createErrorResponse(500, "")->expose();
+                }
+                else {
+                    HttpResponse::createErrorResponse(401, "Insufficient rights")->expose();
+                }
+            }
+            catch (Exception $exception) {
+                HttpResponse::createErrorResponse(500, $exception->getMessage())->expose();
+            }
+    
+        }
+
+        public function updateClass($storeid, $classid, $json) {
+            try {
+                if ($this->db->canEditClass($storeid, $classid)) {
+                    if ($this->db->updateClass($classid, json_decode($json)))
+                        HttpResponse::createResponse(200, "text/text", "OK")->expose();
+                    else
+                    HttpResponse::createErrorResponse(500, "")->expose();
+                }
+                else {
+                    HttpResponse::createErrorResponse(401, "Insufficient rights")->expose();
+                }
+            }
+            catch (Exception $exception) {
+                HttpResponse::createErrorResponse(500, $exception->getMessage())->expose();
+            }
+        }
+
+        public function updateObject($storeid, $objectid, $request) {
+            $classId = $this->db->getObjectClassId($objectid);
+            $objectClass = $this->db->getClass($storeid, $classId);
+            $validationerrors = JsonUtils::validate($request, $objectClass->updateObjectSchema());
+            if (isset($validationerrors) && gettype($validationerrors == 'boolean')) {
+                if ($this->db->canEditObject($objectid)) {
+                    if ($this->db->updateObject($objectid, json_decode($request))) {
+                        HttpResponse::createResponse(200, "text/text", "OK")->expose();
+                    }
+                    else {
+                        HttpResponse::createErrorResponse(500, "")->expose();
+                    }
+                }
+                else
+                    HttpResponse::createErrorResponse(401, "Insufficient rights")->expose();
+            }
+            else {
+                $errorJson = "{\"error\": \"Invalid request\", \"messages\": [";
+                $prefix = "";
+                foreach($errors as $error) {
+                    $errorJson .= $prefix . '"'. $error . '"';
+                    $prefix = ',';
+                }
+                $errorJson .= "]}";
+                HttpResponse::createErrorResponse(500, $errorJson)->expose();
+            }
+    
         }
     }
 ?>

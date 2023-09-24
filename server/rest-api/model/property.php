@@ -59,7 +59,7 @@
 
         public static function fromJson($json) {
             if (Property::validJson($json)) {
-                $result = new Property($json->id, $json->name, $json->type);
+                $result = new Property(isset($json->id) ? $json->id : "", $json->name, $json->type);
                 if (isset($json->json->required))
                     $result->required = $json->required;
                 if (isset($json->json->multiple))

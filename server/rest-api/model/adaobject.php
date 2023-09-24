@@ -29,7 +29,7 @@
                 $json .= $prefix . "{\"id\":\"" . $property["id"] . "\",\"name\":\"" . $property['name']. "\",\"type\":\"". $property['type'] . "\"";
                 if ($property['type'] == "string")
                     $json .= ",\"value\":\"". $property['value'] . "\"}";
-                else if ($property['type'] == "date") {
+                else if ($property['type'] == "date" || gettype($property['value']) == 'array') {
                     $json .= ",\"value\":{\"day\":" . $property['value']['day'] . ",";
                     $json .= "\"month\":" . $property['value']['month'] . ",";
                     $json .= "\"year\":" . $property['value']['year'] . "}}";

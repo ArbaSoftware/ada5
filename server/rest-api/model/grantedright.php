@@ -39,7 +39,7 @@
             $properties = array_keys(get_object_vars($json));
             if (in_array('grantee', $properties)) {
                 if ($json->grantee == 'everyone') 
-                    return (in_array('level', $properties) && sizeof($properties) == 2);
+                    return (in_array('level', $properties));
                 else
                     return (in_array('level', $properties) && in_array('identityprovider', $properties) && sizeof($properties) == 3);
             }
@@ -49,10 +49,11 @@
 
         public static function fromJson($json) {
             if (GrantedRight::isValidJson($json)) {
-                return new GrantedRight($json->grantee, $json->granteetype, $json->identityprovider, $json->level, ($json->grantee == 'everyone' ? 0: 1));
+                return new GrantedRight($json->grantee, isset($json->granteetype) ? $json->granteetype: "", $json->identityprovider, $json->level, ($json->grantee == 'everyone' ? 0: 1));
             }
-            else
-                throw new Exception("Invalid right json");
+            else {
+                throw new Exception("Invalid right json: ");
+            }
         }
 
         public function toJson() {
