@@ -4,8 +4,7 @@ import nl.arba.ada.client.api.AdaObject;
 import nl.arba.ada.client.api.PropertyType;
 import nl.arba.ada.client.api.PropertyValue;
 import nl.arba.ada.client.api.Store;
-import nl.arba.ada.client.api.exceptions.NoSearchResultsException;
-import nl.arba.ada.client.api.exceptions.ObjectNotCreatedException;
+import nl.arba.ada.client.api.exceptions.*;
 import nl.arba.ada.client.api.search.PropertyFilter;
 import nl.arba.ada.client.api.search.Search;
 import nl.arba.ada.client.api.security.GrantedRight;
@@ -122,5 +121,13 @@ public class Folder extends AdaObject {
         catch (Exception err) {
             throw new NoSearchResultsException();
         }
+    }
+
+    public void addChild(AdaObject child) throws NotRelatedException, InsufficientRightsException {
+        relateObject(child, "objectinfolder");
+    }
+
+    public AdaObject[] getChildren() throws ApiException {
+        return getRelatedObjects("objectinfolder");
     }
 }

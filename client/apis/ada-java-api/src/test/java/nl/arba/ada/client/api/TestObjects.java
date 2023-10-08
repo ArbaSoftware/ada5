@@ -1,5 +1,6 @@
 package nl.arba.ada.client.api;
 
+import nl.arba.ada.client.api.addon.base.Folder;
 import nl.arba.ada.client.api.security.Everyone;
 import nl.arba.ada.client.api.security.GrantedRight;
 import nl.arba.ada.client.api.security.Right;
@@ -74,6 +75,27 @@ public class TestObjects {
         childFolder.setObjectProperty("ParentFolder", newObject.getId());
         childFolder = domain.addObject(store, childFolder);
          */
+    }
+
+    @Test
+    public void test_relate() throws Exception {
+        AdaClass folderClass = store.getAdaClass("Folder");
+        AdaObject folder = new AdaObject();
+        folder.setClassid(folderClass.getId());
+        folder.setStringProperty("Name", "Eerste folder");
+        folder = store.createObject(folder);
+
+        AdaClass documentClass = store.getAdaClass("Document");
+        AdaObject document = new AdaObject();
+        document.setClassid(documentClass.getId());
+        document.setStringProperty("DocumentTitle", "Eerste document");
+        document = store.createObject(document);
+
+        store.relateObjects(folder,document, "objectinfolder");
+
+
+        AdaObject[] relatedObjects = Folder.create(folder).getChildren(); //folder.getRelatedObjects( "objectinfolder");
+        System.out.println("Done");
     }
 
 }

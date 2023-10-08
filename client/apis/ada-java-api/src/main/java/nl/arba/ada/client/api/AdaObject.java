@@ -326,4 +326,15 @@ public class AdaObject {
         return json;
     }
 
+    public AdaObject[] getRelatedObjects(String relationtype) throws ApiException {
+        return getStore().getRelatedObjects(getId(), relationtype);
+    }
+
+    public AdaObject[] getRelatedObjects() throws ApiException {
+        return getStore().getRelatedObjects(getId());
+    }
+
+    public void relateObject(AdaObject torelate, String relationtype) throws NotRelatedException, InsufficientRightsException {
+        getStore().relateObjects(this, torelate, relationtype);
+    }
 }

@@ -42,8 +42,6 @@ public class TestFolders {
             }
         }
         store = domain.createStore("test" + System.currentTimeMillis(), new GrantedRight[] {GrantedRight.create(Everyone.create(), allowAll)}, new String[] { "base"});
-//        AddOn addon = AddOn.fromJson(TestFolders.class.getResourceAsStream("/addons/base.json"));
-//        domain.updateAddOn(addon);
         Folder rootFolder = RootFolder.addSubFolder(store, "Eerste folder");
         Folder subFolder = rootFolder.createSubFolder("Subfolder");
         Folder rootFolder2 = RootFolder.addSubFolder(store, "Tweede rootfolder");

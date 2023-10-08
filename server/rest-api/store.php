@@ -52,6 +52,10 @@
         $handler->checkoutObject($request->getUrlPart(3), $request->getUrlPart(5));
         exit;
     }
+    else if ($request->matches("POST", "/ada/store/*/object/*/relatedobjects")) {
+        $handler->getRelatedObjects($request->getUrlPart(3), $request->getUrlPart(5), file_get_contents('php://input'));
+        exit;
+    }
     else if ($request->matches("POST", "/ada/store")) {
         $handler->createStore(file_get_contents("php://input"));
         exit;
@@ -74,6 +78,10 @@
     }
     else if ($request->matches("POST", "/ada/store/*/class/*/property")) {
         $handler->addProperty($request->getUrlPart(3), $request->getUrlPart(5), file_get_contents('php://input'));
+        exit;
+    }
+    else if ($request->matches("POST", "/ada/store/*/relate")) {
+        $handler->relateObjects($request->getUrlPart(3), file_get_contents('php://input'));
         exit;
     }
     else if ($request->matches("DELETE", "/ada/store/*")) {
@@ -509,6 +517,38 @@
                 HttpResponse::createErrorResponse(500, $errorJson)->expose();
             }
     
+        }
+
+        public function relateObjects($storeid, $json) {
+            $validationErrors = JsonUtils::validate($json, "relateobjects");
+            if (isset($validationErrors) && gettype($validationErrors) == 'boolean') {
+                $request = json_decode($json);
+                if ($this->db->relateObjects($storeid, $request->object1, $request->object2, $request->type)) {
+                    HttpResponse::createResponse(200, "text/text", "OK")->expose();
+                }
+                else {
+                    $response = HttpResponse::createErrorResponse(500, "Could not create relation");
+                    $response->expose();
+                }
+            }
+            else {
+                HttpResponse::createErrorResponse(500, "Invalid request")->expose();
+            }
+        }
+
+        public function getRelatedObjects($storeid, $objectid, $json) {
+            $validationErrors = JsonUtils::validate($json, "relatedobjectsrequest");
+            if (isset($validationErrors) && gettype($validationErrors) == 'boolean') {
+                $relatedObjects = $this->db->getRelatedObjects($objectid, json_decode($json));
+                if (gettype($relatedObjects) == "string")
+                    HttpResponse::createResponse(200, "text/json", $relatedObjects)->expose();
+                else {
+                    HttpResponse::createErrorResponse(404, "Related objects not found")->expose();
+                }
+            }
+            else {
+                HttpResponse::createErrorResponse(500, "Invalid request")->expose();
+            }
         }
     }
 ?>

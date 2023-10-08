@@ -2,23 +2,21 @@ package nl.arba.ada.client.adaclient.controls;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.json.JsonMapper;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
+import javafx.event.ActionEvent;
+import javafx.event.EventHandler;
 import javafx.geometry.Bounds;
-import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.control.*;
 import javafx.scene.layout.AnchorPane;
-import javafx.scene.layout.Pane;
+import javafx.stage.FileChooser;
+import nl.arba.ada.client.adaclient.utils.InternationalizationUtils;
 import nl.arba.ada.client.api.*;
 import nl.arba.ada.client.api.exceptions.AdaClassNotFoundException;
-import nl.arba.ada.client.api.util.JsonUtils;
 
+import java.io.File;
 import java.time.ZoneId;
-import java.util.Calendar;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Iterator;
+import java.util.*;
 
 public class PropertiesPane extends AnchorPane {
     private AdaObject targetObject;
@@ -30,26 +28,103 @@ public class PropertiesPane extends AnchorPane {
     private double maxLabelWidth = 0d;
     private double maxInputWidth = 0d;
     private ObjectMapper jsonMapper = new ObjectMapper();
+    private Button chooseContentButton;
+    private Label showContentLocation;
+    private File contentFile;
+
+    public PropertiesPane() {
+        super();
+    }
 
     public PropertiesPane(AdaObject target) {
         super();
         this.targetObject = target;
         try {
             AdaClass clazz = targetObject.getStore().getAdaClass(targetObject.getClassId());
-            for (Property property: clazz.getProperties()) {
-                if (targetObject.getProperties().stream().filter(p -> p.getId().equals(property.getId())).findFirst().isPresent()) {
-                    try {
-                        addProperty(property.getName(), property.getType(), targetObject.getStringProperty(property.getName()));
-                    } catch (Exception err) {
-                    }
-                }
-                else
-                    addProperty(property.getName(), property.getType(), null);
-            }
+            initClassProperties(clazz);
         }
         catch (AdaClassNotFoundException cnfe) {
             cnfe.printStackTrace();
         }
+    }
+
+    private void initClassProperties(AdaClass clazz) {
+        initClassProperties(clazz, new PropertyValue[0]);
+    }
+
+    private void initClassProperties(AdaClass clazz, PropertyValue[] currentvalues) {
+        for (Property property: clazz.getProperties()) {
+            if (targetObject == null) {
+                Optional <PropertyValue> optValue= Arrays.asList(currentvalues).stream().filter(v -> v.getName().equals(property.getName())).findFirst();
+                addProperty(property.getName(), property.getType(), optValue.isPresent()? optValue.get().getValue(): null);
+            }
+            else if (targetObject.getProperties().stream().filter(p -> p.getId().equals(property.getId())).findFirst().isPresent()) {
+                try {
+                    addProperty(property.getName(), property.getType(), targetObject.getStringProperty(property.getName()));
+                } catch (Exception err) {
+                }
+            }
+            else
+                addProperty(property.getName(), property.getType(), null);
+        }
+        if (clazz.isDocumentClass()) {
+            addContentProperty();
+        }
+    }
+
+    private void addContentProperty() {
+        Label contentLabel = new Label(InternationalizationUtils.get("objectproperties.content.label"));
+        contentLabel.setLayoutX(15d);
+        contentLabel.setLayoutY(currentY);
+        contentLabel.layoutBoundsProperty().addListener(new ChangeListener<Bounds>() {
+            @Override
+            public void changed(ObservableValue<? extends Bounds> observableValue, Bounds bounds, Bounds t1) {
+                if (t1.getWidth() > maxLabelWidth) {
+                    inputControls.values().stream().forEach(i -> i.setLayoutX(15d + t1.getWidth() + 15d));
+                    maxLabelWidth = t1.getWidth();
+                }
+            }
+        });
+        getChildren().add(contentLabel);
+        PropertiesPane me = this;
+        Label inputControl = new Label("-");
+        showContentLocation = inputControl;
+        inputControls.put("content", inputControl);
+        inputControl.setLayoutX(105);
+        inputControl.setLayoutY(currentY - (inputControl.getLayoutBounds().getHeight() / 2));
+        inputControl.layoutBoundsProperty().addListener(new ChangeListener<Bounds>() {
+            @Override
+            public void changed(ObservableValue<? extends Bounds> observableValue, Bounds bounds, Bounds t1) {
+                if (t1.getWidth() > maxInputWidth) {
+                    nullCheckboxes.values().stream().forEach(c -> c.setLayoutX(15d + maxLabelWidth + t1.getWidth()+25d));
+                    if (chooseContentButton != null)
+                        chooseContentButton.setLayoutX(15d+maxLabelWidth+t1.getWidth()+25d);
+                    maxInputWidth = t1.getWidth();
+                }
+            }
+        });
+        getChildren().add(inputControl);
+        chooseContentButton  = new Button("...");
+        chooseContentButton.setOnAction(new EventHandler<ActionEvent>() {
+            @Override
+            public void handle(ActionEvent actionEvent) {
+                FileChooser chooser = new FileChooser();
+                File chosen = chooser.showOpenDialog(me.getScene().getWindow());
+                if (chosen != null) {
+                    showContentLocation.setText(chosen.getName());
+                    contentFile = chosen;
+                }
+            }
+        });
+        chooseContentButton.setLayoutY(currentY - (inputControl.getLayoutBounds().getHeight()) / 2);
+        chooseContentButton.setLayoutX(200d);
+        getChildren().add(chooseContentButton);
+    }
+
+    private void clearProperties() {
+        nullCheckboxes.clear();
+        inputControls.clear();
+        getChildren().clear();
     }
 
     private void addProperty(String name, PropertyType type, Object value) {
@@ -77,6 +152,8 @@ public class PropertiesPane extends AnchorPane {
                 public void changed(ObservableValue<? extends Bounds> observableValue, Bounds bounds, Bounds t1) {
                     if (t1.getWidth() > maxInputWidth) {
                         nullCheckboxes.values().stream().forEach(c -> c.setLayoutX(15d + maxLabelWidth + t1.getWidth()+25d));
+                        if (chooseContentButton != null)
+                            chooseContentButton.setLayoutX(15d+maxLabelWidth+t1.getWidth()+25d);
                         maxInputWidth = t1.getWidth();
                     }
                 }
@@ -181,5 +258,20 @@ public class PropertiesPane extends AnchorPane {
         }
         json += "}";
         return json;
+    }
+
+    public void onChangeClass(AdaClass newclass) {
+        PropertyValue[] propertyValues = getPropertyValues();
+        HashMap <String, Object> savedValues = new HashMap<>();
+        clearProperties();
+        initClassProperties(newclass, propertyValues);
+    }
+
+    public boolean hasContentFile() {
+        return contentFile != null;
+    }
+
+    public File getContentFile() {
+        return contentFile;
     }
 }

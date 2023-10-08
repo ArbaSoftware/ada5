@@ -402,6 +402,11 @@
                                             }
                                         }
                                     }
+                                    if (isset($definition->objectrelationtypes)) {
+                                        foreach($definition->objectrelationtypes as $objectrelationtype) {
+                                            $conn->query("insert into objectrelationtypes (name, storeid, object1type, object2type) values ('" . $objectrelationtype->name . "','" . $id . "','" . $objectrelationtype->object1type . "', '" . $objectrelationtype->object2type . "')");
+                                        }
+                                    }
                                 }
                                 else {
                                     $succeeded = false;
@@ -1665,6 +1670,109 @@
     }
     else {
         return FALSE;
+    }
+   }
+
+   public function relateObjects($storeid, $id1, $id2, $type) {
+    $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
+    $object1 = $conn->query("select o.id,o.classid,c.folderclass,c.contentclass from objects o inner join classes c on c.id = o.classid where o.storeid = '" . $storeid . "' and o.id = '" . $id1 . "'");
+    if ($object1 && $object1->num_rows == 1) {
+        $object1data = $object1->fetch_object();
+        $object2 = $conn->query("select o.id,o.classid,c.folderclass,c.contentclass from objects o inner join classes c on c.id = o.classid where o.storeid = '" . $storeid . "' and o.id = '" . $id2 . "'");
+        if ($object2 && $object2->num_rows == 1) {
+            $object2data = $object2->fetch_object();
+            $types = $conn->query("select id, object1type, object2type from objectrelationtypes where storeid = '" . $storeid . "' and name = '" . $type . "'");
+            if ($types && $types->num_rows == 1) {
+                $typeObject = $types->fetch_object();
+                $object1Ok = TRUE;
+                if ($typeObject->object1type == 'document')
+                    $object1Ok = ($object1data->contentclass == 1);
+                else if ($typeObject->object1type == 'folder')
+                    $object1Ok = ($object1data->folderclass == 1);
+                $object2Ok = TRUE;
+                if ($typeObject->object2type == 'document')
+                    $object2Ok = ($object2data->contentclass == 1);
+                else if ($typeObject->object2type == 'folder')
+                    $object2Ok = ($object2data->folderclass == 1);
+                if ($object1Ok && $object2Ok) {
+                    $inserts = $conn->query("insert into objectrelations (object1, object2, type) values ('" . $id1 . "','" . $id2 . "','" . $typeObject->id . "')");
+                    return true;
+                }
+                else {
+                    return false;
+                }
+            }
+            else {
+                return false;
+            }
+        }
+        else {
+            return false;
+        }
+    }
+    else {
+        return false;
+    }
+   }
+
+   public function getRelatedObjects($objectid, $request) {
+    $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
+    if (isset($request->relationtype)) {
+        $rows = $conn->query("select ors.object2 from objectrelations ors inner join objectrelationtypes rt on rt.id = ors.type where (rt.id = '" . $request->relationtype . "' or rt.name = '" . $request->relationtype . "') and ors.object1 = '" . $objectid . "'");
+    }
+    else {
+        $rows = $conn->query("select object2 from objectrelations where object1 = '" . $objectid . "'");
+    }
+    $relatedObjectIds = [];
+    while ($row = $rows->fetch_object()) {
+        $relatedObjectIds[sizeof($relatedObjectIds)] = $row->object2;
+    }
+    $allowedObjectIds = [];
+    $readRights = $conn->query("select level from rights where systemright = 'read'");
+    if ($readRight = $readRights->fetch_object()) {
+        foreach($relatedObjectIds as $relatedObjectId) {
+            $potentials = $conn->query("select o.id, o.classid, r.level, c.majorversion, c.minorversion, c.mimetype, co.userid, co.identityproviderid from objects o inner join objectrights r on o.id = r.objectid left outer join content c on c.objectid = o.id left outer join checkouts co on co.objectid = o.id where  o.id = '" . $relatedObjectId . "' and (r.granteeid = 'everyone' or (r.granteeid = '" . $this->userId . "' and r.identityproviderid = '" . $this->identityProviderId . "')) order by r.weight asc, c.majorversion desc, c.minorversion desc limit 1");
+            if ($potential = $potentials->fetch_object()) {
+                if (intval($readRight->level) & intval($potential->level)) {
+                    $allowedObjectIds[sizeof($allowedObjectIds)] = $relatedObjectId;
+                }
+
+            }
+        }
+        $json = "[";
+        $prefix = "";
+        foreach($allowedObjectIds as $objectId) {
+            $json .= $prefix . "{\"id\":\"" . $objectId . "\",";
+            $classdetails = $conn->query("select c.id, c.name from classes c inner join objects o on o.classid = c.id where o.id = '" . $objectId . "'");
+            $classobject = $classdetails->fetch_object();
+            $json .= "\"class\":{\"id\":\"". $classobject->id . "\",\"name\":\"" . $classobject->name . "\"},\"properties\":[";
+            $propertiesQuery = "select op.propertyid, op.string_value, op.date_value, cp.type, cp.name from objectproperties op inner join classproperties cp on cp.id = op.propertyid where op.objectid = '" . $objectId . "' and cp.name in (";
+            $propertyPrefix = "";
+            foreach ($request->properties as $property) {
+                $propertiesQuery .= $propertyPrefix . "'" . $property . "'";
+                $propertyPrefix = ",";
+            }
+            $propertiesQuery .= ")";
+            $firstProperty = true;
+            $properties = $conn->query($propertiesQuery);
+            while ($property = $properties->fetch_object()) {
+                $json .= ($firstProperty ? "" : ",");
+                $json .= "{\"type\":\"" . $property->type . "\",\"id\":\"" . $property->propertyid . "\",\"name\":\"" . $property->name . "\",\"value\":";
+                if ($property->type == 'string')
+                    $json .= '"'. $property->string_value . '"';
+                else
+                    $json .= "null";
+                $json .= "}";
+                $firstProperty = false;
+            }
+            $json .= "]}";
+            $prefix = ",";
+        }
+        $json .= "]";
+        return $json;
+    }
+    else {
+        return false;
     }
    }
 

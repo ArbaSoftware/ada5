@@ -20,8 +20,12 @@
             return new HttpResponse($code, $contenttype, $content);
         }
 
+        public function getCode() {
+            return $this->responseCode;
+        }
+
         public function expose() {
-            if ($this->responseCode == 200) {
+            if ($this->responseCode === 200) {
                 header("HTTP/1.1 200");
                 if (!is_null($this->contentType))
                     header("Content-Type: " . $this->contentType);
@@ -34,7 +38,9 @@
                 }
             }
             else {
-                header("HTTP/1.1 " . $this->responseCode . " " . $this->errorMessage == NULL ? "" : $this->errorMessage);
+                header("HTTP/1.1 " . $this->responseCode . "Internal server error");
+                if (!is_null($this->errorMessage))
+                    echo '{"errors": ["' . $this->errorMessage . '"]}';
             }
         }
     }

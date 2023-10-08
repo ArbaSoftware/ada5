@@ -143,7 +143,29 @@
             "classes": {
                 "type": "arrayofobjects",
                 "required": false,
-                "schema": "addonclass"       }
+                "schema": "addonclass"       
+            },
+            "objectrelationtypes": {
+                "type": "arrayofobjects",
+                "required": false,
+                "schema": "objectrelationtype"
+            }
+        },
+        "objectrelationtype": {
+            "name": {
+                "type": "string",
+                "required": true
+            },
+            "object1type": {
+                "type": "enumeration",
+                "values": "objectrelationtypeobjecttype",
+                "required": true
+            },
+            "object2type": {
+                "type": "enumeration",
+                "values": "objectrelationtypeobjecttype",
+                "required": true
+            }
         },
         "right" : {
             "grantee": {
@@ -220,10 +242,35 @@
                 "type": "string",
                 "required": true
             }
+        },
+        "relateobjects": {
+            "object1": { 
+                "type": "string",
+                "required": true
+            },
+            "object2" : { 
+                "type": "string",
+                "required": true
+            },
+            "type": {
+                "type": "string", 
+                "required": true
+            }
+        },
+        "relatedobjectsrequest": {
+            "properties": {
+                "type": "arrayofstrings",
+                "required": true
+            },
+            "relationtype": {
+                "type": "string",
+                "required": false
+            }
         }
     },
     "enumerations": {
         "propertytypes": ["string", "date"],
-        "filteroperators": ["isnull","equals"]
+        "filteroperators": ["isnull","equals"],
+        "objectrelationtypeobjecttype": ["any", "document", "folder"]
     }
 }

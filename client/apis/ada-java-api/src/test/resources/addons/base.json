@@ -16,7 +16,7 @@
         {
           "name": "ParentFolder",
           "type": "object",
-          "class": "ThisClass",
+          "objectclass": "ThisClass",
           "required": false,
           "multiple": false
         }
@@ -46,6 +46,13 @@
           "rights": ["read","update","delete","create","createobject"]
         }
       ]
+    }
+  ],
+  "objectrelationtypes": [
+    {
+      "name": "objectinfolder",
+      "object1type": "folder",
+      "object2type": "document"
     }
   ]
 }

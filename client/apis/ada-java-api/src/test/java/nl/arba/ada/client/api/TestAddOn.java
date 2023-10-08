@@ -22,7 +22,7 @@ public class TestAddOn {
         domain.login(TEST_USER_1_EMAIL, TEST_USER_1_PASSWORD);
     }
 
-    //@Test
+    @Test
     public void doTest() throws IOException, AddOnNotCreatedException {
         AddOn addon = AddOn.fromJson(getClass().getResourceAsStream("/addons/base.json"));
         domain.addAddOn(addon);

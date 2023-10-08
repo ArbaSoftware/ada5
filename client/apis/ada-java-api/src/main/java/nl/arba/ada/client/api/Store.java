@@ -239,4 +239,17 @@ public class Store {
     public AdaObject updateObject(AdaObject toupdate) throws AdaObjectNotUpdatedException, InsufficientRightsException, LostRightsException {
         return getDomain().updateObject(toupdate);
     }
+
+    public void relateObjects(AdaObject first, AdaObject second, String type) throws NotRelatedException, InsufficientRightsException {
+        System.out.println("Storeid:" + getId());
+        getDomain().relateObjects(getId(), first.getId(), second.getId(), type);
+    }
+
+    public AdaObject[] getRelatedObjects(String objectid) throws ApiException {
+        return getDomain().getRelatedObjects(this, objectid);
+    }
+
+    public AdaObject[] getRelatedObjects(String objectid, String relationtype) throws ApiException {
+        return getDomain().getRelatedObjects(this, objectid, relationtype);
+    }
 }

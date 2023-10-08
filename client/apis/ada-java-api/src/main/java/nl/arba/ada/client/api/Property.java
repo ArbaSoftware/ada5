@@ -10,6 +10,7 @@ public class Property {
     private PropertyType type;
     private boolean required;
     private boolean multiple;
+    private String objectClass;
 
     /**
      * Set the unique id of the property
@@ -131,5 +132,13 @@ public class Property {
         result.setName(name);
         result.setType(type);
         return result;
+    }
+
+    public void setObjectclass(String classname) {
+        objectClass = classname;
+    }
+
+    public String getObjectClass() {
+        return objectClass;
     }
 }

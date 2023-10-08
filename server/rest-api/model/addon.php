@@ -8,9 +8,11 @@
                 $validClasses = true;
                 $classErrors = [];
                 foreach($input->classes as $class) {
-                    $classErrors = Addon::validateClass($class, $db);
-                    foreach($classErrors as $error)
-                        $classErrors[sizeof($classErrors)] = $error;
+                    $thisclassErrors = Addon::validateClass($class, $db);
+                    if (gettype($thisclassErrors) == 'array') {
+                        foreach($thisclassErrors as $error)
+                            $classErrors[sizeof($classErrors)] = $error;
+                    }
                 }
                 if (sizeof($classErrors) == 0)
                     return true;

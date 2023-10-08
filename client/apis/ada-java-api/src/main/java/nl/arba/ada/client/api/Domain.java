@@ -291,7 +291,9 @@ public class Domain {
      */
     public AddOn addAddOn(AddOn definition) throws AddOnNotCreatedException{
         try {
-            doPost(baseUrl + "/addon", definition.toJson());
+            System.out.println(definition.toJson());
+            InputStream is = doPost(baseUrl + "/addon", definition.toJson());
+            System.out.println(StreamUtils.streamToString(is));
             return definition;
         }
         catch (IOException io) {
@@ -629,6 +631,60 @@ public class Domain {
         }
         catch (IOException err) {
             throw new UserNotFoundException();
+        }
+    }
+
+    public void relateObjects(String storeid, String firstid, String secondid, String type) throws InsufficientRightsException, NotRelatedException {
+        HashMap <String, String> requestData = new HashMap<>();
+        requestData.put("object1", firstid);
+        requestData.put("object2", secondid);
+        requestData.put("type", type);
+
+        try {
+            InputStream is = doPost(baseUrl + "/store/" + storeid + "/relate", new ObjectMapper().writeValueAsString(requestData));
+            System.out.println(StreamUtils.streamToString(is));
+        }
+        catch (IOException err) {
+            throw new NotRelatedException();
+        }
+    }
+    public AdaObject[] getRelatedObjects(Store store, String objectid) throws ApiException {
+        return getRelatedObjects(store, objectid, null);
+    }
+
+    public AdaObject[] getRelatedObjects(Store store, String objectid, String relationtype) throws ApiException {
+        HashMap <String, Object> request = new HashMap <> ();
+        request.put("properties", new String[] {"DocumentTitle"});
+        if (relationtype != null) {
+            request.put("relationtype", relationtype);
+        }
+        try {
+            InputStream is = doPost(baseUrl + "/store/" + store.getId() + "/object/" + objectid + "/relatedobjects", new ObjectMapper().writeValueAsString(request));
+            Map[] results = new ObjectMapper().readValue(is, Map[].class);
+            AdaObject[] objects = new AdaObject[results.length];
+            for (int index = 0; index < objects.length; index++) {
+                Map current = results[index];
+                AdaObject object = new AdaObject();
+                object.setId((String) current.get("id"));
+                object.setClassid(((Map) current.get("class")).get("id").toString());
+                object.setStore(store);
+                List<Map> props = (List <Map>) current.get("properties");
+                ArrayList<PropertyValue> propValues = new ArrayList<>();
+                for (Map currentProp : props) {
+                    PropertyValue propValue = new PropertyValue();
+                    propValue.setId((String) currentProp.get("id"));
+                    propValue.setName((String) currentProp.get("name"));
+                    propValue.setValue(currentProp.get("value"));
+                    propValue.setType((String) currentProp.get("type"));
+                    propValues.add(propValue);
+                }
+                object.setProperties(propValues.toArray(new PropertyValue[0]));
+                objects[index] = object;
+            }
+            return objects;
+        }
+        catch (Exception err) {
+            throw new ApiException();
         }
     }
 }

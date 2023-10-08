@@ -2,6 +2,7 @@ package nl.arba.ada.client.api.addon;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import nl.arba.ada.client.api.AdaClass;
+import nl.arba.ada.client.api.ObjectRelationType;
 import nl.arba.ada.client.api.security.Right;
 
 import java.io.IOException;
@@ -17,6 +18,7 @@ public class AddOn {
     private String name;
     private Right[] rights;
     private AddOnClass[] classes;
+    private ObjectRelationType[] objectRelationTypes;
 
     /**
      * Set the id of the addon
@@ -74,6 +76,14 @@ public class AddOn {
         this.classes = classes;
     }
 
+    public void setObjectrelationtypes(ObjectRelationType[] types) {
+        objectRelationTypes = types;
+    }
+
+    public ObjectRelationType[] getObjectRelationTypes() {
+        return objectRelationTypes;
+    }
+
     /**
      * Get the classes that will be implemented by the addon
      * @return The classes that will be implemented by the addon
@@ -108,6 +118,9 @@ public class AddOn {
             "\"name\":\"" + getName() + "\"," +
             "\"classes\":[" +
             Arrays.stream(getClasses()).map(c -> c.toJson()).collect(Collectors.joining(",")) +
+            "]," +
+            "\"objectrelationtypes\":[" +
+            Arrays.stream(getObjectRelationTypes()).map(t -> t.toJson()).collect(Collectors.joining(",")) +
             "]" +
         "}";
     }
