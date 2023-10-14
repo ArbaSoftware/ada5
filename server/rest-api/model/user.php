@@ -5,6 +5,7 @@
         private $firstname;
         private $lastname;
         private $identityproviderid;
+        private $roles;
 
         public function __construct($id, $email, $firstname, $lastname, $identityproviderid) {
             $this->id = $id;
@@ -12,6 +13,7 @@
             $this->firstname = $firstname;
             $this->lastname = $lastname;
             $this->identityproviderid = $identityproviderid;
+            $this->roles = [];
         }
 
         public function getId() {
@@ -32,6 +34,18 @@
 
         public function getLastName() {
             return $this->lastname;
+        }
+
+        public function addRole($role) {
+            $this->roles[sizeof($this->roles)] = $role;
+        }
+
+        public function hasRoles() {
+            return sizeof($this->roles) > 0;
+        }
+
+        public function getRoles() {
+            return $this->roles;
         }
 
         public function toJson() {

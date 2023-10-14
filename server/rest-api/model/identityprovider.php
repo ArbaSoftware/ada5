@@ -4,12 +4,14 @@
         private $name;
         private $type;
         private $settings;
+        private $rolescache;
 
         public function __construct($id, $name, $type) {
             $this->id = $id;
             $this->name = $name;
             $this->type = $type;
             $this->settings = array();
+            $this->rolescache = null;
         }
 
         public function addSetting($name, $value) {
@@ -176,6 +178,14 @@
         $context = stream_context_create($opts);
         $userInfo = json_decode(file_get_contents($this->getSetting('api.url') . '/users/' . $id, false, $context));
         return new User($userInfo->id, $userInfo->email, $userInfo->firstName, $userInfo->lastName, $this->id);
+    }
+
+    public function setRolesCache($cache) {
+        $this->rolescache = $cache;
+    }
+
+    public function getRolesCache() {
+        return $this->rolescache;
     }
   }
 ?>

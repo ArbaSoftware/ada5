@@ -61,6 +61,7 @@ public class Domain {
     }
 
     private void initStore() throws IOException {
+        System.out.println(StreamUtils.streamToString(doGet(baseUrl + "/security/right")));
         Right[] rightz = mapper.readValue(doGet(baseUrl + "/security/right"), Right[].class);
         rights = new ArrayList<>();
         rights.addAll(Arrays.asList(rightz));
@@ -642,7 +643,7 @@ public class Domain {
 
         try {
             InputStream is = doPost(baseUrl + "/store/" + storeid + "/relate", new ObjectMapper().writeValueAsString(requestData));
-            System.out.println(StreamUtils.streamToString(is));
+            System.out.println("Relate objects response: " + StreamUtils.streamToString(is));
         }
         catch (IOException err) {
             throw new NotRelatedException();

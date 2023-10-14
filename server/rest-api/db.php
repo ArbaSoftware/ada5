@@ -46,4 +46,6 @@
         public function canGetObject($storeid, $objectid);
         public function relateObjects($storeid, $id1, $id2, $type);
         public function getRelatedObjects($objectid, $request);
+        public function updateUser($user);
+        public function addRequestPerformance($url, $method, $time);
     }

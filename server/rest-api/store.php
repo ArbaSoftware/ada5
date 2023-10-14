@@ -10,6 +10,7 @@
     include('model/httpresponse.php');
     define('CHUNK_SIZE', 1024*1024);
 
+    $start = microtime(true);
     $request = new HttpRequest();
     $handler = new StoreHandler($request);
 
@@ -18,90 +19,112 @@
         exit;
     }
 
-    $db = $handler->getDb(); //new MySql('192.168.2.74', 'ada', 'ada', 'ada5', $request->getUser()->getId(), $request->getUser()->getIdentifyProviderId());
+    $db = $handler->getDb();
+    $db->updateUser($request->getUser());
 
     if ($request->matches("GET", "/ada/store")) {
         $handler->getStores();
+        $db->addRequestPerformance($request->getUrl(), strtolower($request->getMethod()), microtime(true)-$start);
         exit;
     }
     else if ($request->matches("GET", "/ada/store/*")) {
         $handler->getStore($request->getUrlPart(3));
+        $db->addRequestPerformance($request->getUrl(), strtolower($request->getMethod()), microtime(true)-$start);
         exit;
     }
     else if ($request->matches("GET", "/ada/store/*/class")) {
         $handler->getClasses($request->getUrlPart(3));
+        $db->addRequestPerformance($request->getUrl(), strtolower($request->getMethod()), microtime(true)-$start);
         exit;
     }
     else if ($request->matches("GET", "/ada/store/*/class/*")) {
         $handler->getClass($request->getUrlPart(3), $request->getUrlPart(5));
+        $db->addRequestPerformance($request->getUrl(), strtolower($request->getMethod()), microtime(true)-$start);
         exit;
     }
     else if ($request->matches("GET", '/ada/store/*/object/*')) {
         $handler->getObject($request->getUrlPart(3), $request->getUrlPart(5));
+        $db->addRequestPerformance($request->getUrl(), strtolower($request->getMethod()), microtime(true)-$start);
         exit;
     }
     else if ($request->matches("GET", '/ada/store/*/object/*/content/*')) {
         $handler->getContent($request->getUrlPart(3), $request->getUrlPart(5), $request->getUrlPart(7));
+        $db->addRequestPerformance($request->getUrl(), strtolower($request->getMethod()), microtime(true)-$start);
         exit;
     }
     else if ($request->matches("GET", '/ada/store/*/object/*/path')) {
         $handler->getObjectPath($request->getUrlPart(3), $request->getUrlPart(5));
+        $db->addRequestPerformance($request->getUrl(), strtolower($request->getMethod()), microtime(true)-$start);
         exit;
     }
     else if ($request->matches("GET", "/ada/store/*/object/*/checkout")) {
         $handler->checkoutObject($request->getUrlPart(3), $request->getUrlPart(5));
+        $db->addRequestPerformance($request->getUrl(), strtolower($request->getMethod()), microtime(true)-$start);
         exit;
     }
     else if ($request->matches("POST", "/ada/store/*/object/*/relatedobjects")) {
         $handler->getRelatedObjects($request->getUrlPart(3), $request->getUrlPart(5), file_get_contents('php://input'));
+        $db->addRequestPerformance($request->getUrl(), strtolower($request->getMethod()), microtime(true)-$start);
         exit;
     }
     else if ($request->matches("POST", "/ada/store")) {
         $handler->createStore(file_get_contents("php://input"));
+        $db->addRequestPerformance($request->getUrl(), strtolower($request->getMethod()), microtime(true)-$start);
         exit;
     }
     else if ($request->matches("POST", "/ada/store/*/search")) {
         $handler->search($request->getUrlPart(3), file_get_contents('php://input'));
+        $db->addRequestPerformance($request->getUrl(), strtolower($request->getMethod()), microtime(true)-$start);
         exit;
     }
     else if ($request->matches("POST", "/ada/store/*/class")) {
         $handler->createClass($request->getUrlPart(3), file_get_contents('php://input'));
+        $db->addRequestPerformance($request->getUrl(), strtolower($request->getMethod()), microtime(true)-$start);
         exit;
     }
     else if ($request->matches("POST", "/ada/store/*/class/*/object")) {
         $handler->createObject($request->getUrlPart(3), $request->getUrlPart(5), file_get_contents("php://input"));
+        $db->addRequestPerformance($request->getUrl(), strtolower($request->getMethod()), microtime(true)-$start);
         exit;
     }
     else if ($request->matches("POST", "/ada/store/*/object/*/checkin")) {
         $handler->checkin($request->getUrlPart(3), $request->getUrlPart(5), file_get_contents('php://input'));
+        $db->addRequestPerformance($request->getUrl(), strtolower($request->getMethod()), microtime(true)-$start);
         exit;
     }
     else if ($request->matches("POST", "/ada/store/*/class/*/property")) {
         $handler->addProperty($request->getUrlPart(3), $request->getUrlPart(5), file_get_contents('php://input'));
+        $db->addRequestPerformance($request->getUrl(), strtolower($request->getMethod()), microtime(true)-$start);
         exit;
     }
     else if ($request->matches("POST", "/ada/store/*/relate")) {
         $handler->relateObjects($request->getUrlPart(3), file_get_contents('php://input'));
+        $db->addRequestPerformance($request->getUrl(), strtolower($request->getMethod()), microtime(true)-$start);
         exit;
     }
     else if ($request->matches("DELETE", "/ada/store/*")) {
         $handler->deleteStore($request->getUrlPart(3));
+        $db->addRequestPerformance($request->getUrl(), strtolower($request->getMethod()), microtime(true)-$start);
         exit;
     }
     else if ($request->matches("DELETE", "/ada/store/*/class/*/property/*")) {
         $handler->deleteProperty($request->getUrlPart(3), $request->getUrlPart(5), $request->getUrlPart(7));
+        $db->addRequestPerformance($request->getUrl(), strtolower($request->getMethod()), microtime(true)-$start);
         exit;
     }
     else if ($request->matches("PUT", "/ada/store/*/class/*/property/*")) {
         $handler->updateProperty($request->getUrlPart(3), $request->getUrlPart(5), $request->getUrlPart(7), file_get_contents('php://input'));
+        $db->addRequestPerformance($request->getUrl(), strtolower($request->getMethod()), microtime(true)-$start);
         exit;
     }
     else if ($request->matches("PUT", "/ada/store/*/class/*")) {
         $handler->updateClass($request->getUrlPart(3), $request->getUrlPart(5), file_get_contents("php://input"));
+        $db->addRequestPerformance($request->getUrl(), strtolower($request->getMethod()), microtime(true)-$start);
         exit;
     }
     else if ($request->matches("PUT", "/ada/store/*/object/*")) {
         $handler->updateObject($request->getUrlPart(3), $request->getUrlPart(5), file_get_contents("php://input"));
+        $db->addRequestPerformance($request->getUrl(), strtolower($request->getMethod()), microtime(true)-$start);
         exit;
     }
     else {

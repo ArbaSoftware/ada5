@@ -9,8 +9,7 @@ import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
 import javafx.scene.control.*;
-import javafx.scene.input.ContextMenuEvent;
-import javafx.scene.input.MouseEvent;
+import javafx.scene.input.*;
 import javafx.scene.layout.BorderPane;
 import javafx.stage.Stage;
 import javafx.util.Callback;
@@ -27,6 +26,7 @@ import nl.arba.ada.client.api.addon.base.Folder;
 import nl.arba.ada.client.api.exceptions.AdaClassNotFoundException;
 import nl.arba.ada.client.api.exceptions.NoSearchResultsException;
 
+import java.io.File;
 import java.net.URL;
 import java.util.HashMap;
 import java.util.List;
@@ -175,6 +175,34 @@ public class AppController implements Initializable {
                 return newRow;
             }
         });
+
+        tableFolderContent.setOnDragOver(new EventHandler<DragEvent>() {
+            @Override
+            public void handle(DragEvent dragEvent) {
+                if (dragEvent.getGestureSource() != tableFolderContent && (tvStore.getSelectionModel().getSelectedItem() instanceof FolderTreeItem)) {
+                    dragEvent.acceptTransferModes(TransferMode.COPY_OR_MOVE);
+                }
+                dragEvent.consume();
+            }
+        });
+
+        tableFolderContent.setOnDragDropped(new EventHandler<DragEvent>() {
+            @Override
+            public void handle(DragEvent dragEvent) {
+                Dragboard db = dragEvent.getDragboard();
+                if (db.hasFiles()) {
+                    List <File> files = db.getFiles();
+                    dragEvent.setDropCompleted(true);
+
+                    FolderTreeItem treeItem = (FolderTreeItem) tvStore.getSelectionModel().getSelectedItem();
+                    onAddDroppedDocument(treeItem, files.get(0));
+                }
+                else {
+                    dragEvent.setDropCompleted(false);
+                }
+                dragEvent.consume();
+            }
+        });
     }
 
     private void initObjectMenus() {
@@ -302,6 +330,34 @@ public class AppController implements Initializable {
                 AdaObject addedObject = store.createObject(toadd);
                 Folder newFolder = Folder.create(addedObject);
                 parent.getChildren().add(new FolderTreeItem(newFolder));
+            }
+        }
+        catch (Exception err) {
+            err.printStackTrace();
+        }
+    }
+
+    private void onAddDroppedDocument(FolderTreeItem parent, File droppedfile) {
+        try {
+            Store store = ((StoreTreeItem) tvStore.getRoot()).getStore();
+            FXMLLoader loader = new FXMLLoader(App.class.getResource("objectproperties.fxml"));
+            loader.setResources(InternationalizationUtils.getResources());
+            ObjectPropertiesController controller = new ObjectPropertiesController(store, droppedfile);
+            loader.setController(controller);
+            Dialog propertiesDialog = new Dialog();
+            propertiesDialog.setTitle(InternationalizationUtils.get("objectproperties.add.folder.title"));
+            propertiesDialog.getDialogPane().setContent(loader.load());
+            ButtonType ok =new ButtonType(InternationalizationUtils.get("dialog.button.ok"), ButtonBar.ButtonData.OK_DONE);
+            propertiesDialog.getDialogPane().getButtonTypes().add(ok);
+            controller.setOkButton((Button) propertiesDialog.getDialogPane().lookupButton(ok));
+            propertiesDialog.getDialogPane().getButtonTypes().add(new ButtonType(InternationalizationUtils.get("dialog.button.cancel"), ButtonBar.ButtonData.CANCEL_CLOSE));
+            propertiesDialog.showAndWait();
+
+            if (propertiesDialog.getResult().equals(ok)) {
+                AdaObject toadd = controller.getNewObject();
+                AdaObject addedObject = store.createObject(toadd);
+                parent.getFolder().addChild(addedObject);
+                showFolderContent(parent.getFolder());
             }
         }
         catch (Exception err) {

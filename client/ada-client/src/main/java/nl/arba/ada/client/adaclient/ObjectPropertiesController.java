@@ -17,6 +17,7 @@ import nl.arba.ada.client.api.*;
 import nl.arba.ada.client.api.addon.base.Document;
 import nl.arba.ada.client.api.security.GrantedRight;
 
+import java.io.File;
 import java.net.URL;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -37,6 +38,7 @@ public class ObjectPropertiesController implements Initializable {
     private Store newStore;
     private boolean addingFolder;
     private boolean updating = false;
+    private File documentToAdd;
 
     public ObjectPropertiesController(AdaObject target) {
         theObject = target;
@@ -48,6 +50,12 @@ public class ObjectPropertiesController implements Initializable {
         addingFolder = addingfolder;
     }
 
+    public ObjectPropertiesController(Store store, File toadd) {
+        addingFolder = false;
+        newStore = store;
+        documentToAdd = toadd;
+    }
+
     public void setOkButton(Button ok) {
         okButton = ok;
     }
@@ -56,7 +64,7 @@ public class ObjectPropertiesController implements Initializable {
     public void initialize(URL url, ResourceBundle resourceBundle) {
         try {
             AdaClass[] classes = theObject == null ? newStore.getClasses() : theObject.getStore().getClasses();
-            List<IdName> items = Arrays.asList(classes).stream().filter(c -> addingFolder ? c.isFolderClass(): updating? true: !c.isFolderClass()).map(c -> new IdName(c.getId(), c.getName() )).collect(Collectors.toList());
+            List<IdName> items = Arrays.asList(classes).stream().filter(c -> addingFolder ? c.isFolderClass(): updating? true: documentToAdd == null ? !c.isFolderClass() : c.isDocumentClass()).map(c -> new IdName(c.getId(), c.getName() )).collect(Collectors.toList());
             items.sort(new Comparator<IdName>() {
                 @Override
                 public int compare(IdName o1, IdName o2) {
@@ -88,8 +96,10 @@ public class ObjectPropertiesController implements Initializable {
 
             if (updating)
                 propertiesPane = new PropertiesPane(theObject);
-            else
+            else if (documentToAdd == null)
                 propertiesPane = new PropertiesPane();
+            else
+                propertiesPane = new PropertiesPane(documentToAdd);
             propertiesScrollPane.setContent(propertiesPane);
 
             rightsTable = new RightsTable(updating? theObject.getRights() : Arrays.asList(new GrantedRight[0]), updating? theObject.getStore().getDomain() : newStore.getDomain(), (updating ? theObject.getStore().getDomain() : newStore.getDomain()).getRights().stream().filter(r -> r.isObjectRight()).collect(Collectors.toList()));

@@ -16,8 +16,11 @@ import nl.arba.ada.client.adaclient.utils.RightUtils;
 import nl.arba.ada.client.api.Domain;
 import nl.arba.ada.client.api.security.GrantedRight;
 import nl.arba.ada.client.api.security.Right;
+import nl.arba.ada.client.api.security.Role;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 
 public class RightsTable extends TableView {
@@ -28,10 +31,12 @@ public class RightsTable extends TableView {
     private List<Right> availableRights;
     private ArrayList <ChangeListener> changeListeners = new ArrayList<>();
     private TableRow selectedRow = null;
+    private HashMap <String, Role[]> rolesCache;
 
     private Domain domain;
     public RightsTable(List<GrantedRight> rights, Domain domain, List<Right> availablerights) {
         super();
+        rolesCache = new HashMap<>();
         availableRights = availablerights;
         this.domain =domain;
         this.rights = new ArrayList<>();
@@ -48,9 +53,11 @@ public class RightsTable extends TableView {
             @Override
             public ObservableValue call(TableColumn.CellDataFeatures<GrantedRight, String> cellDataFeatures) {
                 GrantedRight right = (GrantedRight) cellDataFeatures.getValue();
-                System.out.println("Right: " + right.getGrantee());
                 if (right.getGrantee() == null) {
                     return new SimpleStringProperty("?");
+                }
+                else if (right.getGranteetype().equalsIgnoreCase("role")) {
+                    return new SimpleStringProperty(getRoleName(right));
                 }
                 else
                     return new SimpleStringProperty(right.getGrantee().getDisplayName());
@@ -113,6 +120,18 @@ public class RightsTable extends TableView {
 
         for (GrantedRight right: rights) {
             getItems().add(right);
+        }
+    }
+
+    private String getRoleName(GrantedRight right) {
+        try {
+            if (!rolesCache.containsKey(right.getGrantee().getIdentityProvider().getId())) {
+                rolesCache.put(right.getGrantee().getIdentityProvider().getId(), domain.getRoles(right.getGrantee().getIdentityProvider()));
+            }
+            return Arrays.asList(rolesCache.get(right.getGrantee().getIdentityProvider().getId())).stream().filter(r -> r.getId().equals(right.getGrantee().getId())).map(r -> r.getName()).findFirst().get();
+        }
+        catch (Exception err) {
+            return "?";
         }
     }
 

@@ -14,6 +14,10 @@ class HttpRequest {
         $this->user = $auth->isAuthorized();
     }
 
+    public function getUrl() {
+        return $this->url;
+    }
+
     public function getMethod() {
         return $this->method;
     }

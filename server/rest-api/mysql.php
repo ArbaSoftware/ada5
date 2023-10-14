@@ -50,6 +50,8 @@
                     foreach($potentials as $potential) {
                         if (intval($right->level) & intval($potential["level"])) {
                             $stores[sizeof($stores)] = $potential["store"];
+                            //Register get object event
+                            $conn->query("insert into events (type,sourceid, userid, identityproviderid) values ('store.get', '" . $potential["store"]->getId() . "','" . $this->userId . "','" . $this->identityProviderId . "')");
                         }
                     }
                     return $stores;
@@ -103,6 +105,9 @@
                                 $store->setLastModified($row->lastmodifieddate);
                                 $store->setLastModifier($row->lastmodifier);
                                 $store->setLastModifierIdentityProviderId($row->lastmodifieridentityproviderid);
+
+                                //Register get object event
+                                $conn->query("insert into events (type,sourceid, userid, identityproviderid) values ('store.get', '" . $id . "','" . $this->userId . "','" . $this->identityProviderId . "')");
                                 return $store;
                             }
                             else
@@ -141,10 +146,11 @@
         public function getIdentityProvider($id) {
             try {
                 $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
-                $idps = $conn->query("select id,name, `type` from identityproviders where id = '" . $id . "'");
+                $idps = $conn->query("select id,name,rolescache, `type` from identityproviders where id = '" . $id . "'");
 
                 if ($idp = $idps->fetch_object()) {
                     $result = new IdentityProvider($idp->id, $idp->name, $idp->type);
+                    $result->setRolesCache($idp->rolescache);
 
                     $idpprops = $conn->query("select property, value from identityproviderproperties where identityproviderid = '" . $id . "'");
                     while ($prop = $idpprops->fetch_object()) {
@@ -401,6 +407,7 @@
                                                 }
                                             }
                                         }
+                                        $conn->query("insert into events (sourceid, type, userid, identityproviderid) values ('" . $classid . "','class.added', '" . $this->userId . "','" . $this->identityProviderId . "')");
                                     }
                                     if (isset($definition->objectrelationtypes)) {
                                         foreach($definition->objectrelationtypes as $objectrelationtype) {
@@ -415,6 +422,7 @@
                         }
                     }
                     if ($succeeded) {
+                        $conn->query("insert into events (sourceid, type, userid, identityproviderid) values ('" . $id . "','store.added', '" . $this->userId . "','" . $this->identityProviderId . "')");
                         $conn->commit();
                         return $id;
                     }
@@ -485,6 +493,7 @@
                             }
                         }
                         if ($succeeded) {
+                            $conn->query("insert into events (sourceid, type, userid, identityproviderid) values ('" . $id . "','class.added','" . $this->userId . "','" . $this->identityProviderId . "')");
                             $conn->commit();
                             return $id;
                         }
@@ -613,6 +622,9 @@
                             $newClass->addRight($newRight);
                         }
                     }
+
+                    //Register get class event
+                    $conn->query("insert into events (type,sourceid, userid, identityproviderid) values ('class.get', '" . $classid . "','" . $this->userId . "','" . $this->identityProviderId . "')");
                     return $newClass;
                 }
                 else
@@ -647,7 +659,8 @@
                     $file = $content->localdir. "/" . $content->id;
                     unlink($file);
                 }
-                return $conn->query("delete from stores where id = '" . $storeid . "'");
+                //return $conn->query("delete from stores where id = '" . $storeid . "'");
+                return $conn->query("call deleteStore('" . $storeid . "','" . $this->userId . "','" . $this->identityProviderId . "')");
             }
             finally {
                 $conn->close();
@@ -857,6 +870,7 @@
                                 if (!$succeeded)
                                     $detailErrorMessage = "Content kon niet worden toegevoegd";
                             }
+                            $conn->query("insert into events (type,sourceid, userid, identityproviderid) values ('object.added', '" . $id . "','" . $this->userId . "','" . $this->identityProviderId . "')");
                             $conn->commit();
                             return new AdaObject($id, $class);
                         }
@@ -932,6 +946,10 @@
                             }
                             $newObject->addRight($newRight);
                         }
+
+                        //Register get object event
+                        $conn->query("insert into events (type,sourceid, userid, identityproviderid) values ('object.get', '" . $objectid . "','" . $this->userId . "','" . $this->identityProviderId . "')");
+
                         return $newObject;
                     }
                     else
@@ -1349,6 +1367,7 @@
         $idquery = $conn->query("select UUID() newid from INFORMATION_SCHEMA.TABLES LIMIT 1");
         $id = $idquery->fetch_object()->newid;
         if ($conn->query("insert into classproperties (name, `type`, required, multiple, classid) values ('" . $request->name . "','" . $request->type . "'," . ($request->required ? 1 : 0) . "," . ($request->multiple? 1 : 0) . ",'" . $classid . "')")) {
+            $conn->query("insert into events (sourceid, type, userid, identityproviderid) values ('" . $classid . "','class.changed','" . $this->userId . "','" . $this->identityProviderId . "')");
             return "{\"id\":\"" . $id . "\"}";
         }
         else
@@ -1408,6 +1427,7 @@
 
    public function updateClass($id, $request) {
     try {
+        $classId = $id;
         $conn= mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
 
         $conn->begin_transaction();
@@ -1416,9 +1436,9 @@
         //Update rights
         if ($conn->query("delete from classrights where classid = '" . $id . "'")) {
             foreach($request->rights as $right) {
-                $existing = $conn->query("select id, level from classrights where granteeid = '" . $right->grantee . "' and identityproviderid = '" . $right->identityprovider);
+                $existing = $conn->query("select id, level from classrights where granteeid = '" . $right->grantee . "' and identityproviderid = '" . $right->identityprovider . "'");
                 if ($existing->num_rows == 0) {
-                    $conn->query("insert into classrights (classid, granteeid, granteetype, identityproviderid, level, weight) values ('" . $id . "','" . $right->grantee . "','" . $right->granteetype . "','" . $right->identityprovider . "'," . $right->level . "," . $this->getGranteeTypeWeigth($right->type) . ")");
+                    $conn->query("insert into classrights (classid, granteeid, granteetype, identityproviderid, level, weight) values ('" . $id . "','" . $right->grantee . "','" . $right->granteetype . "','" . $right->identityprovider . "'," . $right->level . "," . $this->getGranteeTypeWeigth($right->granteetype) . ")");
                 }
                 else {
                     $savedRight = $existing->fetch_object();
@@ -1456,6 +1476,7 @@
         }
 
         if ($succeeded) {
+            $conn->query("insert into events (sourceid,type,userid, identityproviderid) values ('" . $classId . "','class.changed','" . $this->userId . "','" . $this->identityProviderId . "')");
             $conn->commit();
             return true;
         }
@@ -1476,6 +1497,20 @@
    public function canEditObject($objectid) {
     try {
         $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
+        $rights = $conn->query("select level from rights where systemright='Update'");
+        if ($rights->num_rows == 1) {
+            $checks = $conn->query("select hasObjectRight('" . $objectid . "','" . $this->userId . "','" . $this->identityProviderId . "'," . $rights->fetch_object()->level . ") hasright from objects where id = '" . $objectid . "'");
+            if ($checks && $checks->num_rows == 1) {
+                return $checks->fetch_object()->hasright == 1;
+            }
+            else {
+                return false;
+            }
+        }
+        else
+            return false;
+    }
+    /*
         $results = $conn->query("select level from objectrights where (granteeid = 'everyone' or (granteeid = '" . $this->userId . "' and identityproviderid = '" . $this->identityProviderId . "')) and objectid='" . $objectid . "' order by weight desc limit 1");
         if ($results->num_rows == 0)
             return false;
@@ -1488,6 +1523,7 @@
                 return false;
         }
     }
+    */
     finally {
         $conn->close();
     }
@@ -1643,34 +1679,17 @@
     $storerows = $conn->query("select id from stores where id = '" . $storeid . "' or name = '" . $storeid . "'");
     if ($storerows) {
         $storeid = $storerows->fetch_object()->id;
-        $rows = $conn->query("select o.id, o.classid, r.level, c.majorversion, c.minorversion, c.mimetype, co.userid, co.identityproviderid from objects o inner join objectrights r on o.id = r.objectid left outer join content c on c.objectid = o.id left outer join checkouts co on co.objectid = o.id where o.storeid = '" . $storeid . "' and o.id = '" . $objectid . "' and (r.granteeid = 'everyone' or (r.granteeid = '" . $this->userId . "' and r.identityproviderid = '" . $this->identityProviderId . "')) order by r.weight asc, c.majorversion desc, c.minorversion desc limit 1");
-        if ($rows->num_rows > 0) {
-            $row = $rows->fetch_object();
-            $readRight = $conn->query("select level from rights where systemright='read'");
-            if ($readRight) {
-                if ($right = $readRight->fetch_object()) {
-                    if (intval($row->level) & intval($right->level)) {
-                        return TRUE;
-                    }
-                    else { 
-                        return FALSE;
-                    }
-                }
-                else {
-                    return FALSE;
-                }
-            }
-            else {
-                return FALSE;
-            }
+        $countrow = $conn->query("select o.id, hasObjectRight(o.id, '" . $this->userId . "', '" . $this->identityProviderId . "', r.level) hasObjectRight from objects o inner join rights r on r.systemright = 'read' where o.storeid = '" . $storeid . "' and o.id = '" . $objectid . "'");
+        if ($countrow->num_rows == 1) {
+            $count = $countrow->fetch_object();
+            return $count->hasObjectRight == 1;
         }
         else {
-            return FALSE;
+            return false;
         }
     }
-    else {
-        return FALSE;
-    }
+    else
+        return false;
    }
 
    public function relateObjects($storeid, $id1, $id2, $type) {
@@ -1717,6 +1736,54 @@
 
    public function getRelatedObjects($objectid, $request) {
     $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
+    $readRights = $conn->query("select level from rights where systemright = 'read'");
+    if ($readRight = $readRights->fetch_object()) {
+        if (isset($request->relationtype)) {
+            $rows = $conn->query("select ors.object2 from objectrelations ors inner join objectrelationtypes rt on rt.id = ors.type where (rt.id = '" . $request->relationtype . "' or rt.name = '" . $request->relationtype . "') and ors.object1 = '" . $objectid . "'and hasObjectRight(ors.object2, '" . $this->userId . "','" . $this->identityProviderId . "', " . $readRight->level . ")");
+        }
+        else {
+            $rows = $conn->query("select object2 from objectrelations where object1 = '" . $objectid . "'and hasObjectRight(ors.object2, '" . $this->userId . "','" . $this->identityProviderId . "', " . $readRight->level . ")");
+        }
+        $allowedObjectIds = [];
+        while ($row = $rows->fetch_object()) {
+            $allowedObjectIds[sizeof($allowedObjectIds)] = $row->object2;
+        }
+        $json = "[";
+        $prefix = "";
+        foreach($allowedObjectIds as $objectId) {
+            $json .= $prefix . "{\"id\":\"" . $objectId . "\",";
+            $classdetails = $conn->query("select c.id, c.name from classes c inner join objects o on o.classid = c.id where o.id = '" . $objectId . "'");
+            $classobject = $classdetails->fetch_object();
+            $json .= "\"class\":{\"id\":\"". $classobject->id . "\",\"name\":\"" . $classobject->name . "\"},\"properties\":[";
+            $propertiesQuery = "select op.propertyid, op.string_value, op.date_value, cp.type, cp.name from objectproperties op inner join classproperties cp on cp.id = op.propertyid where op.objectid = '" . $objectId . "' and cp.name in (";
+            $propertyPrefix = "";
+            foreach ($request->properties as $property) {
+                $propertiesQuery .= $propertyPrefix . "'" . $property . "'";
+                $propertyPrefix = ",";
+            }
+            $propertiesQuery .= ")";
+            $firstProperty = true;
+            $properties = $conn->query($propertiesQuery);
+            while ($property = $properties->fetch_object()) {
+                $json .= ($firstProperty ? "" : ",");
+                $json .= "{\"type\":\"" . $property->type . "\",\"id\":\"" . $property->propertyid . "\",\"name\":\"" . $property->name . "\",\"value\":";
+                if ($property->type == 'string')
+                    $json .= '"'. $property->string_value . '"';
+                else
+                    $json .= "null";
+                $json .= "}";
+                $firstProperty = false;
+            }
+            $json .= "]}";
+            $prefix = ",";
+        }
+        $json .= "]";
+        return $json;
+    }
+    else
+        return false;
+    //and hasObjectRight(ors.object2, '" . $this->userId . "','" . $this->identityProviderId . "', " . $readRight->level . ")    
+    /*
     if (isset($request->relationtype)) {
         $rows = $conn->query("select ors.object2 from objectrelations ors inner join objectrelationtypes rt on rt.id = ors.type where (rt.id = '" . $request->relationtype . "' or rt.name = '" . $request->relationtype . "') and ors.object1 = '" . $objectid . "'");
     }
@@ -1774,7 +1841,79 @@
     else {
         return false;
     }
+    */
    }
 
+   public function updateUser($user) {
+    $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
+    $idp = $this->getIdentityProvider($user->getIdentifyProviderId());
+    if (is_null($idp->getRolesCache())) {
+        $idprolesJson = $idp->getRoles();
+        $conn->query("update identityproviders set rolescache = '" . $conn->real_escape_string($idprolesJson) . "' where id = '" . $idp->getId() . "'");
+        $idproles = json_decode($idprolesJson);
+    }
+    else {
+        $idproles = json_decode($idp->getRolesCache());
+    }
+    $roles = $user->getRoles();
+
+    $succeeded = false;
+
+    while (!$succeeded) {
+        $roleids = [];
+        $foundRoles = true;
+        foreach($roles as $role) {
+            $roleId = null;
+            for ($index = 0; $index < sizeof($idproles); $index++) {
+                if ($idproles[$index]->name == $role) {
+                    $roleId = $idproles[$index]->id;
+                    break;
+                }
+            }
+            if (is_null($roleId)) {
+                $foundRoles = false;
+                break;
+            }
+            else {
+                $roleids[sizeof($roleids)] = $roleId;
+            }
+        }
+        if ($foundRoles)
+            $succeeded = true;
+        else {
+            $idprolesJson = $idp->getRoles();
+            $conn->query("update identityproviders set rolescache = '" . $conn->real_escape_string($idprolesJson) . "' where id = '" . $idp->getId() . "'");
+            $idproles = json_decode($idprolesJson);
+        }
+    }
+    sort($roleids);
+    $roleCache = implode($roleids);
+    $cacherows = $conn->query("select roles from usercache where userid = '" . $user->getId() . "' and identityproviderid = '" . $user->getIdentifyProviderId() . "'");
+    $refresh = false;
+    if ($cacherows && $cacherows->num_rows == 1) {
+        $cache = $cacherows->fetch_object();
+        if ($cache->roles != $roleCache) {
+            $refresh = true;
+        }
+    }
+    else {
+        $refresh = true;
+    }
+    if ($refresh) {
+        $conn->query("delete from userrolesgroups where userid = '" . $user->getId() . "' and identityproviderid = '" . $user->getIdentifyProviderId() . "'");
+        foreach($roleids as $role) {
+            $conn->query("insert into userrolesgroups (userid, identityproviderid, roleid) values ('" . $user->getId() . "','" . $user->getIdentifyProviderId() . "','" . $role . "')");
+        }
+        if ($cacherows->num_rows == 1) 
+            $conn->query("update usercache set roles = '" . $roleCache . "' where userid = '" . $user->getId() . "' and identityproviderid = '" . $user->getIdentifyProviderId() . "'");
+        else
+            $conn->query("insert into usercache (userid, identityproviderid, roles) values ('" . $user->getId() . "','" . $user->getIdentifyProviderId() . "','" . $roleCache . "')");
+    }
+}
+
+public function addRequestPerformance($url, $method, $time) {
+    $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
+    $conn->query("insert into requestperformance(url, method, time) values ('" . $url . "','" . $method . "','" . $time . "')");
+}
 
 }

@@ -80,7 +80,11 @@
             $claimUserMail = $idp->getSetting('claim.user.mail');
             $claimUserFirstName = $idp->getSetting('claim.user.first.name');
             $claimLastName = $idp->getSetting('claim.user.last.name');
-            return new User($infoJson->$claimUserId, $infoJson->$claimUserMail, $infoJson->$claimUserFirstName, $infoJson->$claimLastName, $idp->getId());
+            $user = new User($infoJson->$claimUserId, $infoJson->$claimUserMail, $infoJson->$claimUserFirstName, $infoJson->$claimLastName, $idp->getId());
+            foreach($infoJson->realm_access->roles as $role) {
+                $user->addRole($role);
+            }
+            return $user;
         }
     }
 ?>

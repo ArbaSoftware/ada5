@@ -12,6 +12,7 @@ import javafx.scene.layout.AnchorPane;
 import javafx.stage.FileChooser;
 import nl.arba.ada.client.adaclient.utils.InternationalizationUtils;
 import nl.arba.ada.client.api.*;
+import nl.arba.ada.client.api.addon.base.Document;
 import nl.arba.ada.client.api.exceptions.AdaClassNotFoundException;
 
 import java.io.File;
@@ -20,7 +21,6 @@ import java.util.*;
 
 public class PropertiesPane extends AnchorPane {
     private AdaObject targetObject;
-    private HashMap <String, Object> propertyValues = new HashMap<>();
     private HashMap <String, Control> inputControls = new HashMap<>();
     private HashMap <String, CheckBox> nullCheckboxes = new HashMap <> ();
     private HashMap <String, PropertyType> propertyTypes = new HashMap<>();
@@ -31,9 +31,15 @@ public class PropertiesPane extends AnchorPane {
     private Button chooseContentButton;
     private Label showContentLocation;
     private File contentFile;
+    private boolean fixedFile = false;
 
     public PropertiesPane() {
         super();
+    }
+
+    public PropertiesPane(File fixedfile) {
+        contentFile = fixedfile;
+        fixedFile = true;
     }
 
     public PropertiesPane(AdaObject target) {
@@ -69,6 +75,10 @@ public class PropertiesPane extends AnchorPane {
         }
         if (clazz.isDocumentClass()) {
             addContentProperty();
+            if (fixedFile) {
+                ((TextField) this.inputControls.get(Document.DOCUMENT_TITLE)).setText(contentFile.getName());
+                this.nullCheckboxes.get(Document.DOCUMENT_TITLE).setSelected(false);
+            }
         }
     }
 
@@ -87,7 +97,7 @@ public class PropertiesPane extends AnchorPane {
         });
         getChildren().add(contentLabel);
         PropertiesPane me = this;
-        Label inputControl = new Label("-");
+        Label inputControl = new Label(fixedFile ? contentFile.getName() : "-");
         showContentLocation = inputControl;
         inputControls.put("content", inputControl);
         inputControl.setLayoutX(105);
@@ -105,6 +115,8 @@ public class PropertiesPane extends AnchorPane {
         });
         getChildren().add(inputControl);
         chooseContentButton  = new Button("...");
+        if (fixedFile)
+            chooseContentButton.setDisable(true);
         chooseContentButton.setOnAction(new EventHandler<ActionEvent>() {
             @Override
             public void handle(ActionEvent actionEvent) {
