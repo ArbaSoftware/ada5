@@ -20,6 +20,7 @@ import nl.arba.ada.client.adaclient.utils.IdName;
 import nl.arba.ada.client.adaclient.utils.InternationalizationUtils;
 import nl.arba.ada.client.api.AdaClass;
 import nl.arba.ada.client.api.AdaObject;
+import nl.arba.ada.client.api.Domain;
 import nl.arba.ada.client.api.Store;
 import nl.arba.ada.client.api.addon.base.Document;
 import nl.arba.ada.client.api.addon.base.Folder;
@@ -58,6 +59,8 @@ public class AppController implements Initializable {
     private ContextMenu newObjectMenu;
     private ContextMenu objectMenu;
     private HashMap<String, AdaClass> classCache = new HashMap<>();
+    @FXML
+    private Button btnAddStore;
 
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
@@ -76,6 +79,16 @@ public class AppController implements Initializable {
         fileMenu.getItems().add(exit);
         mainMenu.getMenus().add(fileMenu);
         topPane.setTop(mainMenu);
+
+        btnAddStore.setOnAction(new EventHandler<ActionEvent>() {
+            @Override
+            public void handle(ActionEvent actionEvent) {
+                try {
+                    onAddStore(AdaUtils.getDomain());
+                }
+                catch (Exception err) {}
+            }
+        });
 
         try {
             List <Store> stores = AdaUtils.getDomain().getStores();
@@ -416,6 +429,26 @@ public class AppController implements Initializable {
                     treeitem.valueProperty().setValue(refreshed.getStringProperty("Name"));
                 }
             }
+        }
+        catch (Exception err) {
+            err.printStackTrace();
+        }
+    }
+
+    private void onAddStore(Domain domain) {
+        try {
+            FXMLLoader loader = new FXMLLoader(App.class.getResource("storeproperties.fxml"));
+            loader.setResources(InternationalizationUtils.getResources());
+            StorePropertiesController controller = new StorePropertiesController(domain);
+            loader.setController(controller);
+            Dialog propertiesDialog = new Dialog();
+            propertiesDialog.setTitle(InternationalizationUtils.get("store.properties.add.title"));
+            propertiesDialog.getDialogPane().setContent(loader.load());
+            ButtonType ok =new ButtonType(InternationalizationUtils.get("dialog.button.ok"), ButtonBar.ButtonData.OK_DONE);
+            propertiesDialog.getDialogPane().getButtonTypes().add(ok);
+            controller.setOkButton((Button) propertiesDialog.getDialogPane().lookupButton(ok));
+            propertiesDialog.getDialogPane().getButtonTypes().add(new ButtonType(InternationalizationUtils.get("dialog.button.cancel"), ButtonBar.ButtonData.CANCEL_CLOSE));
+            propertiesDialog.showAndWait();
         }
         catch (Exception err) {
             err.printStackTrace();

@@ -64,6 +64,19 @@
                 sendState(401, 'Insufficient rights');
         }
     }
+    else if ($_SERVER['REQUEST_METHOD'] == 'GET') {
+        if ($url == '/ada/addon') {
+            if ($db->canGetAddons()) {
+                sendState(200, "", $db->getAddOns());
+            }
+            else {
+                sendState(401, "Insufficient rights");
+            }
+        }
+        else {
+            sendState(404, "Not found");
+        }
+    }
 
     function sendState($code, $message, $json = "") {
         header("HTTP/1.1 " . $code . " " . $message);

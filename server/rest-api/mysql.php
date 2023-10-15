@@ -686,6 +686,43 @@
             }
         }
 
+        public function canGetAddons() {
+            try {
+                $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
+                $systemrights = $conn->query("select level from rights where systemright='getaddons'");
+                if ($systemright = $systemrights->fetch_object()) {
+                    $grantedrights = $conn->query("select level from grantedrights where targettype='domain' order by weight limit 1");
+                    if ($grantedright = $grantedrights->fetch_object()) {
+                        return intval($systemright->level & intval($grantedright->level));
+                    }
+                    else return false;
+                }
+                else
+                    return false;
+            }
+            finally {
+                $conn->close();
+            }
+        }
+
+        public function getAddOns() {
+            try {
+                $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
+                $results = $conn->query("select id, name from addons order by name");
+                $json = "[";
+                $prefix = "";
+                while ($result = $results->fetch_object()) {
+                    $json .= ($prefix . "{\"id\":\"" . $result->id . "\",\"name\":\"" . $result->name . "\"}");
+                    $prefix = ",";
+                }
+                $json .= "]";
+                return $json;
+            }
+            finally {
+                $conn->close();
+            }
+        }
+
         public function canUpdateAddon() {
             try {
                 $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
@@ -1032,91 +1069,95 @@
         $storesearchresult = $conn->query("select id from stores where id = '" . $storeidorname . "' or name = '" . $storeidorname . "'");
         if ($storesearchresult) {
             $storeid = $storesearchresult->fetch_object()->id;
-            $class = $this->getClass($storeid, $search->class);
-            $query = "select o.id, r.level, o.classid";
-            $from = "";
-            if (isset($search->properties)) {
-                $propertyIndex = 1;
-                foreach($search->properties as $property) {
-                    foreach($class->getProperties() as $classproperty) {
-                        if ($classproperty->getName() == $property) {
-                            $query .= ",op" . $propertyIndex . ".";
-                            if ($classproperty->getType() == 'string')
-                                $query .= "string_value";
-                            else if ($classproperty->getType() == 'date')
-                                $query .= "date_value";
-                            $query .= " PropertyValue" . $propertyIndex;
-                            $query .= ", cp" . $propertyIndex . ".id PropertyId" . $propertyIndex;
-                            $query .= ", cp" . $propertyIndex . ".type PropertyType" . $propertyIndex;
-                            $from .= " inner join objectproperties op". $propertyIndex . " on o.id = op" . $propertyIndex . ".objectid inner join classproperties cp" . $propertyIndex . " on op" . $propertyIndex . ".propertyid = cp" . $propertyIndex . ".id and cp" . $propertyIndex . ".name = '" . $property . "'";
-                            $propertyIndex++;
+            $readRight = $conn->query("select level from rights where systemright='read'");
+            if ($readRight) {
+                if ($right = $readRight->fetch_object()) {
+                    $class = $this->getClass($storeid, $search->class);
+                    $query = "select o.id, o.classid";
+                    $from = "";
+                    if (isset($search->properties)) {
+                        $propertyIndex = 1;
+                        foreach($search->properties as $property) {
+                            foreach($class->getProperties() as $classproperty) {
+                                if ($classproperty->getName() == $property) {
+                                    $query .= ",op" . $propertyIndex . ".";
+                                    if ($classproperty->getType() == 'string')
+                                        $query .= "string_value";
+                                    else if ($classproperty->getType() == 'date')
+                                        $query .= "date_value";
+                                    $query .= " PropertyValue" . $propertyIndex;
+                                    $query .= ", cp" . $propertyIndex . ".id PropertyId" . $propertyIndex;
+                                    $query .= ", cp" . $propertyIndex . ".type PropertyType" . $propertyIndex;
+                                    $from .= " inner join objectproperties op". $propertyIndex . " on o.id = op" . $propertyIndex . ".objectid inner join classproperties cp" . $propertyIndex . " on op" . $propertyIndex . ".propertyid = cp" . $propertyIndex . ".id and cp" . $propertyIndex . ".name = '" . $property . "'";
+                                    $propertyIndex++;
+                                }
+                            }
                         }
                     }
-                }
-            }
-            $query .= " from objects o inner join objectrights r on o.id = r.objectid" . $from;
-            $filterindex = 1;
-            $where = "o.storeid = '" . $storeid . "' and (r.granteeid = 'everyone' or (r.granteeid = '" . $this->userId . "' and r.identityproviderid = '" . $this->identityProviderId . "'))";
-            $errors = [];
-            foreach($search->filters as $filter) {
-                $property = $filter->property;
-                $propertyId = null;
-                $propertyType = null;
-                foreach($class->getProperties() as $classproperty) {
-                    if ($classproperty->getName() == $property) {
-                        $propertyId = $classproperty->getId();
-                        $propertyType = $classproperty->getType();
-                        break;
-                    }
-                };
-                $operator = $filter->operator;
+                    $query .= " from objects o" . $from;
+                    $filterindex = 1;
+                    $where = "o.storeid = '" . $storeid . "' and hasObjectRight(o.id, '" . $this->userId . "','" . $this->identityProviderId . "'," . $right->level . ")";
+                    $errors = [];
+                    foreach($search->filters as $filter) {
+                        $property = $filter->property;
+                        $propertyId = null;
+                        $propertyType = null;
+                        foreach($class->getProperties() as $classproperty) {
+                            if ($classproperty->getName() == $property) {
+                                $propertyId = $classproperty->getId();
+                                $propertyType = $classproperty->getType();
+                                break;
+                            }
+                        };
+                        $operator = $filter->operator;
 
-                if ($operator == 'isnull') {
-                    $query .= " left outer join objectproperties f" . $filterindex . " on (o.id = f" . $filterindex . ".objectid and f" . $filterindex . ".propertyid = '" . $propertyId . "')";
-                    $where .= " and " . "f" . $filterindex . ".objectid is null";
-                    $filterindex++;
-                }
-                else if ($operator == 'equals') {
-                    $query .= " left outer join objectproperties f" . $filterindex . " on (o.id = f" . $filterindex . ".objectid and f". $filterindex . ".propertyid = '" . $propertyId . "')";
-                    if ($propertyType == 'object') {
-                        if (gettype($filter->value) == 'string') {
-                            $where .= " and f" . $filterindex . ".string_value = '" . $filter->value . "'";
+                        if ($operator == 'isnull') {
+                            $query .= " left outer join objectproperties f" . $filterindex . " on (o.id = f" . $filterindex . ".objectid and f" . $filterindex . ".propertyid = '" . $propertyId . "')";
+                            $where .= " and " . "f" . $filterindex . ".objectid is null";
+                            $filterindex++;
                         }
-                        else {
-                            $errors[sizeof($errors)] = "Invalid filter value for property '" . $property . "' (" . $filter->value . ")";
+                        else if ($operator == 'equals') {
+                            $query .= " left outer join objectproperties f" . $filterindex . " on (o.id = f" . $filterindex . ".objectid and f". $filterindex . ".propertyid = '" . $propertyId . "')";
+                            if ($propertyType == 'object') {
+                                if (gettype($filter->value) == 'string') {
+                                    $where .= " and f" . $filterindex . ".string_value = '" . $filter->value . "'";
+                                }
+                                else {
+                                    $errors[sizeof($errors)] = "Invalid filter value for property '" . $property . "' (" . $filter->value . ")";
+                                }
+                            }
                         }
                     }
+                    $query .= " where " . $where . " order by o.id";
+                    Logger::log("Search: " . $query);
+                }
+                else {
+                    $errors[sizeof($error)] = 'Unknown right';
                 }
             }
-            $query .= " where " . $where . " order by o.id, r.weight";
-            Logger::log("Search: " . $query);
+            else {
+                 $errors[sizeof($errors)] = 'Unknown right';
+            }
 
             if (sizeof($errors) == 0) {
                 $lastObjectId = "";
                 $foundObjects = [];
                 try {
-                    $readRight = $conn->query("select level from rights where systemright='read'");
-                    if ($readRight) {
-                        if ($right = $readRight->fetch_object()) {
-                            $objectresults = $conn->query($query);
-                            while ($row = $objectresults->fetch_object()) {
-                                if (intval($row->level) & intval($right->level)) {
-                                    $objectId = $row->id;
-                                    if ($objectId != $lastObjectId) {
-                                        $newResult = new AdaObject($objectId, $row->classid);
-                                        $propertyIndex = 1;
-                                        foreach($search->properties as $property) {
-                                            $propertyId = 'PropertyId' . $propertyIndex;
-                                            $propertyValue = 'PropertyValue' . $propertyIndex;
-                                            $propertyType = 'PropertyType' . $propertyIndex;
-                                            $newResult->addProperty($row->$propertyId, $property, $row->$propertyType, $row->$propertyValue);
-                                            $propertyIndex++;
-                                        }
-                                        $foundObjects[sizeof($foundObjects)] = $newResult;
-                                        $lastObjectId = $objectId;
-                                    }
-                                }
+                    $objectresults = $conn->query($query);
+                    while ($row = $objectresults->fetch_object()) {
+                        $objectId = $row->id;
+                        if ($objectId != $lastObjectId) {
+                            $newResult = new AdaObject($objectId, $row->classid);
+                            $propertyIndex = 1;
+                            foreach($search->properties as $property) {
+                                $propertyId = 'PropertyId' . $propertyIndex;
+                                $propertyValue = 'PropertyValue' . $propertyIndex;
+                                $propertyType = 'PropertyType' . $propertyIndex;
+                                $newResult->addProperty($row->$propertyId, $property, $row->$propertyType, $row->$propertyValue);
+                                $propertyIndex++;
                             }
+                            $foundObjects[sizeof($foundObjects)] = $newResult;
+                            $lastObjectId = $objectId;
                         }
                     }
                     $json = "[";
@@ -1145,21 +1186,12 @@
     public function canGetContent($storeid, $objectid) {
         try {
             $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
-            $rows = $conn->query("select r.level from objects o inner join objectrights r on o.id = r.objectid where o.storeid = '" . $storeid . "' and o.id = '" . $objectid . "' and (r.granteeid = 'everyone' or (r.granteeid = '" . $this->userId . "' and r.identityproviderid = '" . $this->identityProviderId . "')) order by r.weight asc limit 1");
-            if ($rows) {
-                $row = $rows->fetch_object();
-                $readRight = $conn->query("select level from rights where systemright='getcontent'");
-                if ($readRight) {
-                    if ($right = $readRight->fetch_object()) {
-                        if (intval($row->level) & intval($right->level)) {
-                            return true;
-                        }
-                        else
-                            return false;
-                    }
-                    else {
-                        return false;
-                    }
+            $readRight = $conn->query("select level from rights where systemright='getcontent'");
+            if ($readRight && $readRight->num_rows == 1) {
+                $right = $readRight->fetch_object();
+                $rows = $conn->query("select id, hasObjectRight(id, '" . $this->userId . ",'" . $this->identityProviderId . "'," . $right->level . ") hasright from objects where id = '" . $objectid . "' and storeid = '" . $storeid . "'");
+                if ($rows && $rows->num_rows == 1) {
+                    return $rows->fetch_object()->hasright == 1;
                 }
                 else
                     return false;
@@ -1205,27 +1237,23 @@
     public function canCheckout($storeid, $objectid) {
         try {
             $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
-            $rows = $conn->query("select r.level from objects o inner join objectrights r on o.id = r.objectid where o.storeid = '" . $storeid . "' and o.id = '" . $objectid . "' and (r.granteeid = 'everyone' or (r.granteeid = '" . $this->userId . "' and r.identityproviderid = '" . $this->identityProviderId . "')) order by r.weight asc limit 1");
-            if ($rows) {
-                $row = $rows->fetch_object();
-                $readRight = $conn->query("select level from rights where systemright='checkout'");
-                if ($readRight) {
-                    if ($right = $readRight->fetch_object()) {
-                        if (intval($row->level) & intval($right->level)) {
-                            return true;
-                        }
-                        else
-                            return false;
+
+            $readRight = $conn->query("select level from rights where systemright='checkout'");
+            if ($readRight) {
+                if ($right = $readRight->fetch_object()) {
+                    $rows = $conn->query("select id, hasObjectRight(id, '" . $this->userId . "','" . $this->identityProviderId . "', " . $right->level . ") hasright from objects where id = '" . $objectid . "'");
+                    if ($rows && $rows->num_rows == 1) {
+                        return $rows->fetch_object()->hasright == 1;
                     }
-                    else {
+                    else
                         return false;
-                    }
                 }
                 else
                     return false;
             }
-            else
+            else {
                 return false;
+            }
        }
        finally {
            $conn->close();
@@ -1261,26 +1289,20 @@
                     return true;
                 }
                 else {
-                    $rows = $conn->query("select r.level from objects o inner join objectrights r on o.id = r.objectid where o.storeid = '" . $storeid . "' and o.id = '" . $objectid . "' and (r.granteeid = 'everyone' or (r.granteeid = '" . $this->userId . "' and r.identityproviderid = '" . $this->identityProviderId . "')) order by r.weight asc limit 1");
-                    if ($rows) {
-                        $row = $rows->fetch_object();
-                        $readRight = $conn->query("select level from rights where systemright='checkin'");
-                        if ($readRight) {
-                            if ($right = $readRight->fetch_object()) {
-                                if (intval($row->level) & intval($right->level)) {
-                                    return true;
-                                }
-                                else
-                                    return false;
+                    $readRight = $conn->query("select level from rights where systemright = 'checkin'");
+                    if ($readRight) {
+                        if ($right = $readRight->fetch_object()) {
+                            $rows = $conn->query("select id, hasObjectRight(id, '" . $this->userId . "','" . $this->identityProviderId . "'," . $right->level . ") hasright from objects where id = '" . $objectid . "'");
+                            if ($rows && $rows->num_rows == 1) {
+                                return $rows->fetch_object()->hasright == 1;
                             }
-                            else {
+                            else
                                 return false;
-                            }
                         }
-                        else
+                        else 
                             return false;
                     }
-                    else
+                    else 
                         return false;
                 }
             }

@@ -128,7 +128,7 @@ public class RightsTable extends TableView {
             if (!rolesCache.containsKey(right.getGrantee().getIdentityProvider().getId())) {
                 rolesCache.put(right.getGrantee().getIdentityProvider().getId(), domain.getRoles(right.getGrantee().getIdentityProvider()));
             }
-            return Arrays.asList(rolesCache.get(right.getGrantee().getIdentityProvider().getId())).stream().filter(r -> r.getId().equals(right.getGrantee().getId())).map(r -> r.getName()).findFirst().get();
+                     return Arrays.asList(rolesCache.get(right.getGrantee().getIdentityProvider().getId())).stream().filter(r -> r.getId().equals(right.getGrantee().getId())).map(r -> r.getName()).findFirst().get();
         }
         catch (Exception err) {
             return "?";

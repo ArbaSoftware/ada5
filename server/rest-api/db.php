@@ -48,4 +48,5 @@
         public function getRelatedObjects($objectid, $request);
         public function updateUser($user);
         public function addRequestPerformance($url, $method, $time);
+        public function getAddOns();
     }

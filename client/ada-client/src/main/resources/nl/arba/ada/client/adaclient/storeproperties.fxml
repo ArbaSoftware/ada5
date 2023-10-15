@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ListView?>
+<?import javafx.scene.control.Tab?>
+<?import javafx.scene.control.TabPane?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.AnchorPane?>
+<?import javafx.scene.layout.BorderPane?>
+
+<BorderPane maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="400.0" prefWidth="600.0" xmlns="http://javafx.com/javafx/20.0.1" xmlns:fx="http://javafx.com/fxml/1">
+   <center>
+      <TabPane prefHeight="200.0" prefWidth="200.0" tabClosingPolicy="UNAVAILABLE" BorderPane.alignment="CENTER">
+        <tabs>
+          <Tab text="%store.properties.tab.algemeen.label">
+            <content>
+              <AnchorPane minHeight="0.0" minWidth="0.0" prefHeight="180.0" prefWidth="200.0">
+                     <children>
+                        <Label layoutX="21.0" layoutY="24.0" prefHeight="16.0" prefWidth="129.0" text="%store.properties.general.name.label" />
+                        <TextField fx:id="txtName" layoutX="176.0" layoutY="20.0" prefHeight="24.0" prefWidth="248.0" />
+                        <ListView fx:id="lvAddOns" layoutX="176.0" layoutY="54.0" prefHeight="78.0" prefWidth="246.0" />
+                        <Label layoutX="21.0" layoutY="54.0" text="%store.properties.general.addons.label" />
+                     </children></AnchorPane>
+            </content>
+          </Tab>
+          <Tab text="%store.properties.tab.rights.label">
+              <content>
+                  <BorderPane fx:id="rightsPane" prefHeight="200.0" prefWidth="200.0" />
+              </content>
+          </Tab>
+        </tabs>
+      </TabPane>
+   </center>
+</BorderPane>

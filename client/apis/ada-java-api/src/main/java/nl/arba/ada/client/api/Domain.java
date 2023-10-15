@@ -688,4 +688,21 @@ public class Domain {
             throw new ApiException();
         }
     }
+
+    public AddOn[] getAddOns() throws ApiException {
+        try {
+            String json = StreamUtils.streamToString(doGet(baseUrl + "/addon"));
+            Map[] addons = new ObjectMapper().readValue(json, Map[].class);
+            AddOn[] results = new AddOn[addons.length];
+            for (int index = 0; index < addons.length; index++) {
+                results[index] = new AddOn();
+                results[index].setId((String) addons[index].get("id"));
+                results[index].setName((String) addons[index].get("name"));
+            }
+            return results;
+        }
+        catch (IOException io) {
+            throw new ApiException();
+        }
+    }
 }
