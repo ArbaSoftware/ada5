@@ -8,10 +8,12 @@
         private $lastmodifiedon;
         private $lastmodifier;
         private $lastmodifieridentityproviderid;
+        private $rights;
 
         public function __construct($id, $name) {
             $this->id = $id;
             $this->name = $name;
+            $this->rights = [];
         }
 
         public function getId() {
@@ -23,7 +25,25 @@
         }
 
         public function toJson() {
-            return json_encode(["id" => $this->getId(), "name"=>$this->getName(), "datecreated" => $this->parseDate($this->getDateCreated()), "creator" => $this->getCreator(), "creatoridentityproviderid" => $this->getCreatorIdentityProviderId(), "lastmodified" => $this->parseDate($this->getLastModified()), "lastmodifier" => $this->getLastModifier(), "lastmodifieridentityproviderid" => $this->getCreatorIdentityProviderId()]);
+            $json = "{";
+            $json .= "\"id\":\"" . $this->getId() . "\",";
+            $json .= "\"name\":\"". $this->getName() . "\",";
+            $json .= "\"datecreated\":" . json_encode($this->parseDate($this->getDateCreated())) . ",";
+            $json .= "\"creator\":\"" . $this->getCreator() . "\",";
+            $json .= "\"creatoridentityproviderid\":\"" . $this->getCreatorIdentityProviderId() . "\",";
+            $json .= "\"lastmodified\":" . json_encode($this->parseDate($this->getLastModified())) > ",";
+            $json .= "\"lastmodifier\":\"" . $this->getLastModifier() . "\",";
+            $json .= "\"lastmodifieridentityproviderid\":\"" . $this->getLastModifierIdentityProviderId() . "\",";
+            $json .= "\"rights\":[";
+            $prefix = "";
+            foreach($this->getRights() as $right) {
+                $json .= $prefix . $right->toJson();
+                $prefix = ",";
+            }
+            $json.= "]";
+            $json .= "}";
+            return $json;
+            //return json_encode(["id" => $this->getId(), "name"=>$this->getName(), "datecreated" => $this->parseDate($this->getDateCreated()), "creator" => $this->getCreator(), "creatoridentityproviderid" => $this->getCreatorIdentityProviderId(), "lastmodified" => $this->parseDate($this->getLastModified()), "lastmodifier" => $this->getLastModifier(), "lastmodifieridentityproviderid" => $this->getCreatorIdentityProviderId()]);
         }
 
         private function parseDate($value) {
@@ -98,6 +118,14 @@
             }
             $json .= ']';
             return $json;
+        }
+
+        public function addRight($right) {
+            $this->rights[sizeof($this->rights)] = $right;
+        }
+
+        public function getRights() {
+            return $this->rights;
         }
     }
 ?>

@@ -84,6 +84,10 @@ public class TestStores {
         Store store = null;
         try {
             store = domain.createStore("test" + System.currentTimeMillis(), new GrantedRight[]{}, new String[]{"base"});
+            System.out.println("Nr of rights: " + store.getRights().size());
+        }
+        catch (Exception err) {
+            err.printStackTrace();
         }
         finally {
             store.delete();

@@ -6,6 +6,7 @@ import nl.arba.ada.client.api.addon.base.Folder;
 import nl.arba.ada.client.api.exceptions.*;
 import nl.arba.ada.client.api.search.PropertyFilter;
 import nl.arba.ada.client.api.search.Search;
+import nl.arba.ada.client.api.security.GrantedRight;
 import nl.arba.ada.client.api.util.JsonUtils;
 
 import java.util.*;
@@ -25,6 +26,7 @@ public class Store {
     private String creatorIdentityProviderId;
     private String lastmodifier;
     private String lastmodifierIdentityProviderId;
+    private ArrayList<GrantedRight> rights = new ArrayList<>();
 
     /**
      * Set the id of the store
@@ -251,5 +253,13 @@ public class Store {
 
     public AdaObject[] getRelatedObjects(String objectid, String relationtype) throws ApiException {
         return getDomain().getRelatedObjects(this, objectid, relationtype);
+    }
+
+    public void setRights(GrantedRight[] rights) {
+        this.rights.addAll(Arrays.asList(rights));
+    }
+
+    public List<GrantedRight> getRights() {
+        return this.rights;
     }
 }

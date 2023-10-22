@@ -19,7 +19,7 @@
                         <Label layoutX="21.0" layoutY="24.0" prefHeight="16.0" prefWidth="129.0" text="%store.properties.general.name.label" />
                         <TextField fx:id="txtName" layoutX="176.0" layoutY="20.0" prefHeight="24.0" prefWidth="248.0" />
                         <ListView fx:id="lvAddOns" layoutX="176.0" layoutY="54.0" prefHeight="78.0" prefWidth="246.0" />
-                        <Label layoutX="21.0" layoutY="54.0" text="%store.properties.general.addons.label" />
+                        <Label fx:id="lblAddOns" layoutX="21.0" layoutY="54.0" text="%store.properties.general.addons.label" />
                      </children></AnchorPane>
             </content>
           </Tab>

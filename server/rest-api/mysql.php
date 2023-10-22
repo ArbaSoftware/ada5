@@ -92,6 +92,13 @@
                             $store->setLastModifier($row->lastmodifier);
                             $store->setLastModifierIdentityProviderId($row->lastmodifieridentityproviderid);
 
+                            //Add rights
+                            $rights = $conn->query("select granteeid, granteetype, identityproviderid,level,weight from grantedrights where targettype = 'store' and targetid = '" . $id . "'");
+                            while ($grantedright = $rights->fetch_object()) {
+                                $newRight = new GrantedRight($grantedright->granteeid, $grantedright->granteetype, $grantedright->identityproviderid, $grantedright->level, $grantedright->weight);
+                                $store->addRight($newRight);
+                            }
+
                             //Register get object event
                             $conn->query("insert into events (type,sourceid, userid, identityproviderid) values ('store.get', '" . $id . "','" . $this->userId . "','" . $this->identityProviderId . "')");
                             return $store;

@@ -60,6 +60,7 @@ public class AppController implements Initializable {
     private ContextMenu newObjectMenu;
     private ContextMenu objectMenu;
     private ContextMenu rootMenu;
+    private ContextMenu storeMenu;
     private HashMap<String, AdaClass> classCache = new HashMap<>();
     @FXML
     private Button btnAddStore;
@@ -139,6 +140,9 @@ public class AppController implements Initializable {
                     }
                     else if (selectedItem instanceof BrowseTreeItem) {
                         rootMenu.show(tvStore, contextMenuEvent.getScreenX(), contextMenuEvent.getScreenY());
+                    }
+                    else if (selectedItem instanceof StoreTreeItem) {
+                        storeMenu.show(tvStore, contextMenuEvent.getScreenX(), contextMenuEvent.getScreenY());
                     }
                 }
             }
@@ -307,6 +311,19 @@ public class AppController implements Initializable {
             }
         });
         rootMenu.getItems().add(addRootFolder);
+
+        storeMenu = new ContextMenu();
+        MenuItem storeProps = new MenuItem(InternationalizationUtils.get("treeview.store.contextmenu.properties"));
+        storeProps.setOnAction(new EventHandler<ActionEvent>() {
+            @Override
+            public void handle(ActionEvent actionEvent) {
+                try {
+                    onShowStoreProperties(AdaUtils.getDomain());
+                }
+                catch(Exception err) {}
+            }
+        });
+        storeMenu.getItems().add(storeProps);
     }
 
     private void onShowClassProperties(AdaClass target) {
@@ -622,5 +639,33 @@ public class AppController implements Initializable {
             }
         }
         return classCache.get(object.getClassId());
+    }
+
+    private void onShowStoreProperties(Domain domain) {
+        try {
+            FXMLLoader loader = new FXMLLoader(App.class.getResource("storeproperties.fxml"));
+            loader.setResources(InternationalizationUtils.getResources());
+            Store refreshedStore = domain.getStore(((StoreTreeItem) tvStore.getRoot()).getStore().getId());
+            StorePropertiesController controller = new StorePropertiesController(domain, refreshedStore);
+            loader.setController(controller);
+            Dialog propertiesDialog = new Dialog();
+            propertiesDialog.setTitle(InternationalizationUtils.get("store.properties.add.title"));
+            propertiesDialog.getDialogPane().setContent(loader.load());
+            ButtonType ok =new ButtonType(InternationalizationUtils.get("dialog.button.ok"), ButtonBar.ButtonData.OK_DONE);
+            propertiesDialog.getDialogPane().getButtonTypes().add(ok);
+            controller.setOkButton((Button) propertiesDialog.getDialogPane().lookupButton(ok));
+            propertiesDialog.getDialogPane().getButtonTypes().add(new ButtonType(InternationalizationUtils.get("dialog.button.cancel"), ButtonBar.ButtonData.CANCEL_CLOSE));
+            propertiesDialog.showAndWait();
+
+            if (propertiesDialog.getResult().equals(ok)) {
+                Store tosave = controller.getStore();
+                GrantedRight[] rights = controller.getRights();
+                Store newStore = domain.createStore(tosave.getName(), rights, controller.getAddOns());
+                cmbStores.getItems().add(newStore);
+            }
+        }
+        catch (Exception err) {
+            err.printStackTrace();
+        }
     }
 }
