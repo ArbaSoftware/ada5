@@ -5,12 +5,15 @@ import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
-import javafx.scene.control.*;
+import javafx.scene.control.Button;
+import javafx.scene.control.ListView;
+import javafx.scene.control.TextField;
 import javafx.scene.control.cell.CheckBoxListCell;
 import javafx.scene.layout.BorderPane;
 import javafx.util.Callback;
 import nl.arba.ada.client.adaclient.controls.RightsTable;
 import nl.arba.ada.client.api.Domain;
+import nl.arba.ada.client.api.Store;
 import nl.arba.ada.client.api.addon.AddOn;
 import nl.arba.ada.client.api.security.GrantedRight;
 
@@ -47,12 +50,18 @@ public class StorePropertiesController implements Initializable {
         lvAddOns.setCellFactory(CheckBoxListCell.forListView(new Callback<AddOnState, ObservableValue<Boolean>>() {
             @Override
             public ObservableValue<Boolean> call(AddOnState item) {
-                return new SimpleBooleanProperty(item.isSelected());
+                SimpleBooleanProperty prop = new SimpleBooleanProperty(item.isSelected());
+                prop.addListener(new ChangeListener<Boolean>() {
+                    @Override
+                    public void changed(ObservableValue<? extends Boolean> observableValue, Boolean aBoolean, Boolean t1) {
+                        item.setSelected(t1);
+                    }
+                });
+                return prop;
             }
         }));
         try {
             AddOn[] addons = domain.getAddOns();
-            System.out.println("Found " + addons.length + " addons");
             for (AddOn current : addons) {
                 lvAddOns.getItems().add(new AddOnState(current));
             }
@@ -70,13 +79,48 @@ public class StorePropertiesController implements Initializable {
         rightsPane.setCenter(rightsTable);
     }
 
+    public Store getStore() {
+        Store store = new Store();
+        store.setDomain(domain);
+        store.setName(txtName.getText());
+        return store;
+    }
+
+    public GrantedRight[] getRights() {
+        GrantedRight[] result = new GrantedRight[rightsTable.getItems().size()];
+        for (int index = 0; index < result.length; index++) {
+            result[index] = (GrantedRight) rightsTable.getItems().get(index);
+        }
+        return result;
+    }
+
+    public String[] getAddOns() {
+        ArrayList <String> states = new ArrayList<>();
+        for (Object current: lvAddOns.getItems()) {
+            AddOnState currentState = (AddOnState) current;
+            if (currentState.isSelected())
+                states.add(currentState.getId());
+        }
+        return states.toArray(new String[0]);
+    }
+
     private class AddOnState {
         private AddOn addon;
         private boolean selected;
+        private String id;
 
         public AddOnState(AddOn addon) {
             this.addon = addon;
             this.selected = false;
+            this.id = addon.getId();
+        }
+
+        public void setSelected(boolean value) {
+            this.selected = value;
+        }
+
+        public String getId() {
+            return id;
         }
 
         public boolean isSelected() {

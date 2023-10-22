@@ -179,6 +179,11 @@
             "level": {
                 "type": "integer",
                 "required": true
+            },
+            "granteetype": {
+                "type": "enumeration",
+                "values": "granteetypes",
+                "required": false
             }
         },
         "date": {
@@ -271,6 +276,7 @@
     "enumerations": {
         "propertytypes": ["string", "date"],
         "filteroperators": ["isnull","equals"],
-        "objectrelationtypeobjecttype": ["any", "document", "folder"]
+        "objectrelationtypeobjecttype": ["any", "document", "folder"],
+        "granteetypes": ["user", "role", "group", "special"]
     }
 }

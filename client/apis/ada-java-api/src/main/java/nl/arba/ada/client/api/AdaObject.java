@@ -95,6 +95,8 @@ public class AdaObject {
                 json += "{\"grantee\":\"" + right.getGrantee().getId() + "\",";
                 if (right.getGrantee().getIdentityProvider() != null)
                     json += "\"identityprovider\":\"" + right.getGrantee().getIdentityProvider().getId() + "\",";
+                if (right.getGranteetype() != null)
+                    json += "\"granteetype\":\"" + right.getGranteetype() + "\",";
                 json += "\"level\":" + right.getLevel();
                 json += "}";
                 prefix = ",";

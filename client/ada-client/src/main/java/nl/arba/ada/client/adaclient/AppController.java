@@ -26,6 +26,7 @@ import nl.arba.ada.client.api.addon.base.Document;
 import nl.arba.ada.client.api.addon.base.Folder;
 import nl.arba.ada.client.api.exceptions.AdaClassNotFoundException;
 import nl.arba.ada.client.api.exceptions.NoSearchResultsException;
+import nl.arba.ada.client.api.security.GrantedRight;
 
 import java.io.File;
 import java.net.URL;
@@ -58,6 +59,7 @@ public class AppController implements Initializable {
     private ContextMenu folderMenu;
     private ContextMenu newObjectMenu;
     private ContextMenu objectMenu;
+    private ContextMenu rootMenu;
     private HashMap<String, AdaClass> classCache = new HashMap<>();
     @FXML
     private Button btnAddStore;
@@ -92,20 +94,27 @@ public class AppController implements Initializable {
 
         try {
             List <Store> stores = AdaUtils.getDomain().getStores();
-            for (Store store: stores)
+            for (Store store: stores) {
                 cmbStores.getItems().add(new IdName(store.getId(), store.getName()));
+            }
         }
         catch (Exception err) {
             err.printStackTrace();
         }
-        cmbStores.setOnAction(new EventHandler<ActionEvent>() {
+        cmbStores.getSelectionModel().selectedItemProperty().addListener(new ChangeListener() {
             @Override
-            public void handle(ActionEvent actionEvent) {
+            public void changed(ObservableValue observableValue, Object o, Object t1) {
                 try {
-                    IdName selectedItem = (IdName) cmbStores.getSelectionModel().getSelectedItem();
-                    onStoreChanged(AdaUtils.getDomain().getStore(selectedItem.getId()));
+                    IdName selectedItem = (IdName) t1;
+                    System.out.println(((IdName) t1).getId());
+                    Store store = AdaUtils.getDomain().getStore(selectedItem.getId());
+                    System.out.println("Before change: " + store.getName());
+                    onStoreChanged(store);
+                    System.out.println("Store changed to: " + t1);
                 }
-                catch (Exception err) {}
+                catch (Exception err) {
+                    err.printStackTrace();
+                }
             }
         });
         tvStore.getSelectionModel().selectedItemProperty().addListener(new ChangeListener<TreeItem>() {
@@ -127,6 +136,9 @@ public class AppController implements Initializable {
                     }
                     else if (((AdaClientTreeItem) selectedItem).getType().equals(TreeItemType.FOLDER)) {
                         folderMenu.show(tvStore, contextMenuEvent.getScreenX(), contextMenuEvent.getScreenY());
+                    }
+                    else if (selectedItem instanceof BrowseTreeItem) {
+                        rootMenu.show(tvStore, contextMenuEvent.getScreenX(), contextMenuEvent.getScreenY());
                     }
                 }
             }
@@ -284,6 +296,17 @@ public class AppController implements Initializable {
             }
         });
         folderMenu.getItems().add(addSubFolder);
+
+        rootMenu = new ContextMenu();
+        MenuItem addRootFolder = new MenuItem(InternationalizationUtils.get("treeview.class.contextmenu.add.subfolder"));
+        addRootFolder.setOnAction(new EventHandler<ActionEvent>() {
+            @Override
+            public void handle(ActionEvent actionEvent) {
+                BrowseTreeItem parent=  (BrowseTreeItem)tvStore.getSelectionModel().getSelectedItem();
+                onAddRootFolder(parent);
+            }
+        });
+        rootMenu.getItems().add(addRootFolder);
     }
 
     private void onShowClassProperties(AdaClass target) {
@@ -340,6 +363,33 @@ public class AppController implements Initializable {
             if (propertiesDialog.getResult().equals(ok)) {
                 AdaObject toadd = controller.getNewObject();
                 toadd.setObjectProperty(Folder.PARENT_FOLDER, parent.getFolder().getId());
+                AdaObject addedObject = store.createObject(toadd);
+                Folder newFolder = Folder.create(addedObject);
+                parent.getChildren().add(new FolderTreeItem(newFolder));
+            }
+        }
+        catch (Exception err) {
+            err.printStackTrace();
+        }
+    }
+    private void onAddRootFolder(BrowseTreeItem parent) {
+        try {
+            Store store = ((StoreTreeItem) tvStore.getRoot()).getStore();
+            FXMLLoader loader = new FXMLLoader(App.class.getResource("objectproperties.fxml"));
+            loader.setResources(InternationalizationUtils.getResources());
+            ObjectPropertiesController controller = new ObjectPropertiesController(store, true);
+            loader.setController(controller);
+            Dialog propertiesDialog = new Dialog();
+            propertiesDialog.setTitle(InternationalizationUtils.get("objectproperties.add.folder.title"));
+            propertiesDialog.getDialogPane().setContent(loader.load());
+            ButtonType ok =new ButtonType(InternationalizationUtils.get("dialog.button.ok"), ButtonBar.ButtonData.OK_DONE);
+            propertiesDialog.getDialogPane().getButtonTypes().add(ok);
+            controller.setOkButton((Button) propertiesDialog.getDialogPane().lookupButton(ok));
+            propertiesDialog.getDialogPane().getButtonTypes().add(new ButtonType(InternationalizationUtils.get("dialog.button.cancel"), ButtonBar.ButtonData.CANCEL_CLOSE));
+            propertiesDialog.showAndWait();
+
+            if (propertiesDialog.getResult().equals(ok)) {
+                AdaObject toadd = controller.getNewObject();
                 AdaObject addedObject = store.createObject(toadd);
                 Folder newFolder = Folder.create(addedObject);
                 parent.getChildren().add(new FolderTreeItem(newFolder));
@@ -449,6 +499,13 @@ public class AppController implements Initializable {
             controller.setOkButton((Button) propertiesDialog.getDialogPane().lookupButton(ok));
             propertiesDialog.getDialogPane().getButtonTypes().add(new ButtonType(InternationalizationUtils.get("dialog.button.cancel"), ButtonBar.ButtonData.CANCEL_CLOSE));
             propertiesDialog.showAndWait();
+
+            if (propertiesDialog.getResult().equals(ok)) {
+                Store tosave = controller.getStore();
+                GrantedRight[] rights = controller.getRights();
+                Store newStore = domain.createStore(tosave.getName(), rights, controller.getAddOns());
+                cmbStores.getItems().add(newStore);
+            }
         }
         catch (Exception err) {
             err.printStackTrace();
@@ -492,12 +549,15 @@ public class AppController implements Initializable {
     }
 
     private void onStoreChanged(Store store) {
+        System.out.println("onStoreChanged: " + store.getName());
         TreeItem root = new StoreTreeItem(store);
         TreeItem datamodel = new TreeItem(InternationalizationUtils.get("treeview.datamodel"));
         root.getChildren().add(datamodel);
         TreeItem classes = new TreeItem(InternationalizationUtils.get("treeview.datamodel.classes"));
         datamodel.getChildren().add(classes);
         try {
+            AdaClass[] classez = store.getClasses();
+            System.out.println("Found " + classez.length + " classes");
             addClasses(store.getClasses(), classes, null);
         }
         catch (AdaClassNotFoundException e) {}
@@ -512,6 +572,7 @@ public class AppController implements Initializable {
 
         root.getChildren().add(browse);
         tvStore.setRoot(root);
+        System.out.println("Root changed to : " + store.getName());
 
         tvStore.getSelectionModel().selectedItemProperty().addListener(new ChangeListener<TreeItem>() {
             @Override

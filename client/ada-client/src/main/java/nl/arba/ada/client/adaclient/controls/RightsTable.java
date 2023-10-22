@@ -169,6 +169,15 @@ public class RightsTable extends TableView {
         addOnExisting.setOnAction(addEventHandler);
         cmExisting.getItems().add(addOnExisting);
 
+        MenuItem delete = new MenuItem(InternationalizationUtils.get("rightstable.contextmenu.delete"));
+        delete.setOnAction(new EventHandler<ActionEvent>() {
+            @Override
+            public void handle(ActionEvent actionEvent) {
+                parent.getItems().remove(toEdit);
+            }
+        });
+        cmExisting.getItems().add(delete);
+
         cmAdd = new ContextMenu();
         MenuItem add = new MenuItem(InternationalizationUtils.get("rightstable.contextmenu.add"));
         add.setOnAction(addEventHandler);

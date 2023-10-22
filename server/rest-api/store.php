@@ -187,7 +187,7 @@
                         HttpResponse::createResponse(200, "text/json", $store->toJson())->expose();
                     }
                     else {
-                        HttpResponse::createErrorResponse(404,"Store not found")->expose();
+                        HttpResponse::createErrorResponse(404,"Store not found (" . $id . ")")->expose();
                     }
                 }
                 else {
@@ -404,6 +404,7 @@
                         }
                     }
                     else {
+                        print_r($json);
                         HttpResponse::createErrorResponse(500, "Invalid request")->expose();
                     }
                 }

@@ -159,4 +159,10 @@ public class TestClasses {
 
     }
 
+    @Test
+    public void cu() throws Exception {
+        Store cu = store.getDomain().getStore("ChristenUnie");
+        cu.getClasses();
+    }
+
 }

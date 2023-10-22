@@ -146,12 +146,15 @@ public class Domain {
             if (grantedrights.length > 0) {
                 for (GrantedRight right: grantedrights) {
                     json += (json.endsWith("[") ? "": ",");
+                    json += right.toJson();
+                    /*
                     if (right.getGrantee() instanceof User) {
                         User user = (User) right.getGrantee();
                         json += "{\"grantee\":\"" + (user.getId() == null ? user.getEmail(): user.getId()) + "\",\"identityprovider\":" + (right.getGrantee().getIdentityProvider() == null ? "null" : ("\"" + right.getGrantee().getIdentityProvider().getId() + "\"")) + ",\"level\":" + right.getLevel() + "}";
                     }
                     else
                         json += "{\"grantee\":\"" + right.getGrantee().getId() + "\",\"identityprovider\":" + (right.getGrantee().getIdentityProvider() == null ? "null" : ("\"" + right.getGrantee().getIdentityProvider().getId() + "\"")) + ",\"level\":" + right.getLevel() + "}";
+                     */
                 }
             }
             json += "],";
@@ -161,6 +164,7 @@ public class Domain {
             json += "}";
             InputStream is = doPost(baseUrl + "/store", json);
             String storeId = StreamUtils.streamToString(is);
+            System.out.println(storeId);
             return getStore(storeId);
         }
         catch (IOException err) {
