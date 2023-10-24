@@ -280,23 +280,19 @@
         public function canCreateClass($storeid) {
             try {
                 $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
-                Logger::log("canCreateClass: ". "select level from grantedrights where (granteeid = 'everyone' or (granteeid = '" . $this->userId . "' and identityproviderid = '" . $this->identityProviderId . "')) and targettype = 'store' and targetid='" . $storeid . "' order by weight desc limit 1");
-                $results = $conn->query("select level from grantedrights where (granteeid = 'everyone' or (granteeid = '" . $this->userId . "' and identityproviderid = '" . $this->identityProviderId . "')) and targettype = 'store' and targetid='" . $storeid . "' order by weight desc limit 1");
-                if ($results->num_rows == 0) {
-                    Logger::log('canCreateClass: No rights found');
-                    return false;
+                $rights = $conn->query("select level from rights where systemright='createclass'");
+                $right = $rights->fetch_object();
+                $results = $conn->query("select hasStoreRight('" . $storeid . "','" . $this->userId . "','" . $this->identityProviderId . "'," . $right->level . ") hasright from rights LIMIT 1");
+                if ($results->num_rows == 1) {
+                    if ($result = $results->fetch_object()) {
+                        return ($result->hasright == 1);
+                    }
+                    else {
+                        return false;
+                    }
                 }
                 else {
-                    $rights = $conn->query("select level from rights where systemright='createclass'");
-                    Logger::log("canCreateClass: Number of rights " . $rights->num_rows);
-                    $right = $rights->fetch_object();
-                    Logger::log("canCreateClass: Right level: " . $right->level);
-                    $grantedright = $results->fetch_object();
-                    Logger::log("canCreateClass: Granted level: " . $grantedright->level);
-                    if ($rights->num_rows == 1) 
-                        return (intval($grantedright->level) & intval($right->level) == intval($right->level));
-                    else
-                        return false;
+                    return false;
                 }
             }
             finally {
@@ -472,10 +468,14 @@
                         }
                         else {
                             foreach($class->getRights() as $right) {
-                                if ($right->getGranteeId() == 'everyone') 
+                                if ($right->getGranteeType() == 'user')
+                                    $succeeded = $conn->query("insert into classrights (granteeid, granteetype, identityproviderid, classid, level, weight) values ('" . $right->getGranteeId() . "','user','" . $right->getIdentityProviderId() . "','" . $id . "'," . $right->getLevel() . ",0)");
+                                else if ($right->getGranteeType() == 'role')
+                                    $succeeded = $conn->query("insert into classrights (granteeid, granteetype, identityproviderid, classid, level, weight) values ('" . $right->getGranteeId() . "','role','" . $right->getIdentityProviderId() . "','" . $id . "'," . $right->getLevel() . ",0)");
+                                else if ($right->getGranteeType() == 'special')
                                     $succeeded = $conn->query("insert into classrights (granteeid, granteetype, classid, level, weight) values ('everyone', 'special', '" . $id . "'," . $right->getLevel() . ",0)");
                                 else {
-                                    $succeeded = $conn->query("insert into classrights (granteeid, granteetype, identityproviderid, classid, level, weight) values ('" . $right->getGranteeId() . "','user','" . $right->getIdentityProviderId() . "','" . $id . "'," . $right->getLevel() . ",0)");
+                                    $succeeded = false;
                                 }
                                 if ($succeeded) {
                                     //Do nothing
@@ -541,6 +541,7 @@
                 $readRight = $conn->query("select level from rights where systemright='read'");
                 if ($right = $readRight->fetch_object()) {
                     $classes = [];
+                    Logger::log('getClasses: query: ' . "select id, name, folderclass, contentclass, parentclassid from classes where storeid = '" . $storeid . "' and hasClassRight(id, '" . $this->userId . "','" . $this->identityProviderId . "'," . $right->level . ")");
                     $rows = $conn->query("select id, name, folderclass, contentclass, parentclassid from classes where storeid = '" . $storeid . "' and hasClassRight(id, '" . $this->userId . "','" . $this->identityProviderId . "'," . $right->level . ")");
                     while ($row = $rows->fetch_object()) {
                         $newClass = new AdaClass($row->id, $row->name);

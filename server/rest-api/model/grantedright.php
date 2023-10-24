@@ -41,7 +41,7 @@
                 if ($json->grantee == 'everyone') 
                     return (in_array('level', $properties));
                 else
-                    return (in_array('level', $properties) && in_array('identityprovider', $properties) && sizeof($properties) == 3);
+                    return (in_array('level', $properties) && in_array('identityprovider', $properties) && in_array('granteetype', $properties) && sizeof($properties) == 4);
             }
             else
                 return false;

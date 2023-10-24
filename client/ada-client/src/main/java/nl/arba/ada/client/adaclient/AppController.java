@@ -547,6 +547,8 @@ public class AppController implements Initializable {
 
             if (propertiesDialog.getResult().equals(ok)) {
                 AdaClass tosave = controller.getClassToSave();
+                System.out.println("Adding class");
+                System.out.println("New class json: " + tosave.toJson());
                 if (controller.isAdding()) {
                     AdaClass newClass = tosave.getStore().addClass(tosave);
                     ClassTreeItem newChild = new ClassTreeItem(newClass);
