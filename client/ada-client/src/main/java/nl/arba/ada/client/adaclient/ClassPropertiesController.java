@@ -12,17 +12,14 @@ import javafx.scene.input.ContextMenuEvent;
 import javafx.scene.layout.BorderPane;
 import javafx.util.Callback;
 import nl.arba.ada.client.adaclient.controls.RightsTable;
-import nl.arba.ada.client.adaclient.dialogs.Confirmation;
 import nl.arba.ada.client.adaclient.dialogs.EditProperty;
 import nl.arba.ada.client.adaclient.dialogs.OkListener;
 import nl.arba.ada.client.adaclient.utils.InternationalizationUtils;
 import nl.arba.ada.client.api.AdaClass;
 import nl.arba.ada.client.api.Domain;
 import nl.arba.ada.client.api.Property;
-import nl.arba.ada.client.api.exceptions.PropertyNotAddedException;
 import nl.arba.ada.client.api.security.GrantedRight;
 import nl.arba.ada.client.api.security.Right;
-import nl.arba.ada.client.api.security.User;
 
 import java.net.URL;
 import java.util.ArrayList;
@@ -196,10 +193,18 @@ public class ClassPropertiesController implements Initializable {
     private void refreshProperties() {
         if (!adding) {
             try {
+                ArrayList <String> parentPropertyIds = new ArrayList<>();
+                if (!adding) {
+
+                    for (Property p: domain.getAdaClass(adaClass.getStore(), adaClass.getParentClass().getId()).getProperties()) {
+                        parentPropertyIds.add(p.getId());
+                    }
+                }
                 adaClass = adaClass.getStore().getAdaClass(adaClass.getId());
                 tableProperties.getItems().clear();
                 for (Property property : adaClass.getProperties()) {
-                    tableProperties.getItems().add(property);
+                    if (!parentPropertyIds.contains(property.getId()))
+                        tableProperties.getItems().add(property);
                 }
             } catch (Exception err) {
                 err.printStackTrace();

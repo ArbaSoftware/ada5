@@ -261,15 +261,19 @@
         public function canDeleteStore($storeid) {
             try {
                 $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
-                $results = $conn->query("select level from grantedrights where (granteeid = 'everyone' or (granteeid = '" . $this->userId . "' and identityproviderid = '" . $this->identityProviderId . "')) and targettype = 'store' and targetid='" . $storeid . "' order by weight desc limit 1");
-                if ($results->num_rows == 0)
-                    return false;
-                else {
-                    $rights = $conn->query("select level from rights where systemright='delete'");
-                    if ($rights->num_rows == 1) 
-                        return intval($rights->fetch_object()->level) & intval($results->fetch_object()->level);
-                    else
+                $rights = $conn->query("select level from rights where systemright='delete'");
+                if ($rights->num_rows == 1) {
+                    $right = $rights->fetch_object();
+                    $results = $conn->query("select hasStoreRight(id,'" . $this->identityProviderId . "'," . $right->level . ") hasright from stores where id = '" . $storeid . "'");
+                    if ($results->num_rows == 1) {
+                        return $result->fetch_object()->hasright == 1;
+                    }
+                    else {
                         return false;
+                    }
+                }
+                else {
+                    return false;
                 }
             }
             finally {
@@ -643,7 +647,6 @@
                     $file = $content->localdir. "/" . $content->id;
                     unlink($file);
                 }
-                //return $conn->query("delete from stores where id = '" . $storeid . "'");
                 return $conn->query("call deleteStore('" . $storeid . "','" . $this->userId . "','" . $this->identityProviderId . "')");
             }
             finally {
@@ -656,11 +659,13 @@
                 $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
                 $systemrights = $conn->query("select level from rights where systemright='createaddon'");
                 if ($systemright = $systemrights->fetch_object()) {
-                    $grantedrights = $conn->query("select level from grantedrights where targettype='domain' order by weight limit 1");
-                    if ($grantedright = $grantedrights->fetch_object()) {
-                        return intval($systemright->level & intval($grantedright->level));
+                    $hasRights = $conn->query("select hasDomainRight('" . $this->userId . "','" . $this->identityProviderId . "'," . $systemright->level . ") hasright from rights LIMIT 1");
+                    if ($hasRights->num_rows == 1) {
+                        return $hasRights->fetch_object()->hasright == 1;
                     }
-                    else return false;
+                    else {
+                        return false;
+                    }
                 }
                 else
                     return false;
@@ -675,11 +680,13 @@
                 $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
                 $systemrights = $conn->query("select level from rights where systemright='getaddons'");
                 if ($systemright = $systemrights->fetch_object()) {
-                    $grantedrights = $conn->query("select level from grantedrights where targettype='domain' order by weight limit 1");
-                    if ($grantedright = $grantedrights->fetch_object()) {
-                        return intval($systemright->level & intval($grantedright->level));
+                    $hasRights = $conn->query("select hasDomainRight('" . $this->userId . "','" . $this->identityProviderId . "'," . $systemright->level . ") hasright from rights LIMIT 1");
+                    if ($hasRights->num_rows == 1) {
+                        return $hasRights->fetch_object()->hasright == 1;
                     }
-                    else return false;
+                    else {
+                        return false;
+                    }
                 }
                 else
                     return false;
@@ -712,11 +719,13 @@
                 $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
                 $systemrights = $conn->query("select level from rights where systemright='updateaddon'");
                 if ($systemright = $systemrights->fetch_object()) {
-                    $grantedrights = $conn->query("select level from grantedrights where targettype='domain' order by weight limit 1");
-                    if ($grantedright = $grantedrights->fetch_object()) {
-                        return intval($systemright->level & intval($grantedright->level));
+                    $hasRights = $conn->query("select hasDomainRight('" . $this->userId . "','" . $this->identityProviderId . "'," . $systemright->level . ") hasright from rights LIMIT 1");
+                    if ($hasRights->num_rows == 1) {
+                        return $hasRights->fetch_object()->hasright == 1;
                     }
-                    else return false;
+                    else {
+                        return false;
+                    }
                 }
                 else
                     return false;
@@ -761,23 +770,17 @@
         public function canCreateObject($classid) {
             try {
                 $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
-                $classrows = $conn->query("select id from classes where id = '" . $classid . "' or name = '" . $classid . "'");
-                if ($classrows->num_rows > 0) {
-                    $classid = $classrows->fetch_object()->id;
-                    $results = $conn->query("select level from classrights where (granteeid = 'everyone' or (granteeid = '" . $this->userId . "' and identityproviderid = '" . $this->identityProviderId . "')) and classid='" . $classid . "' order by weight desc limit 1");
-                    if ($results->num_rows == 0)
-                        return false;
-                    else {
-                        $rights = $conn->query("select level from rights where systemright='createobject'");
-                        if ($rights->num_rows == 1) 
-                            return intval($rights->fetch_object()->level) & intval($results->fetch_object()->level);
-                        else
-                            return false;
+                $rights = $conn->query("select level from rights where systemright='createobject'");
+                if ($rights->num_rows == 1) {
+                    $hasRights = $conn->query("select hasClassRight(id, '" . $this->userId . "','" . $this->identityProviderId . "'," . $rights->fetch_object()->level . ") hasright from classes where id = '" . $classid . "'");
+                    if ($hasRights->num_rows == 1) {
+                        return $hasRights->fetch_object()->hasright == 1;
                     }
+                    else 
+                        return false;
                 }
-                else {
+                else 
                     return false;
-                }
             }
             finally {
                 $conn->close();
@@ -1049,122 +1052,125 @@
     }
 
     public function search($storeidorname, $search) {
-        $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
-        $storesearchresult = $conn->query("select id from stores where id = '" . $storeidorname . "' or name = '" . $storeidorname . "'");
-        if ($storesearchresult) {
-            $storeid = $storesearchresult->fetch_object()->id;
-            $readRight = $conn->query("select level from rights where systemright='read'");
-            if ($readRight) {
-                if ($right = $readRight->fetch_object()) {
-                    $class = $this->getClass($storeid, $search->class);
-                    $query = "select o.id, o.classid";
-                    $from = "";
-                    if (isset($search->properties)) {
-                        $propertyIndex = 1;
-                        foreach($search->properties as $property) {
-                            foreach($class->getProperties() as $classproperty) {
-                                if ($classproperty->getName() == $property) {
-                                    $query .= ",op" . $propertyIndex . ".";
-                                    if ($classproperty->getType() == 'string')
-                                        $query .= "string_value";
-                                    else if ($classproperty->getType() == 'date')
-                                        $query .= "date_value";
-                                    $query .= " PropertyValue" . $propertyIndex;
-                                    $query .= ", cp" . $propertyIndex . ".id PropertyId" . $propertyIndex;
-                                    $query .= ", cp" . $propertyIndex . ".type PropertyType" . $propertyIndex;
-                                    $from .= " inner join objectproperties op". $propertyIndex . " on o.id = op" . $propertyIndex . ".objectid inner join classproperties cp" . $propertyIndex . " on op" . $propertyIndex . ".propertyid = cp" . $propertyIndex . ".id and cp" . $propertyIndex . ".name = '" . $property . "'";
-                                    $propertyIndex++;
-                                }
-                            }
-                        }
-                    }
-                    $query .= " from objects o" . $from;
-                    $filterindex = 1;
-                    $where = "o.storeid = '" . $storeid . "' and hasObjectRight(o.id, '" . $this->userId . "','" . $this->identityProviderId . "'," . $right->level . ")";
-                    $errors = [];
-                    foreach($search->filters as $filter) {
-                        $property = $filter->property;
-                        $propertyId = null;
-                        $propertyType = null;
-                        foreach($class->getProperties() as $classproperty) {
-                            if ($classproperty->getName() == $property) {
-                                $propertyId = $classproperty->getId();
-                                $propertyType = $classproperty->getType();
-                                break;
-                            }
-                        };
-                        $operator = $filter->operator;
-
-                        if ($operator == 'isnull') {
-                            $query .= " left outer join objectproperties f" . $filterindex . " on (o.id = f" . $filterindex . ".objectid and f" . $filterindex . ".propertyid = '" . $propertyId . "')";
-                            $where .= " and " . "f" . $filterindex . ".objectid is null";
-                            $filterindex++;
-                        }
-                        else if ($operator == 'equals') {
-                            $query .= " left outer join objectproperties f" . $filterindex . " on (o.id = f" . $filterindex . ".objectid and f". $filterindex . ".propertyid = '" . $propertyId . "')";
-                            if ($propertyType == 'object') {
-                                if (gettype($filter->value) == 'string') {
-                                    $where .= " and f" . $filterindex . ".string_value = '" . $filter->value . "'";
-                                }
-                                else {
-                                    $errors[sizeof($errors)] = "Invalid filter value for property '" . $property . "' (" . $filter->value . ")";
-                                }
-                            }
-                        }
-                    }
-                    $query .= " where " . $where . " order by o.id";
-                    Logger::log("Search: " . $query);
-                }
-                else {
-                    $errors[sizeof($error)] = 'Unknown right';
-                }
-            }
-            else {
-                 $errors[sizeof($errors)] = 'Unknown right';
-            }
-
-            if (sizeof($errors) == 0) {
-                $lastObjectId = "";
-                $foundObjects = [];
-                try {
-                    $objectresults = $conn->query($query);
-                    while ($row = $objectresults->fetch_object()) {
-                        $objectId = $row->id;
-                        if ($objectId != $lastObjectId) {
-                            $newResult = new AdaObject($objectId, $row->classid);
+        try {
+            $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
+            $storesearchresult = $conn->query("select id from stores where id = '" . $storeidorname . "' or name = '" . $storeidorname . "'");
+            if ($storesearchresult) {
+                $storeid = $storesearchresult->fetch_object()->id;
+                $readRight = $conn->query("select level from rights where systemright='read'");
+                if ($readRight) {
+                    if ($right = $readRight->fetch_object()) {
+                        $class = $this->getClass($storeid, $search->class);
+                        $query = "select o.id, o.classid";
+                        $from = "";
+                        if (isset($search->properties)) {
                             $propertyIndex = 1;
                             foreach($search->properties as $property) {
-                                $propertyId = 'PropertyId' . $propertyIndex;
-                                $propertyValue = 'PropertyValue' . $propertyIndex;
-                                $propertyType = 'PropertyType' . $propertyIndex;
-                                $newResult->addProperty($row->$propertyId, $property, $row->$propertyType, $row->$propertyValue);
-                                $propertyIndex++;
+                                foreach($class->getProperties() as $classproperty) {
+                                    if ($classproperty->getName() == $property) {
+                                        $query .= ",op" . $propertyIndex . ".";
+                                        if ($classproperty->getType() == 'string')
+                                            $query .= "string_value";
+                                        else if ($classproperty->getType() == 'date')
+                                            $query .= "date_value";
+                                        $query .= " PropertyValue" . $propertyIndex;
+                                        $query .= ", cp" . $propertyIndex . ".id PropertyId" . $propertyIndex;
+                                        $query .= ", cp" . $propertyIndex . ".type PropertyType" . $propertyIndex;
+                                        $from .= " inner join objectproperties op". $propertyIndex . " on o.id = op" . $propertyIndex . ".objectid inner join classproperties cp" . $propertyIndex . " on op" . $propertyIndex . ".propertyid = cp" . $propertyIndex . ".id and cp" . $propertyIndex . ".name = '" . $property . "'";
+                                        $propertyIndex++;
+                                    }
+                                }
                             }
-                            $foundObjects[sizeof($foundObjects)] = $newResult;
-                            $lastObjectId = $objectId;
                         }
+                        $query .= " from objects o" . $from;
+                        $filterindex = 1;
+                        $where = "o.storeid = '" . $storeid . "' and hasObjectRight(o.id, '" . $this->userId . "','" . $this->identityProviderId . "'," . $right->level . ")";
+                        $errors = [];
+                        foreach($search->filters as $filter) {
+                            $property = $filter->property;
+                            $propertyId = null;
+                            $propertyType = null;
+                            foreach($class->getProperties() as $classproperty) {
+                                if ($classproperty->getName() == $property) {
+                                    $propertyId = $classproperty->getId();
+                                    $propertyType = $classproperty->getType();
+                                    break;
+                                }
+                            };
+                            $operator = $filter->operator;
+
+                            if ($operator == 'isnull') {
+                                $query .= " left outer join objectproperties f" . $filterindex . " on (o.id = f" . $filterindex . ".objectid and f" . $filterindex . ".propertyid = '" . $propertyId . "')";
+                                $where .= " and " . "f" . $filterindex . ".objectid is null";
+                                $filterindex++;
+                            }
+                            else if ($operator == 'equals') {
+                                $query .= " left outer join objectproperties f" . $filterindex . " on (o.id = f" . $filterindex . ".objectid and f". $filterindex . ".propertyid = '" . $propertyId . "')";
+                                if ($propertyType == 'object') {
+                                    if (gettype($filter->value) == 'string') {
+                                        $where .= " and f" . $filterindex . ".string_value = '" . $filter->value . "'";
+                                    }
+                                    else {
+                                        $errors[sizeof($errors)] = "Invalid filter value for property '" . $property . "' (" . $filter->value . ")";
+                                    }
+                                }
+                            }
+                        }
+                        $query .= " where " . $where . " order by o.id";
+                        Logger::log("Search: " . $query);
                     }
-                    $json = "[";
-                    $prefix = "";
-                    foreach($foundObjects as $object) {
-                        $json .= $prefix . $object->toJson();
-                        $prefix = ",";
+                    else {
+                        $errors[sizeof($error)] = 'Unknown right';
                     }
-                    $json .= "]";
-                    return $json;
                 }
-                finally {
-                    $conn->close();
+                else {
+                    $errors[sizeof($errors)] = 'Unknown right';
                 }
+
+                if (sizeof($errors) == 0) {
+                    $lastObjectId = "";
+                    $foundObjects = [];
+                    try {
+                        $objectresults = $conn->query($query);
+                        while ($row = $objectresults->fetch_object()) {
+                            $objectId = $row->id;
+                            if ($objectId != $lastObjectId) {
+                                $newResult = new AdaObject($objectId, $row->classid);
+                                $propertyIndex = 1;
+                                foreach($search->properties as $property) {
+                                    $propertyId = 'PropertyId' . $propertyIndex;
+                                    $propertyValue = 'PropertyValue' . $propertyIndex;
+                                    $propertyType = 'PropertyType' . $propertyIndex;
+                                    $newResult->addProperty($row->$propertyId, $property, $row->$propertyType, $row->$propertyValue);
+                                    $propertyIndex++;
+                                }
+                                $foundObjects[sizeof($foundObjects)] = $newResult;
+                                $lastObjectId = $objectId;
+                            }
+                        }
+                        $json = "[";
+                        $prefix = "";
+                        foreach($foundObjects as $object) {
+                            $json .= $prefix . $object->toJson();
+                            $prefix = ",";
+                        }
+                        $json .= "]";
+                        return $json;
+                    }
+                    finally {
+                        $conn->close();
+                    }
+                }
+                else
+                    return $errors;
             }
-            else
+            else {
+                $errors = [];
+                $errors[0] = 'Store not found (' . $storeidorname . ")";
                 return $errors;
+            }
         }
-        else {
-            $errors = [];
-            $errors[0] = 'Store not found (' . $storeidorname . ")";
-            return $errors;
-        }
+        finally {}
     }
 
     public function canGetContent($storeid, $objectid) {
@@ -1335,17 +1341,16 @@
     public function canEditClass($storeid, $classid) {
         try {
             $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
-            $results = $conn->query("select level from classrights where (granteeid = 'everyone' or (granteeid = '" . $this->userId . "' and identityproviderid = '" . $this->identityProviderId . "')) and classid='" . $classid . "' order by weight desc limit 1");
-            if ($results->num_rows == 0)
-                return false;
-            else {
-                $rights = $conn->query("select level from rights where systemright='Update'");
-                if ($rights->num_rows == 1) {
-                    return intval($rights->fetch_object()->level) & intval($results->fetch_object()->level);
-                }
+            $rights = $conn->query("select level from rights where systemright='Update'");
+            if ($rights->num_rows == 1) {
+                $results = $conn->query("select hasClassRight(id,'" . $this->userId . "','" . $this->identityProviderId . "'," . $rights->fetch_object()->level . ") hasright from classes where id = '" . $classid . "'");
+                if ($results->num_rows == 1)
+                    return $results->fetch_object()->hasright == 1;
                 else
                     return false;
             }
+            else
+                return false;
         }
         finally {
             $conn->close();
@@ -1516,20 +1521,6 @@
         else
             return false;
     }
-    /*
-        $results = $conn->query("select level from objectrights where (granteeid = 'everyone' or (granteeid = '" . $this->userId . "' and identityproviderid = '" . $this->identityProviderId . "')) and objectid='" . $objectid . "' order by weight desc limit 1");
-        if ($results->num_rows == 0)
-            return false;
-        else {
-            $rights = $conn->query("select level from rights where systemright='Update'");
-            if ($rights->num_rows == 1) {
-                return intval($rights->fetch_object()->level) & intval($results->fetch_object()->level);
-            }
-            else
-                return false;
-        }
-    }
-    */
     finally {
         $conn->close();
     }
@@ -1673,47 +1664,57 @@
    }
 
    public function canGetObject($storeid, $objectid) {
-    $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
-    $storerows = $conn->query("select id from stores where id = '" . $storeid . "' or name = '" . $storeid . "'");
-    if ($storerows) {
-        $storeid = $storerows->fetch_object()->id;
-        $countrow = $conn->query("select o.id, hasObjectRight(o.id, '" . $this->userId . "', '" . $this->identityProviderId . "', r.level) hasObjectRight from objects o inner join rights r on r.systemright = 'read' where o.storeid = '" . $storeid . "' and o.id = '" . $objectid . "'");
-        if ($countrow->num_rows == 1) {
-            $count = $countrow->fetch_object();
-            return $count->hasObjectRight == 1;
+    try {
+        $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
+        $storerows = $conn->query("select id from stores where id = '" . $storeid . "' or name = '" . $storeid . "'");
+        if ($storerows) {
+            $storeid = $storerows->fetch_object()->id;
+            $countrow = $conn->query("select o.id, hasObjectRight(o.id, '" . $this->userId . "', '" . $this->identityProviderId . "', r.level) hasObjectRight from objects o inner join rights r on r.systemright = 'read' where o.storeid = '" . $storeid . "' and o.id = '" . $objectid . "'");
+            if ($countrow->num_rows == 1) {
+                $count = $countrow->fetch_object();
+                return $count->hasObjectRight == 1;
+            }
+            else {
+                return false;
+            }
         }
-        else {
+        else
             return false;
-        }
     }
-    else
-        return false;
+    finally {
+        $conn->close();
+    }
    }
 
    public function relateObjects($storeid, $id1, $id2, $type) {
-    $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
-    $object1 = $conn->query("select o.id,o.classid,c.folderclass,c.contentclass from objects o inner join classes c on c.id = o.classid where o.storeid = '" . $storeid . "' and o.id = '" . $id1 . "'");
-    if ($object1 && $object1->num_rows == 1) {
-        $object1data = $object1->fetch_object();
-        $object2 = $conn->query("select o.id,o.classid,c.folderclass,c.contentclass from objects o inner join classes c on c.id = o.classid where o.storeid = '" . $storeid . "' and o.id = '" . $id2 . "'");
-        if ($object2 && $object2->num_rows == 1) {
-            $object2data = $object2->fetch_object();
-            $types = $conn->query("select id, object1type, object2type from objectrelationtypes where storeid = '" . $storeid . "' and name = '" . $type . "'");
-            if ($types && $types->num_rows == 1) {
-                $typeObject = $types->fetch_object();
-                $object1Ok = TRUE;
-                if ($typeObject->object1type == 'document')
-                    $object1Ok = ($object1data->contentclass == 1);
-                else if ($typeObject->object1type == 'folder')
-                    $object1Ok = ($object1data->folderclass == 1);
-                $object2Ok = TRUE;
-                if ($typeObject->object2type == 'document')
-                    $object2Ok = ($object2data->contentclass == 1);
-                else if ($typeObject->object2type == 'folder')
-                    $object2Ok = ($object2data->folderclass == 1);
-                if ($object1Ok && $object2Ok) {
-                    $inserts = $conn->query("insert into objectrelations (object1, object2, type) values ('" . $id1 . "','" . $id2 . "','" . $typeObject->id . "')");
-                    return true;
+    try {
+        $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
+        $object1 = $conn->query("select o.id,o.classid,c.folderclass,c.contentclass from objects o inner join classes c on c.id = o.classid where o.storeid = '" . $storeid . "' and o.id = '" . $id1 . "'");
+        if ($object1 && $object1->num_rows == 1) {
+            $object1data = $object1->fetch_object();
+            $object2 = $conn->query("select o.id,o.classid,c.folderclass,c.contentclass from objects o inner join classes c on c.id = o.classid where o.storeid = '" . $storeid . "' and o.id = '" . $id2 . "'");
+            if ($object2 && $object2->num_rows == 1) {
+                $object2data = $object2->fetch_object();
+                $types = $conn->query("select id, object1type, object2type from objectrelationtypes where storeid = '" . $storeid . "' and name = '" . $type . "'");
+                if ($types && $types->num_rows == 1) {
+                    $typeObject = $types->fetch_object();
+                    $object1Ok = TRUE;
+                    if ($typeObject->object1type == 'document')
+                        $object1Ok = ($object1data->contentclass == 1);
+                    else if ($typeObject->object1type == 'folder')
+                        $object1Ok = ($object1data->folderclass == 1);
+                    $object2Ok = TRUE;
+                    if ($typeObject->object2type == 'document')
+                        $object2Ok = ($object2data->contentclass == 1);
+                    else if ($typeObject->object2type == 'folder')
+                        $object2Ok = ($object2data->folderclass == 1);
+                    if ($object1Ok && $object2Ok) {
+                        $inserts = $conn->query("insert into objectrelations (object1, object2, type) values ('" . $id1 . "','" . $id2 . "','" . $typeObject->id . "')");
+                        return true;
+                    }
+                    else {
+                        return false;
+                    }
                 }
                 else {
                     return false;
@@ -1727,191 +1728,146 @@
             return false;
         }
     }
-    else {
-        return false;
+    finally {
+        $conn->close();
     }
    }
 
    public function getRelatedObjects($objectid, $request) {
-    $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
-    $readRights = $conn->query("select level from rights where systemright = 'read'");
-    if ($readRight = $readRights->fetch_object()) {
-        if (isset($request->relationtype)) {
-            $rows = $conn->query("select ors.object2 from objectrelations ors inner join objectrelationtypes rt on rt.id = ors.type where (rt.id = '" . $request->relationtype . "' or rt.name = '" . $request->relationtype . "') and ors.object1 = '" . $objectid . "'and hasObjectRight(ors.object2, '" . $this->userId . "','" . $this->identityProviderId . "', " . $readRight->level . ")");
-        }
-        else {
-            $rows = $conn->query("select object2 from objectrelations where object1 = '" . $objectid . "'and hasObjectRight(ors.object2, '" . $this->userId . "','" . $this->identityProviderId . "', " . $readRight->level . ")");
-        }
-        $allowedObjectIds = [];
-        while ($row = $rows->fetch_object()) {
-            $allowedObjectIds[sizeof($allowedObjectIds)] = $row->object2;
-        }
-        $json = "[";
-        $prefix = "";
-        foreach($allowedObjectIds as $objectId) {
-            $json .= $prefix . "{\"id\":\"" . $objectId . "\",";
-            $classdetails = $conn->query("select c.id, c.name from classes c inner join objects o on o.classid = c.id where o.id = '" . $objectId . "'");
-            $classobject = $classdetails->fetch_object();
-            $json .= "\"class\":{\"id\":\"". $classobject->id . "\",\"name\":\"" . $classobject->name . "\"},\"properties\":[";
-            $propertiesQuery = "select op.propertyid, op.string_value, op.date_value, cp.type, cp.name from objectproperties op inner join classproperties cp on cp.id = op.propertyid where op.objectid = '" . $objectId . "' and cp.name in (";
-            $propertyPrefix = "";
-            foreach ($request->properties as $property) {
-                $propertiesQuery .= $propertyPrefix . "'" . $property . "'";
-                $propertyPrefix = ",";
+    try {
+        $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
+        $readRights = $conn->query("select level from rights where systemright = 'read'");
+        if ($readRight = $readRights->fetch_object()) {
+            if (isset($request->relationtype)) {
+                $rows = $conn->query("select ors.object2 from objectrelations ors inner join objectrelationtypes rt on rt.id = ors.type where (rt.id = '" . $request->relationtype . "' or rt.name = '" . $request->relationtype . "') and ors.object1 = '" . $objectid . "'and hasObjectRight(ors.object2, '" . $this->userId . "','" . $this->identityProviderId . "', " . $readRight->level . ")");
             }
-            $propertiesQuery .= ")";
-            $firstProperty = true;
-            $properties = $conn->query($propertiesQuery);
-            while ($property = $properties->fetch_object()) {
-                $json .= ($firstProperty ? "" : ",");
-                $json .= "{\"type\":\"" . $property->type . "\",\"id\":\"" . $property->propertyid . "\",\"name\":\"" . $property->name . "\",\"value\":";
-                if ($property->type == 'string')
-                    $json .= '"'. $property->string_value . '"';
-                else
-                    $json .= "null";
-                $json .= "}";
-                $firstProperty = false;
+            else {
+                $rows = $conn->query("select object2 from objectrelations where object1 = '" . $objectid . "'and hasObjectRight(ors.object2, '" . $this->userId . "','" . $this->identityProviderId . "', " . $readRight->level . ")");
             }
-            $json .= "]}";
-            $prefix = ",";
-        }
-        $json .= "]";
-        return $json;
-    }
-    else
-        return false;
-    //and hasObjectRight(ors.object2, '" . $this->userId . "','" . $this->identityProviderId . "', " . $readRight->level . ")    
-    /*
-    if (isset($request->relationtype)) {
-        $rows = $conn->query("select ors.object2 from objectrelations ors inner join objectrelationtypes rt on rt.id = ors.type where (rt.id = '" . $request->relationtype . "' or rt.name = '" . $request->relationtype . "') and ors.object1 = '" . $objectid . "'");
-    }
-    else {
-        $rows = $conn->query("select object2 from objectrelations where object1 = '" . $objectid . "'");
-    }
-    $relatedObjectIds = [];
-    while ($row = $rows->fetch_object()) {
-        $relatedObjectIds[sizeof($relatedObjectIds)] = $row->object2;
-    }
-    $allowedObjectIds = [];
-    $readRights = $conn->query("select level from rights where systemright = 'read'");
-    if ($readRight = $readRights->fetch_object()) {
-        foreach($relatedObjectIds as $relatedObjectId) {
-            $potentials = $conn->query("select o.id, o.classid, r.level, c.majorversion, c.minorversion, c.mimetype, co.userid, co.identityproviderid from objects o inner join objectrights r on o.id = r.objectid left outer join content c on c.objectid = o.id left outer join checkouts co on co.objectid = o.id where  o.id = '" . $relatedObjectId . "' and (r.granteeid = 'everyone' or (r.granteeid = '" . $this->userId . "' and r.identityproviderid = '" . $this->identityProviderId . "')) order by r.weight asc, c.majorversion desc, c.minorversion desc limit 1");
-            if ($potential = $potentials->fetch_object()) {
-                if (intval($readRight->level) & intval($potential->level)) {
-                    $allowedObjectIds[sizeof($allowedObjectIds)] = $relatedObjectId;
+            $allowedObjectIds = [];
+            while ($row = $rows->fetch_object()) {
+                $allowedObjectIds[sizeof($allowedObjectIds)] = $row->object2;
+            }
+            $json = "[";
+            $prefix = "";
+            foreach($allowedObjectIds as $objectId) {
+                $json .= $prefix . "{\"id\":\"" . $objectId . "\",";
+                $classdetails = $conn->query("select c.id, c.name from classes c inner join objects o on o.classid = c.id where o.id = '" . $objectId . "'");
+                $classobject = $classdetails->fetch_object();
+                $json .= "\"class\":{\"id\":\"". $classobject->id . "\",\"name\":\"" . $classobject->name . "\"},\"properties\":[";
+                $propertiesQuery = "select op.propertyid, op.string_value, op.date_value, cp.type, cp.name from objectproperties op inner join classproperties cp on cp.id = op.propertyid where op.objectid = '" . $objectId . "' and cp.name in (";
+                $propertyPrefix = "";
+                foreach ($request->properties as $property) {
+                    $propertiesQuery .= $propertyPrefix . "'" . $property . "'";
+                    $propertyPrefix = ",";
                 }
-
+                $propertiesQuery .= ")";
+                $firstProperty = true;
+                $properties = $conn->query($propertiesQuery);
+                while ($property = $properties->fetch_object()) {
+                    $json .= ($firstProperty ? "" : ",");
+                    $json .= "{\"type\":\"" . $property->type . "\",\"id\":\"" . $property->propertyid . "\",\"name\":\"" . $property->name . "\",\"value\":";
+                    if ($property->type == 'string')
+                        $json .= '"'. $property->string_value . '"';
+                    else
+                        $json .= "null";
+                    $json .= "}";
+                    $firstProperty = false;
+                }
+                $json .= "]}";
+                $prefix = ",";
             }
+            $json .= "]";
+            return $json;
         }
-        $json = "[";
-        $prefix = "";
-        foreach($allowedObjectIds as $objectId) {
-            $json .= $prefix . "{\"id\":\"" . $objectId . "\",";
-            $classdetails = $conn->query("select c.id, c.name from classes c inner join objects o on o.classid = c.id where o.id = '" . $objectId . "'");
-            $classobject = $classdetails->fetch_object();
-            $json .= "\"class\":{\"id\":\"". $classobject->id . "\",\"name\":\"" . $classobject->name . "\"},\"properties\":[";
-            $propertiesQuery = "select op.propertyid, op.string_value, op.date_value, cp.type, cp.name from objectproperties op inner join classproperties cp on cp.id = op.propertyid where op.objectid = '" . $objectId . "' and cp.name in (";
-            $propertyPrefix = "";
-            foreach ($request->properties as $property) {
-                $propertiesQuery .= $propertyPrefix . "'" . $property . "'";
-                $propertyPrefix = ",";
-            }
-            $propertiesQuery .= ")";
-            $firstProperty = true;
-            $properties = $conn->query($propertiesQuery);
-            while ($property = $properties->fetch_object()) {
-                $json .= ($firstProperty ? "" : ",");
-                $json .= "{\"type\":\"" . $property->type . "\",\"id\":\"" . $property->propertyid . "\",\"name\":\"" . $property->name . "\",\"value\":";
-                if ($property->type == 'string')
-                    $json .= '"'. $property->string_value . '"';
-                else
-                    $json .= "null";
-                $json .= "}";
-                $firstProperty = false;
-            }
-            $json .= "]}";
-            $prefix = ",";
-        }
-        $json .= "]";
-        return $json;
+        else
+            return false;
     }
-    else {
-        return false;
+    finally {
+        $conn->close();
     }
-    */
    }
 
    public function updateUser($user) {
-    $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
-    $idp = $this->getIdentityProvider($user->getIdentifyProviderId());
-    if (is_null($idp->getRolesCache())) {
-        $idprolesJson = $idp->getRoles();
-        $conn->query("update identityproviders set rolescache = '" . $conn->real_escape_string($idprolesJson) . "' where id = '" . $idp->getId() . "'");
-        $idproles = json_decode($idprolesJson);
-    }
-    else {
-        $idproles = json_decode($idp->getRolesCache());
-    }
-    $roles = $user->getRoles();
-
-    $succeeded = false;
-
-    while (!$succeeded) {
-        $roleids = [];
-        $foundRoles = true;
-        foreach($roles as $role) {
-            $roleId = null;
-            for ($index = 0; $index < sizeof($idproles); $index++) {
-                if ($idproles[$index]->name == $role) {
-                    $roleId = $idproles[$index]->id;
-                    break;
-                }
-            }
-            if (is_null($roleId)) {
-                $foundRoles = false;
-                break;
-            }
-            else {
-                $roleids[sizeof($roleids)] = $roleId;
-            }
-        }
-        if ($foundRoles)
-            $succeeded = true;
-        else {
+    try {
+        $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
+        $idp = $this->getIdentityProvider($user->getIdentifyProviderId());
+        if (is_null($idp->getRolesCache())) {
             $idprolesJson = $idp->getRoles();
             $conn->query("update identityproviders set rolescache = '" . $conn->real_escape_string($idprolesJson) . "' where id = '" . $idp->getId() . "'");
             $idproles = json_decode($idprolesJson);
         }
-    }
-    sort($roleids);
-    $roleCache = implode($roleids);
-    $cacherows = $conn->query("select roles from usercache where userid = '" . $user->getId() . "' and identityproviderid = '" . $user->getIdentifyProviderId() . "'");
-    $refresh = false;
-    if ($cacherows && $cacherows->num_rows == 1) {
-        $cache = $cacherows->fetch_object();
-        if ($cache->roles != $roleCache) {
+        else {
+            $idproles = json_decode($idp->getRolesCache());
+        }
+        $roles = $user->getRoles();
+
+        $succeeded = false;
+
+        while (!$succeeded) {
+            $roleids = [];
+            $foundRoles = true;
+            foreach($roles as $role) {
+                $roleId = null;
+                for ($index = 0; $index < sizeof($idproles); $index++) {
+                    if ($idproles[$index]->name == $role) {
+                        $roleId = $idproles[$index]->id;
+                        break;
+                    }
+                }
+                if (is_null($roleId)) {
+                    $foundRoles = false;
+                    break;
+                }
+                else {
+                    $roleids[sizeof($roleids)] = $roleId;
+                }
+            }
+            if ($foundRoles)
+                $succeeded = true;
+            else {
+                $idprolesJson = $idp->getRoles();
+                $conn->query("update identityproviders set rolescache = '" . $conn->real_escape_string($idprolesJson) . "' where id = '" . $idp->getId() . "'");
+                $idproles = json_decode($idprolesJson);
+            }
+        }
+        sort($roleids);
+        $roleCache = implode($roleids);
+        $cacherows = $conn->query("select roles from usercache where userid = '" . $user->getId() . "' and identityproviderid = '" . $user->getIdentifyProviderId() . "'");
+        $refresh = false;
+        if ($cacherows && $cacherows->num_rows == 1) {
+            $cache = $cacherows->fetch_object();
+            if ($cache->roles != $roleCache) {
+                $refresh = true;
+            }
+        }
+        else {
             $refresh = true;
         }
-    }
-    else {
-        $refresh = true;
-    }
-    if ($refresh) {
-        $conn->query("delete from userrolesgroups where userid = '" . $user->getId() . "' and identityproviderid = '" . $user->getIdentifyProviderId() . "'");
-        foreach($roleids as $role) {
-            $conn->query("insert into userrolesgroups (userid, identityproviderid, roleid) values ('" . $user->getId() . "','" . $user->getIdentifyProviderId() . "','" . $role . "')");
+        if ($refresh) {
+            $conn->query("delete from userrolesgroups where userid = '" . $user->getId() . "' and identityproviderid = '" . $user->getIdentifyProviderId() . "'");
+            foreach($roleids as $role) {
+                $conn->query("insert into userrolesgroups (userid, identityproviderid, roleid) values ('" . $user->getId() . "','" . $user->getIdentifyProviderId() . "','" . $role . "')");
+            }
+            if ($cacherows->num_rows == 1) 
+                $conn->query("update usercache set roles = '" . $roleCache . "' where userid = '" . $user->getId() . "' and identityproviderid = '" . $user->getIdentifyProviderId() . "'");
+            else
+                $conn->query("insert into usercache (userid, identityproviderid, roles) values ('" . $user->getId() . "','" . $user->getIdentifyProviderId() . "','" . $roleCache . "')");
         }
-        if ($cacherows->num_rows == 1) 
-            $conn->query("update usercache set roles = '" . $roleCache . "' where userid = '" . $user->getId() . "' and identityproviderid = '" . $user->getIdentifyProviderId() . "'");
-        else
-            $conn->query("insert into usercache (userid, identityproviderid, roles) values ('" . $user->getId() . "','" . $user->getIdentifyProviderId() . "','" . $roleCache . "')");
+    }
+    finally {
+        $conn->close();
     }
 }
 
 public function addRequestPerformance($url, $method, $time) {
-    $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
-    $conn->query("insert into requestperformance(url, method, time) values ('" . $url . "','" . $method . "','" . $time . "')");
+    try {
+        $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
+        $conn->query("insert into requestperformance(url, method, time) values ('" . $url . "','" . $method . "','" . $time . "')");
+    }
+    finally {
+        $conn->close();
+    }
 }
 
 }

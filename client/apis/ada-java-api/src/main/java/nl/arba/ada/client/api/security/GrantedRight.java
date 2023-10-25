@@ -143,8 +143,8 @@ public class GrantedRight {
     public String toJson() {
         return "{" +
                 "\"grantee\":\"" + getGrantee().getId() + "\"," +
-                (getGrantee().getIdentityProvider() == null ? "\"identityprovider\":\"" + getIdentityProviderId() + "\"," : "\"identityprovider\":\"" + getGrantee().getIdentityProvider().getId() + "\",") +
-                (getGranteetype() != null ? "\"granteetype\":\"" + getGranteetype() + "\"," : (getGrantee() != null ? getTypeFromGrantee(getGrantee()): "")) +
+                (getGrantee().getIdentityProvider() == null ? "\"identityprovider\":" + (getIdentityProviderId() == null ? "null" : "\"" + getIdentityProviderId() + "\"") + "," : "\"identityprovider\":\"" + getGrantee().getIdentityProvider().getId() + "\",") +
+                (getGranteetype() != null ? "\"granteetype\":\"" + getGranteetype() + "\"," : (getGrantee() != null ? "\"granteetype\":\"" + getTypeFromGrantee(getGrantee()) + "\",": "")) +
                 "\"level\":" + getLevel() +
                 "}";
     }
