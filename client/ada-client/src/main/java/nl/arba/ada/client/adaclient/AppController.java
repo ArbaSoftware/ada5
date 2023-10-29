@@ -62,8 +62,6 @@ public class AppController implements Initializable {
     private ContextMenu rootMenu;
     private ContextMenu storeMenu;
     private HashMap<String, AdaClass> classCache = new HashMap<>();
-    @FXML
-    private Button btnAddStore;
 
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
@@ -81,9 +79,9 @@ public class AppController implements Initializable {
         });
         fileMenu.getItems().add(exit);
         mainMenu.getMenus().add(fileMenu);
-        topPane.setTop(mainMenu);
-
-        btnAddStore.setOnAction(new EventHandler<ActionEvent>() {
+        Menu domainMenu = new Menu(InternationalizationUtils.get("menu.domain"));
+        MenuItem addStore = new MenuItem(InternationalizationUtils.get("menu.domain.add.store"));
+        addStore.setOnAction(new EventHandler<ActionEvent>() {
             @Override
             public void handle(ActionEvent actionEvent) {
                 try {
@@ -92,6 +90,12 @@ public class AppController implements Initializable {
                 catch (Exception err) {}
             }
         });
+        domainMenu.getItems().add(addStore);
+        MenuItem editStoreProperties = new MenuItem(InternationalizationUtils.get("menu.domain.properties"));
+        domainMenu.getItems().add(editStoreProperties);
+
+        mainMenu.getMenus().add(domainMenu);
+        topPane.setTop(mainMenu);
 
         try {
             List <Store> stores = AdaUtils.getDomain().getStores();
@@ -651,7 +655,7 @@ public class AppController implements Initializable {
             StorePropertiesController controller = new StorePropertiesController(domain, refreshedStore);
             loader.setController(controller);
             Dialog propertiesDialog = new Dialog();
-            propertiesDialog.setTitle(InternationalizationUtils.get("store.properties.add.title"));
+            propertiesDialog.setTitle(InternationalizationUtils.get("store.properties.modify.title") + " - " + refreshedStore.getName());
             propertiesDialog.getDialogPane().setContent(loader.load());
             ButtonType ok =new ButtonType(InternationalizationUtils.get("dialog.button.ok"), ButtonBar.ButtonData.OK_DONE);
             propertiesDialog.getDialogPane().getButtonTypes().add(ok);
@@ -662,8 +666,8 @@ public class AppController implements Initializable {
             if (propertiesDialog.getResult().equals(ok)) {
                 Store tosave = controller.getStore();
                 GrantedRight[] rights = controller.getRights();
-                Store newStore = domain.createStore(tosave.getName(), rights, controller.getAddOns());
-                cmbStores.getItems().add(newStore);
+                Store refreshed = domain.updateStore(tosave, rights);
+                ((IdName) cmbStores.getSelectionModel().getSelectedItem()).setName(refreshed.getName());
             }
         }
         catch (Exception err) {

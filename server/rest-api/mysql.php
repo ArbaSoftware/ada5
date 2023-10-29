@@ -1870,4 +1870,73 @@ public function addRequestPerformance($url, $method, $time) {
     }
 }
 
+public function canEditStore($storeid) {
+    try {
+        $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
+        $rights = $conn->query("select level from rights where systemright='Update'");
+        if ($rights->num_rows == 1) {
+            $checks = $conn->query("select hasStoreRight('" . $storeid . "','" . $this->userId . "','" . $this->identityProviderId . "'," . $rights->fetch_object()->level . ") hasright from rights LIMIT 1");
+            if ($checks && $checks->num_rows == 1) {
+                return $checks->fetch_object()->hasright == 1;
+            }
+            else {
+                return false;
+            }
+        }
+        else
+            return false;
+    }
+    finally {
+        $conn->close();
+    }
+}
+
+public function updateStore($storeid, $request) {
+    try {
+        $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
+        if ($request->id == $storeid) {
+            $conn->begin_transaction();
+            $succeeded = true;
+    
+            //Update rights
+            if ($conn->query("delete from grantedrights where targetid = '" . $storeid . "'")) {
+                foreach($request->grantedrights as $right) {
+                    if ($conn->query("insert into grantedrights (targetid, granteeid, granteetype, identityproviderid, level, weight, targettype) values ('" . $storeid . "','" . $right->grantee . "','" . $right->granteetype . "','" . $right->identityprovider . "'," . $right->level . "," . $this->getGranteeTypeWeigth($right->granteetype) . ",'store')")) {
+                        //
+                    }
+                    else {
+                        $succeeded = FALSE;
+                    }
+                }
+            }
+            else {
+                $succeeded = false;
+            }
+
+            //Update name
+            if (isset($request->name)) {
+                if ($conn->query("update stores set name = '" . $request->name . "' where id = '" . $storeid . "'")) {
+                }
+                else
+                    $succeeded = FALSE;
+            }
+
+            if ($succeeded) {
+                $conn->commit();
+                return true;
+            }
+            else {
+                $conn->rollback();
+                return false;
+            }
+        
+        }
+        else
+            return false;
+    }
+    finally {
+        $conn->close();
+    }
+}
+
 }

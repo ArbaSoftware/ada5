@@ -124,6 +124,21 @@
             $tokenJson = file_get_contents($this->getSetting('token.url'), false, $context);
             $token = json_decode($tokenJson)->access_token;
 
+            //get clients
+            $opts = array('http' =>
+                array(
+                    'method' => 'GET',
+                    'header' => 'Authorization: Bearer ' . $token
+                )
+            );
+            $context = stream_context_create($opts);
+            $clients = json_decode(file_get_contents($this->getSetting('api.url') . '/clients', false, $context));
+            $clientId = null;
+            foreach($clients as $client) {
+                if ($client->clientId == $this->getSetting('client.id'))
+                    $clientId = $client->id;
+            }
+
             //get roles
             $opts = array('http' =>
                 array(
@@ -132,7 +147,7 @@
                 )
             );
             $context = stream_context_create($opts);
-            $roles = json_decode(file_get_contents($this->getSetting('api.url') . '/roles', false, $context));
+            $roles = json_decode(file_get_contents($this->getSetting('api.url') . '/clients/' . $clientId . '/roles', false, $context));
             $results = [];
             $json = '[';
             $first = true;

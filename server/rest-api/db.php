@@ -49,4 +49,6 @@
         public function updateUser($user);
         public function addRequestPerformance($url, $method, $time);
         public function getAddOns();
+        public function canEditStore($storeid);
+        public function updateStore($storeid, $request);
     }

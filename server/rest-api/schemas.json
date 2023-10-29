@@ -271,6 +271,21 @@
                 "type": "string",
                 "required": false
             }
+        },
+        "updatestore": {
+            "id": {
+                "type": "string",
+                "required": true
+            },
+            "name": {
+                "type": "string",
+                "required": false
+            },
+            "grantedrights": {
+                "type": "arrayofobjects",
+                "required": true,
+                "schema": "right"
+            }
         }
     },
     "enumerations": {

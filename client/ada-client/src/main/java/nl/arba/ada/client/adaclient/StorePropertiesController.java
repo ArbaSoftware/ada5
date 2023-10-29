@@ -98,6 +98,8 @@ public class StorePropertiesController implements Initializable {
 
     public Store getStore() {
         Store store = new Store();
+        if (!adding)
+            store.setId(this.store.getId());
         store.setDomain(domain);
         store.setName(txtName.getText());
         return store;

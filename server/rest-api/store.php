@@ -127,6 +127,11 @@
         $db->addRequestPerformance($request->getUrl(), strtolower($request->getMethod()), microtime(true)-$start);
         exit;
     }
+    else if ($request->matches("PUT", "/ada/store/*")) {
+        $handler->updateStore($request->getUrlPart(3), file_get_contents("php://input"));
+        $db->addRequestPerformance($request->getUrl(), strtolower($request->getMethod()), microtime(true)-$start);
+        exit;
+    }
     else {
         HttpResponse::createErrorResponse(404, "Not found")->expose();
         exit;
@@ -503,7 +508,7 @@
                     if ($this->db->updateClass($classid, json_decode($json)))
                         HttpResponse::createResponse(200, "text/text", "OK")->expose();
                     else
-                    HttpResponse::createErrorResponse(500, "")->expose();
+                        HttpResponse::createErrorResponse(500, "")->expose();
                 }
                 else {
                     HttpResponse::createErrorResponse(401, "Insufficient rights")->expose();
@@ -514,11 +519,30 @@
             }
         }
 
+        public function updateStore($storeid, $request) {
+            $validationerrors = JsonUtils::validate($request, "updatestore");
+            if (isset($validationerrors) && gettype($validationerrors) == 'boolean') {
+                if ($this->db->canEditStore($storeid)) {
+                    echo "Updating store";
+                    if ($this->db->updateStore($storeid, json_decode($request)))
+                        HttpResponse::createResponse(200, "text/text", "OK")->expose();
+                    else
+                        HttpResponse::createErrorResponse(500, "")->expose();
+                }
+                else {
+                    HttpResponse::createErrorResponse(401, "")->expose();
+                }
+            }
+            else {
+                HttpResponse::createErrorResponse(500, "")->expose();
+            }
+        }
+
         public function updateObject($storeid, $objectid, $request) {
             $classId = $this->db->getObjectClassId($objectid);
             $objectClass = $this->db->getClass($storeid, $classId);
             $validationerrors = JsonUtils::validate($request, $objectClass->updateObjectSchema());
-            if (isset($validationerrors) && gettype($validationerrors == 'boolean')) {
+            if (isset($validationerrors) && gettype($validationerrors) == 'boolean') {
                 if ($this->db->canEditObject($objectid)) {
                     if ($this->db->updateObject($objectid, json_decode($request))) {
                         HttpResponse::createResponse(200, "text/text", "OK")->expose();

@@ -159,6 +159,32 @@ public class Domain {
         return createStore(name, grantedrights, new String[0]);
     }
 
+    public Store updateStore(Store toupdate, GrantedRight[] rights) throws LostRightsException, StoreNotUpdatedException, InsufficientRightsException {
+        try {
+            String json = "{\"id\":\"" + toupdate.getId() + "\",\"name\":\"" + toupdate.getName() + "\",";
+            json += "\"grantedrights\":[";
+            if (rights.length > 0) {
+                for (GrantedRight right : rights) {
+                    json += (json.endsWith("[") ? "" : ",");
+                    json += right.toJson();
+                }
+            }
+            json += "]}";
+            InputStream is = doPut(baseUrl + "/store/" + toupdate.getId(), json);
+
+            try {
+                Store refreshedStore = getStore(toupdate.getId());
+                return refreshedStore;
+            }
+            catch (Exception err) {
+                throw new LostRightsException();
+            }
+        }
+        catch (IOException io) {
+            throw new StoreNotUpdatedException();
+        }
+    }
+
     /**
      * Create a store
      * @param name The name of the new store
