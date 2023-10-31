@@ -10,6 +10,9 @@ RewriteRule ^store/(.*)/class$ store.php [NC,L]
 RewriteRule ^security/right$ security.php [NC,L]
 RewriteRule ^security/identityprovider$ security.php [NC,L]
 
+RewriteRule ^domain/rights$ domain.php [NC,L]
+RewriteRule ^domain/mimetypes$ domain.php [NC,L]
+
 RewriteRule ^addon$ addon.php [NC,L]
 
 RewriteRule ^identityprovider$ identityprovider.php [NC,L]

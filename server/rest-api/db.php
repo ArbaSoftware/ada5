@@ -51,4 +51,8 @@
         public function getAddOns();
         public function canEditStore($storeid);
         public function updateStore($storeid, $request);
+        public function getDomainRights();
+        public function canGetDomainRights();
+        public function getMimetypes();
+        public function canGetMimetypes();
     }

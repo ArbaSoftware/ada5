@@ -92,6 +92,15 @@ public class AppController implements Initializable {
         });
         domainMenu.getItems().add(addStore);
         MenuItem editStoreProperties = new MenuItem(InternationalizationUtils.get("menu.domain.properties"));
+        editStoreProperties.setOnAction(new EventHandler<ActionEvent>() {
+            @Override
+            public void handle(ActionEvent actionEvent) {
+                try {
+                    onDomainProperties(AdaUtils.getDomain());
+                }
+                catch (Exception err) {}
+            }
+        });
         domainMenu.getItems().add(editStoreProperties);
 
         mainMenu.getMenus().add(domainMenu);
@@ -669,6 +678,35 @@ public class AppController implements Initializable {
                 Store refreshed = domain.updateStore(tosave, rights);
                 ((IdName) cmbStores.getSelectionModel().getSelectedItem()).setName(refreshed.getName());
             }
+        }
+        catch (Exception err) {
+            err.printStackTrace();
+        }
+    }
+    private void onDomainProperties(Domain domain) {
+        try {
+            FXMLLoader loader = new FXMLLoader(App.class.getResource("domainproperties.fxml"));
+            loader.setResources(InternationalizationUtils.getResources());
+
+            DomainPropertiesController controller = new DomainPropertiesController(AdaUtils.getDomain());
+            loader.setController(controller);
+            Dialog propertiesDialog = new Dialog();
+            propertiesDialog.setTitle(InternationalizationUtils.get("domain.properties.modify.title"));
+            propertiesDialog.getDialogPane().setContent(loader.load());
+            ButtonType ok =new ButtonType(InternationalizationUtils.get("dialog.button.ok"), ButtonBar.ButtonData.OK_DONE);
+            propertiesDialog.getDialogPane().getButtonTypes().add(ok);
+            //controller.setOkButton((Button) propertiesDialog.getDialogPane().lookupButton(ok));
+            propertiesDialog.getDialogPane().getButtonTypes().add(new ButtonType(InternationalizationUtils.get("dialog.button.cancel"), ButtonBar.ButtonData.CANCEL_CLOSE));
+            propertiesDialog.showAndWait();
+
+            /*
+            if (propertiesDialog.getResult().equals(ok)) {
+                Store tosave = controller.getStore();
+                GrantedRight[] rights = controller.getRights();
+                Store refreshed = domain.updateStore(tosave, rights);
+                ((IdName) cmbStores.getSelectionModel().getSelectedItem()).setName(refreshed.getName());
+            }
+             */
         }
         catch (Exception err) {
             err.printStackTrace();

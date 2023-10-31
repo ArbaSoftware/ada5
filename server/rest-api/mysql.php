@@ -1939,4 +1939,65 @@ public function updateStore($storeid, $request) {
     }
 }
 
+public function getDomainRights() {
+    try {
+        $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
+        $rights = $conn->query("select granteeid, granteetype, identityproviderid, level, weight from grantedrights where targettype = 'domain'");
+        $json = "[";
+        while ($right = $rights->fetch_object()) {
+            $json .= ($json == "[" ? "" : ".") . (new GrantedRight($right->granteeid, $right->granteetype, $right->identityproviderid, $right->level, $right->weight))->toJson();
+        }
+        $json .= "]";
+        return $json;
+    }
+    finally {
+        $conn->close();
+    }
+}
+
+public function canGetMimetypes() {
+    return $this->canGetDomainRights();
+}
+
+public function canGetDomainRights() {
+    try {
+        $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
+        $rights = $conn->query("select level from rights where systemright='read'");
+        if ($rights->num_rows == 1) {
+            $results = $conn->query("select hasDomainRight('" . $this->userId . "','" . $this->identityProviderId . "'," . $rights->fetch_object()->level . ") hasright from rights LIMIT 1");
+            if ($results && $results->num_rows == 1) {
+                return $results->fetch_object()->hasright == 1;
+            }
+            else {
+                echo 'Unable to create store';
+                return false;
+            }
+        }
+        else {
+            return false;
+        }
+    }
+    finally {
+        $conn->close();
+    }
+}
+
+public function getMimetypes() {
+    try {
+        $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
+        $mimetypes = $conn->query("select mimetype, extension from mimetype");
+        $json = "[";
+        while ($mimetype = $mimetypes->fetch_object()) {
+            $json .= ($json == "[" ? "": ",");
+            $json .= "{\"mimetype\":\"" . $mimetype->mimetype . "\", \"extension\":\"" . $mimetype->extension . "\"}";
+        }
+        $json .= "]";
+        return $json;
+    }
+    finally {
+        $conn->close();
+    }
+}
+
+
 }

@@ -763,4 +763,22 @@ public class Domain {
             throw new ApiException();
         }
     }
+
+    public GrantedRight[] getDomainRights() throws ApiException {
+        try {
+            return mapper.readValue(doGet(baseUrl + "/domain/rights"), GrantedRight[].class);
+        }
+        catch (Exception err) {
+            throw new ApiException();
+        }
+    }
+
+    public Mimetype[] getMimetypes() throws ApiException {
+        try {
+            return mapper.readValue(doGet(baseUrl + "/domain/mimetypes"), Mimetype[].class);
+        }
+        catch (Exception err) {
+            throw new ApiException();
+        }
+    }
 }

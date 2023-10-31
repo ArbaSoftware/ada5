@@ -15,17 +15,18 @@
     $url = $_SERVER['REQUEST_URI'];
     $urlparts = explode('/', $url);
     if ($_SERVER['REQUEST_METHOD'] == 'GET') {
-        if ($url == '/ada/security/right') {
-            echo Right::toJson($db->getRights());
-        }
-        else if ($url == '/ada/security/identityprovider') {
-            echo IdentityProvider::toJson($db->getIdentifyProviders());
-        }
-        else if ($url == '/ada/security/domainrights') {
+        if ($url == '/ada/domain/rights') {
             if ($db->canGetDomainRights()) {
                 echo $db->getDomainRights();
             }
             else
+                sendState(401, "Insufficient rights");
+        }
+        else if ($url == '/ada/domain/mimetypes') {
+            if ($db->canGetMimetypes()) {
+                echo $db->getMimetypes();
+            }
+            else 
                 sendState(401, "Insufficient rights");
         }
         else {
