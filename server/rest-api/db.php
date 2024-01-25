@@ -55,4 +55,6 @@
         public function canGetDomainRights();
         public function getMimetypes();
         public function canGetMimetypes();
+        public function canCreateMimetype();
+        public function createMimetype($request);
     }

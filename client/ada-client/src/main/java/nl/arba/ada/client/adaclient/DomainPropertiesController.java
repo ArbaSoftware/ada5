@@ -34,7 +34,7 @@ public class DomainPropertiesController implements Initializable {
             rightsTable = new RightsTable(Arrays.asList(domain.getDomainRights()), domain, domain.getRights().stream().filter(r -> r.isDomainRight()).collect(Collectors.toList()));
             rightsPane.setCenter(rightsTable);
 
-            mimetypesTable = new MimetypesTable(domain.getMimetypes());
+            mimetypesTable = new MimetypesTable(domain);
             mimetypesPane.setCenter(mimetypesTable);
         }
         catch (Exception err) {

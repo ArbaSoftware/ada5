@@ -775,9 +775,24 @@ public class Domain {
 
     public Mimetype[] getMimetypes() throws ApiException {
         try {
+            System.out.println(StreamUtils.streamToString(doGet(baseUrl + "/domain/mimetypes")));
             return mapper.readValue(doGet(baseUrl + "/domain/mimetypes"), Mimetype[].class);
         }
         catch (Exception err) {
+            throw new ApiException();
+        }
+    }
+
+    public void addMimetype(String extension, String mimetype) throws ApiException {
+        try {
+            HashMap jsonSource = new HashMap();
+            jsonSource.put("extension", extension);
+            jsonSource.put("mimetype", mimetype);
+            doPost(baseUrl + "/domain/mimetype", mapper.writeValueAsString(jsonSource));
+            System.out.println("Mimetype added");
+        }
+        catch (Exception err) {
+            err.printStackTrace();
             throw new ApiException();
         }
     }

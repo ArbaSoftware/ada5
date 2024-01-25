@@ -33,6 +33,31 @@
             sendState(404, "Invalid request");
         }
     }
+    else if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+        if ($url == '/ada/domain/mimetype') {
+            $request = file_get_contents("php://input");
+            $validationerrors = JsonUtils::validate($request, "addmimetype");
+            if ($validationerrors && gettype($validationerrors) == 'boolean') {
+                if ($db->canCreateMimetype()) {
+                    if ($db->createMimetype(json_decode($request))) {
+                        sendState(200, "");
+                    }
+                    else {
+                        sendState(500, "");
+                    }
+                }
+                else {
+                    sendState(401, "Insufficient rights");
+                }
+            }
+            else {
+                sendState(500, "");
+            }
+        }
+        else {
+            sendState(404, "");
+        }
+    }
     else {
         sendState(404,"");
     }

@@ -1998,6 +1998,37 @@ public function getMimetypes() {
         $conn->close();
     }
 }
+public function canCreateMimetype() {
+    try {
+        $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
+        $rights = $conn->query("select level from rights where systemright='createmimetype'");
+        if ($rights->num_rows == 1) {
+            $results = $conn->query("select hasDomainRight('" . $this->userId . "','" . $this->identityProviderId . "'," . $rights->fetch_object()->level . ") hasright from rights LIMIT 1");
+            if ($results && $results->num_rows == 1) {
+                return $results->fetch_object()->hasright == 1;
+            }
+            else {
+                return false;
+            }
+        }
+        else {
+            return false;
+        }
+    }
+    finally {
+        $conn->close();
+    }
+}
+
+public function createMimetype($request) {
+    try {
+        $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
+        return $conn->query("insert into mimetype(mimetype,extension) values ('" . $request->mimetype . "','" . $request->extension . "')");
+    }
+    finally {
+        $conn->close();
+    }
+}
 
 
 }

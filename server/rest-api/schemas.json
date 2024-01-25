@@ -286,6 +286,16 @@
                 "required": true,
                 "schema": "right"
             }
+        },
+        "addmimetype": {
+            "mimetype" : {
+                "type": "string",
+                "required": true
+            },
+            "extension": {
+                "type": "string", 
+                "required": true
+            }
         }
     },
     "enumerations": {

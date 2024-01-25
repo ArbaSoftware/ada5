@@ -12,6 +12,7 @@ RewriteRule ^security/identityprovider$ security.php [NC,L]
 
 RewriteRule ^domain/rights$ domain.php [NC,L]
 RewriteRule ^domain/mimetypes$ domain.php [NC,L]
+RewriteRule ^domain/mimetype$ domain.php [NC,L]
 
 RewriteRule ^addon$ addon.php [NC,L]
 
