@@ -14,7 +14,10 @@ import nl.arba.ada.client.adaclient.dialogs.MimetypeDetails;
 import nl.arba.ada.client.adaclient.utils.InternationalizationUtils;
 import nl.arba.ada.client.api.Domain;
 import nl.arba.ada.client.api.Mimetype;
+import nl.arba.ada.client.api.exceptions.ApiException;
 import nl.arba.ada.client.api.security.GrantedRight;
+
+import java.util.Optional;
 
 public class MimetypesTable extends TableView {
     private ContextMenu cmExisting;
@@ -78,6 +81,14 @@ public class MimetypesTable extends TableView {
         }
     }
 
+    public void reload() throws ApiException {
+        getItems().clear();
+        Mimetype[] items = domain.getMimetypes();
+        for (Mimetype current: items) {
+            getItems().add(current);
+        }
+    }
+
     private void initContextMenus() {
         MimetypesTable parent = this;
         cmExisting = new ContextMenu();
@@ -86,7 +97,14 @@ public class MimetypesTable extends TableView {
             @Override
             public void handle(ActionEvent actionEvent) {
                 MimetypeDetails addDialog = new MimetypeDetails(domain);
-                addDialog.showAndWait();
+                Optional <ButtonType> result = addDialog.showAndWait();
+                if (result.isPresent() && result.get().getButtonData().equals(ButtonBar.ButtonData.OK_DONE)) {
+                    try {
+                        parent.reload();
+                    }
+                    catch (Exception err) {}
+                }
+                addDialog.close();
             }
         });
         cmExisting.getItems().add(addOnExisting);
