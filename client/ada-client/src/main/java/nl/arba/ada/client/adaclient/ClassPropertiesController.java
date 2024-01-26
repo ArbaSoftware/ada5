@@ -18,6 +18,7 @@ import nl.arba.ada.client.adaclient.utils.InternationalizationUtils;
 import nl.arba.ada.client.api.AdaClass;
 import nl.arba.ada.client.api.Domain;
 import nl.arba.ada.client.api.Property;
+import nl.arba.ada.client.api.Store;
 import nl.arba.ada.client.api.security.GrantedRight;
 import nl.arba.ada.client.api.security.Right;
 
@@ -47,6 +48,7 @@ public class ClassPropertiesController implements Initializable {
     private boolean adding = false;
     private AdaClass parentClass;
     private Domain domain;
+    private Store store;
 
     public ClassPropertiesController(AdaClass target) {
         this(target, false);
@@ -58,6 +60,16 @@ public class ClassPropertiesController implements Initializable {
         this.parentClass = (adding ? target: null);
         domain = target.getStore().getDomain();
         classRights = target.getStore().getDomain().getRights().stream().filter(r -> r.isClassRight()).collect(Collectors.toList());
+        initContextMenus();
+    }
+
+    public ClassPropertiesController(Store store, boolean adding) {
+        this.adding = adding;
+        this.adaClass = null;
+        this.parentClass = null;
+        domain = store.getDomain();
+        this.store = store;
+        classRights = domain.getRights().stream().filter(r -> r.isClassRight()).collect(Collectors.toList());
         initContextMenus();
     }
 
@@ -221,7 +233,7 @@ public class ClassPropertiesController implements Initializable {
 
     public AdaClass getClassToSave() {
         AdaClass tosave = new AdaClass();
-        tosave.setStore(adaClass == null ? parentClass.getStore(): adaClass.getStore());
+        tosave.setStore(adaClass == null ? parentClass == null ? store: parentClass.getStore(): adaClass.getStore());
         tosave.setName(txtName.getText());
         for (Object prop : tableProperties.getItems()) {
             try {
@@ -236,9 +248,15 @@ public class ClassPropertiesController implements Initializable {
         if (adaClass != null)
             tosave.setId(adaClass.getId());
         else {
-            tosave.setFolderClass(parentClass.isFolderClass());
-            tosave.setDocumentClass(parentClass.isDocumentClass());
-            tosave.setParentClass(parentClass);
+            if (parentClass == null) {
+                tosave.setFolderClass(false);
+                tosave.setDocumentClass(false);
+            }
+            else {
+                tosave.setFolderClass(parentClass.isFolderClass());
+                tosave.setDocumentClass(parentClass.isDocumentClass());
+                tosave.setParentClass(parentClass);
+            }
         }
         return tosave;
     }

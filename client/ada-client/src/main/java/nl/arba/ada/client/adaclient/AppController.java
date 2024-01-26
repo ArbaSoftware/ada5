@@ -56,6 +56,7 @@ public class AppController implements Initializable {
     private TableRow tableFolderContentSelectedRow = null;
 
     private ContextMenu classMenu;
+    private ContextMenu classesMenu;
     private ContextMenu folderMenu;
     private ContextMenu newObjectMenu;
     private ContextMenu objectMenu;
@@ -66,6 +67,7 @@ public class AppController implements Initializable {
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
         initClassMenu();
+        initClassesMenu();
         initFolderMenu();
         initObjectMenus();
         mainMenu = new MenuBar();
@@ -157,6 +159,9 @@ public class AppController implements Initializable {
                     else if (selectedItem instanceof StoreTreeItem) {
                         storeMenu.show(tvStore, contextMenuEvent.getScreenX(), contextMenuEvent.getScreenY());
                     }
+                }
+                else if (selectedItem instanceof TreeItem) {
+                    classesMenu.show(tvStore, contextMenuEvent.getSceneX(), contextMenuEvent.getScreenY());
                 }
             }
         });
@@ -289,6 +294,17 @@ public class AppController implements Initializable {
             }
         });
         classMenu.getItems().add(add);
+    }
+    private void initClassesMenu() {
+        classesMenu = new ContextMenu();
+        MenuItem add = new MenuItem(InternationalizationUtils.get("treeview.class.contextmenu.add"));
+        add.setOnAction(new EventHandler<ActionEvent>() {
+            @Override
+            public void handle(ActionEvent actionEvent) {
+                onShowAddClass(null, selectedTreeViewItem);
+            }
+        });
+        classesMenu.getItems().add(add);
     }
 
     private void initFolderMenu() {
@@ -547,7 +563,9 @@ public class AppController implements Initializable {
             Store store = ((StoreTreeItem) tvStore.getRoot()).getStore();
             FXMLLoader loader = new FXMLLoader(App.class.getResource("classproperties.fxml"));
             loader.setResources(InternationalizationUtils.getResources());
-            ClassPropertiesController controller = new ClassPropertiesController(store.getAdaClass(parentclass.getId()), true);
+            ClassPropertiesController controller = parentclass == null ?
+                new ClassPropertiesController(store, true) :
+                new ClassPropertiesController(store.getAdaClass(parentclass.getId()), true);
             loader.setController(controller);
             Dialog propertiesDialog = new Dialog();
             propertiesDialog.setTitle(InternationalizationUtils.get("classproperties.title.adding"));
