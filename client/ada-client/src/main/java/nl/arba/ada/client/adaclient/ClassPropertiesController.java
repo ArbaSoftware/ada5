@@ -208,8 +208,10 @@ public class ClassPropertiesController implements Initializable {
                 ArrayList <String> parentPropertyIds = new ArrayList<>();
                 if (!adding) {
 
-                    for (Property p: domain.getAdaClass(adaClass.getStore(), adaClass.getParentClass().getId()).getProperties()) {
-                        parentPropertyIds.add(p.getId());
+                    if (adaClass.getParentClass() != null) {
+                        for (Property p : domain.getAdaClass(adaClass.getStore(), adaClass.getParentClass().getId()).getProperties()) {
+                            parentPropertyIds.add(p.getId());
+                        }
                     }
                 }
                 adaClass = adaClass.getStore().getAdaClass(adaClass.getId());

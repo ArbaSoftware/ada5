@@ -249,8 +249,10 @@ public class GrantedRightDetails extends Dialog implements Initializable {
                         Role[] roles = domain.getRoles(idp);
                         IdName role = (IdName) cmbGranteeSelect.getSelectionModel().getSelectedItem();
                         Optional<Role> optRole = Arrays.asList(roles).stream().filter(r -> r.getId().equals(role.getId())).findFirst();
-                        if (optRole.isPresent())
+                        if (optRole.isPresent()) {
                             target.setGrantee(optRole.get());
+                            target.setGranteeid(optRole.get().getId());
+                        }
                     }
                     catch (Exception err) {}
                 }
@@ -308,6 +310,7 @@ public class GrantedRightDetails extends Dialog implements Initializable {
             try {
                 Role[] roles = domain.getRoles(idp);
                 for (int index = 0; index < roles.length; index++) {
+                    System.out.println("Refresh role: " + roles[index].getId() + "/" + roles[index].getName());
                     cmbGranteeSelect.getItems().add(new IdName(roles[index].getId(), roles[index].getName()));
                 }
             }
