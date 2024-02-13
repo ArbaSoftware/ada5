@@ -112,6 +112,10 @@
         $db->addRequestPerformance($request->getUrl(), strtolower($request->getMethod()), microtime(true)-$start);
         exit;
     }
+    else if ($request->matches("DELETE", "/ada/store/*/object/*")) {
+        $handler->deleteObject($request->getUrlPart(3), $request->getUrlPart(5));
+        exit;
+    }
     else if ($request->matches("PUT", "/ada/store/*/class/*/property/*")) {
         $handler->updateProperty($request->getUrlPart(3), $request->getUrlPart(5), $request->getUrlPart(7), file_get_contents('php://input'));
         $db->addRequestPerformance($request->getUrl(), strtolower($request->getMethod()), microtime(true)-$start);
@@ -466,6 +470,20 @@
             }
         }
 
+        public function deleteObject($storeId, $objectid) {
+            if ($this->db->canDeleteObject($storeId, $objectid)) {
+                if ($this->db->deleteObject($storeId, $objectid)) {
+                    HttpResponse::createResponse(200, "text/text", "Object deleted")->expose();
+                }
+                else {
+                    HttpResponse::createErrorResponse(500, "")->expose();
+                }
+            }
+            else {
+                HttpResponse::createErrorResponse(401, "Unsufficient rights")->expose();
+            }
+        }
+
         public function deleteProperty($storeid, $classid, $propertyid) {
             try {
                 if ($this->db->canEditClass($storeid, $classid)) {
@@ -539,10 +557,14 @@
         }
 
         public function updateObject($storeid, $objectid, $request) {
+            Logger::log($request);
             $classId = $this->db->getObjectClassId($objectid);
             $objectClass = $this->db->getClass($storeid, $classId);
+            Logger::log($objectClass->updateObjectSchema());
+            /*
             $validationerrors = JsonUtils::validate($request, $objectClass->updateObjectSchema());
             if (isset($validationerrors) && gettype($validationerrors) == 'boolean') {
+                */
                 if ($this->db->canEditObject($objectid)) {
                     if ($this->db->updateObject($objectid, json_decode($request))) {
                         HttpResponse::createResponse(200, "text/text", "OK")->expose();
@@ -551,8 +573,11 @@
                         HttpResponse::createErrorResponse(500, "")->expose();
                     }
                 }
-                else
+                else {
+                    Logger::log("Insufficient rights");
                     HttpResponse::createErrorResponse(401, "Insufficient rights")->expose();
+                }
+                /*
             }
             else {
                 $errorJson = "{\"error\": \"Invalid request\", \"messages\": [";
@@ -562,8 +587,10 @@
                     $prefix = ',';
                 }
                 $errorJson .= "]}";
+                Logger::log($errorJson);
                 HttpResponse::createErrorResponse(500, $errorJson)->expose();
             }
+            */
     
         }
 

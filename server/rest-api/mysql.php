@@ -264,9 +264,32 @@
                 $rights = $conn->query("select level from rights where systemright='delete'");
                 if ($rights->num_rows == 1) {
                     $right = $rights->fetch_object();
-                    $results = $conn->query("select hasStoreRight(id,'" . $this->identityProviderId . "'," . $right->level . ") hasright from stores where id = '" . $storeid . "'");
+                    $results = $conn->query("select hasStoreRight(id,'" . $this->userId. "','" . $this->identityProviderId . "'," . $right->level . ") hasright from stores where id = '" . $storeid . "'");
                     if ($results->num_rows == 1) {
                         return $result->fetch_object()->hasright == 1;
+                    }
+                    else {
+                        return false;
+                    }
+                }
+                else {
+                    return false;
+                }
+            }
+            finally {
+                $conn->close();
+            }
+        }
+
+        public function canDeleteObject($storeid, $objectid) {
+            try {
+                $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
+                $rights = $conn->query("select level from rights where systemright='delete'");
+                if ($rights->num_rows == 1) {
+                    $right = $rights->fetch_object();
+                    $results = $conn->query("select hasObjectRight(id,'" . $this->userId . "','" . $this->identityProviderId . "'," . $right->level . ") hasright from objects where id = '" . $objectid . "'");
+                    if ($results->num_rows == 1) {
+                        return $results->fetch_object()->hasright == 1;
                     }
                     else {
                         return false;
@@ -649,6 +672,23 @@
                     unlink($file);
                 }
                 return $conn->query("call deleteStore('" . $storeid . "','" . $this->userId . "','" . $this->identityProviderId . "')");
+            }
+            finally {
+                $conn->close();
+            }
+        }
+
+        public function deleteObject($storeid, $objectid) {
+            try {
+                $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
+                $contents = $conn->query("select c.id, c.localdir from content c inner join objects o on (o.id = c.objectid and o.storeid = '" . $storeid . "' and o.objectid = '" . $objectid . "')");
+                if ($contents) {
+                    while ($content = $contents->fetch_object()) {
+                        $file = $content->localdir. "/" . $content->id;
+                        unlink($file);
+                    }
+                }
+                return $conn->query("call deleteObject('" . $objectid . "','" . $this->userId . "','" . $this->identityProviderId . "')");
             }
             finally {
                 $conn->close();
@@ -1085,7 +1125,7 @@
                         }
                         $query .= " from objects o" . $from;
                         $filterindex = 1;
-                        $where = "o.storeid = '" . $storeid . "' and hasObjectRight(o.id, '" . $this->userId . "','" . $this->identityProviderId . "'," . $right->level . ")";
+                        $where = "o.storeid = '" . $storeid . "' and o.classid = '" . $class->getId() . "' and hasObjectRight(o.id, '" . $this->userId . "','" . $this->identityProviderId . "'," . $right->level . ")";
                         $errors = [];
                         foreach($search->filters as $filter) {
                             $property = $filter->property;
@@ -1563,7 +1603,15 @@
                 $propertyId = $property->id;
             }
             else {
-                $propertyId = $foundPropIds[array_search($property->name, $foundPropNames)];
+                if (array_search($property->name, $foundPropNames)) {
+                    $propertyId = $foundPropIds[array_search($property->name, $foundPropNames)];
+                }
+                else {
+                    $notexistingProperty = $conn->query("select id from classproperties where classid='" . $request->classid . "' and name = '" . $property->name . "'");
+                    if ($nep = $notexistingProperty->fetch_object()) {
+                        $propertyId = $nep->id;
+                    }
+                }
             }
             if (in_array($propertyId, $foundPropIds)) {
                 if ($property->type == 'string' || $property->type == 'object') {
@@ -1585,8 +1633,8 @@
             }
             else {
                 if ($property->type == 'string' || $property->type == 'object') {
-                    if ($conn->query("insert into objectproperties (objectid, propertyid, string_value) values ('" . $id . "','" . $propertyId . "','" . $conn->real_escape_string($property->value) . "'")) {
-                        //
+                    if ($conn->query("insert into objectproperties (objectid, propertyid, string_value) values ('" . $id . "','" . $propertyId . "','" . $conn->real_escape_string($property->value) . "')")) {
+                        Logger::log("Property added");
                     }
                     else {
                         $succeeded = FALSE;
@@ -1617,7 +1665,6 @@
         else {
             $succeeded = FALSE;
         }
-
 
         if ($succeeded) {
             $conn->commit();

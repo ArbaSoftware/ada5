@@ -114,6 +114,7 @@ public class ObjectPropertiesController implements Initializable {
         AdaObject tosave = new AdaObject();
         tosave.setStore(theObject.getStore());
         tosave.setId(theObject.getId());
+        tosave.setClassid(theObject.getClassId());
         GrantedRight[] rights = new GrantedRight[rightsTable.getItems().size()];
         int index = 0;
         for (Object right: rightsTable.getItems()) {
