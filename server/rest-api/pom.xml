@@ -44,11 +44,7 @@
                         <name>arba/ada/rest</name>
                         <runs>
                             <run>
-                                <command>docker-php-ext-install mysqli</command>
-                                <aftercopy>false</aftercopy>
-                            </run>
-                            <run>
-                                <command>docker-php-ext-enable mysql</command>
+                                <command>docker-php-ext-install mysqli &amp;&amp;docker-php-ext-enable mysql</command>
                                 <aftercopy>false</aftercopy>
                             </run>
                             <run>
