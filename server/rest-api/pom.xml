@@ -53,6 +53,10 @@
                                 <source>${basedir}</source>
                                 <target>/var/www/html/ada</target>
                             </artifact>
+                            <artifact>
+                                <source>${basedir}/model</source>
+                                <target>/var/www/html/ada/model</target>
+                            </artifact>
                         </artifacts>
                         <network>host</network>
                     </build>
