@@ -44,6 +44,10 @@
                         <name>arba/ada/rest</name>
                         <runs>
                             <run>
+                                <command>docker-php-ext-install mysqli && docker-php-ext-enable mysql</command>
+                                <aftercopy>true</aftercopy>
+                            </run>
+                            <run>
                                 <command>a2enmod rewrite</command>
                                 <aftercopy>true</aftercopy>
                             </run>
