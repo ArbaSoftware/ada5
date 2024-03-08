@@ -1,11 +1,17 @@
 package nl.arba.ada.client.adaclient.controls;
 
+import javafx.beans.InvalidationListener;
+import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.property.SimpleStringProperty;
+import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.scene.Node;
 import javafx.scene.control.*;
+import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.scene.input.ContextMenuEvent;
 import javafx.scene.input.MouseEvent;
 import javafx.util.Callback;
@@ -14,9 +20,12 @@ import nl.arba.ada.client.adaclient.dialogs.MimetypeDetails;
 import nl.arba.ada.client.adaclient.utils.InternationalizationUtils;
 import nl.arba.ada.client.api.Domain;
 import nl.arba.ada.client.api.Mimetype;
+import nl.arba.ada.client.api.PropertyValue;
 import nl.arba.ada.client.api.exceptions.ApiException;
 import nl.arba.ada.client.api.security.GrantedRight;
 
+import java.io.ByteArrayInputStream;
+import java.util.ArrayList;
 import java.util.Optional;
 
 public class MimetypesTable extends TableView {
@@ -32,6 +41,35 @@ public class MimetypesTable extends TableView {
             mimetypes = domain.getMimetypes();
         }
         catch (Exception err) {}
+        TableColumn icon = new TableColumn();
+        icon.setText("");
+        icon.setCellFactory(new Callback<TableColumn, TableCell>() {
+            @Override
+            public TableCell call(TableColumn tableColumn) {
+                final ImageView imageView = new ImageView();
+                imageView.setFitHeight(24d);
+                imageView.setFitWidth(24d);
+                TableCell<Mimetype, Mimetype> mimetypeCell = new TableCell<>() {
+                    public void updateItem(Mimetype item, boolean empty) {
+                        if (item != null && item.hasIcon()) {
+                            imageView.setImage(new Image(new ByteArrayInputStream(item.getIcon()),16d,16d,true, true));
+                            System.out.println("Image set (" + item.getIconfilename() + ")");
+                        }
+                    }
+                };
+                mimetypeCell.setGraphic(imageView);
+                return mimetypeCell;
+            }
+        });
+        icon.setCellValueFactory(new Callback<TableColumn.CellDataFeatures<Mimetype, String>, ObservableValue<String>>() {
+            @Override
+            public ObservableValue call(TableColumn.CellDataFeatures<Mimetype, String> cellDataFeatures) {
+                Mimetype mimetype = cellDataFeatures.getValue();
+                return new SimpleObjectProperty<Mimetype>(mimetype);
+            }
+        });
+        getColumns().add(icon);
+
         TableColumn mimetype = new TableColumn();
         mimetype.setText(InternationalizationUtils.get("mimetypestable.columns.mimetype.header"));
         mimetype.setCellValueFactory(new Callback<TableColumn.CellDataFeatures<Mimetype, String>, ObservableValue<String>>() {
@@ -133,5 +171,4 @@ public class MimetypesTable extends TableView {
             }
         });
     }
-
 }

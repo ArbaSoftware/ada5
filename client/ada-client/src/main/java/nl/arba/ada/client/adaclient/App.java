@@ -14,8 +14,15 @@ import java.util.ResourceBundle;
 import java.util.regex.Pattern;
 
 public class App extends Application {
+    private static Stage stage = null;
+
+    public static Stage getStage() {
+        return stage;
+    }
+
     @Override
     public void start(Stage stage) throws IOException {
+        this.stage = stage;
         if (System.getProperty("user") != null && System.getProperty("password") != null) {
             if (OAuthUtils.getToken(System.getProperty("oauth.token"), System.getProperty("user"), System.getProperty("password"))) {
                 FXMLLoader fxmlLoader = new FXMLLoader(App.class.getResource("main.fxml"));

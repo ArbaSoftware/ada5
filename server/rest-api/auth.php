@@ -3,8 +3,8 @@
         private $idps;
         private $db;
 
-        public function __construct() {
-            $this->db = new MySql('192.168.2.74', 'ada', 'ada', 'ada5');
+        public function __construct($_settings) {
+            $this->db = new MySql($_settings['dbhost'], $_settings['dbuser'], $_settings['dbpassword'], $_settings['dbname'], $_settings['contentdir']);
             $this->idps = $this->db->getIdentifyProviders();
         }
 
@@ -21,8 +21,9 @@
                 else
                     return false;
             }
-            else
+            else {
                 return false;
+            }
         }
 
         private function evaluateBasicAuthorization($header) {

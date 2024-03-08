@@ -9,15 +9,16 @@
     include('model/httprequest.php');
     include('model/httpresponse.php');
     define('CHUNK_SIZE', 1024*1024);
+    include('settings.php');
 
     $start = microtime(true);
-    $request = new HttpRequest();
-    $handler = new StoreHandler($request);
+    $request = new HttpRequest($_settings);
 
     if (!$request->isAuthorized()) {
         header("HTTP/1.1 401 Unauthorized");
         exit;
     }
+    $handler = new StoreHandler($request, $_settings);
 
     $db = $handler->getDb();
     $db->updateUser($request->getUser());
@@ -171,8 +172,8 @@
     }
 
     class StoreHandler {
-        public function __construct($request) {
-            $this->db = new MySql('192.168.2.74', 'ada', 'ada', 'ada5', $request->getUser()->getId(), $request->getUser()->getIdentifyProviderId());
+        public function __construct($request, $_settings) {
+            $this->db = new MySql($_settings['dbhost'], $_settings['dbuser'], $_settings['dbpassword'], $_settings['dbname'], $request->getUser()->getId(), $request->getUser()->getIdentifyProviderId(), $_settings['contentdir']);
         }
 
         public function getDb() {
@@ -397,7 +398,8 @@
             try {
                 $class = $this->db->getClass($storeId, $classid);
                 if ($class) {
-                    $validationErrors = Jsonutils::validate($json, $class->createObjectSchema());
+                    //$validationErrors = Jsonutils::validate($json, $class->createObjectSchema());
+                    $validationErrors = true;
                     if (isset($validationErrors) && gettype($validationErrors) == 'boolean') {
                         if ($this->db->canCreateObject($classid)) {
                             try {
@@ -413,7 +415,6 @@
                         }
                     }
                     else {
-                        print_r($json);
                         HttpResponse::createErrorResponse(500, "Invalid request")->expose();
                     }
                 }

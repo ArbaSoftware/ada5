@@ -3,6 +3,7 @@
     include('mysql.php');
     include('model.php');
     include('auth.php');
+    include('settings.php');
 
     $auth = new Auth();
     if (!$user = $auth->isAuthorized()) {
@@ -10,7 +11,7 @@
         exit;
     }
 
-    $db = new MySql('192.168.2.74', 'ada', 'ada', 'ada5', $user->getEmail(), $user->getIdentifyProviderId());
+    $db = new MySql($_settings['dbhost'], $_settings['dbuser'], $_settings['dbpassword'], $_settings['dbname'], $user->getEmail(), $user->getIdentifyProviderId(), $_settings['contentdir']);
 
     $url = $_SERVER['REQUEST_URI'];
     $urlparts = explode('/', $url);

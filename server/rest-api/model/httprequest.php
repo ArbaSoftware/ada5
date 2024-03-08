@@ -6,11 +6,11 @@ class HttpRequest {
     private $method;
     private $user;
 
-    public function __construct() {
+    public function __construct($_settings) {
         $this->url = $_SERVER['REQUEST_URI'];
         $this->method = $_SERVER['REQUEST_METHOD'];
         $this->urlItems = explode('/', $this->url);    
-        $auth = new Auth();
+        $auth = new Auth($_settings);
         $this->user = $auth->isAuthorized();
     }
 

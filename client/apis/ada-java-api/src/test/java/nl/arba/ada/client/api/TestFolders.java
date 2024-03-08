@@ -3,6 +3,8 @@ package nl.arba.ada.client.api;
 import nl.arba.ada.client.api.addon.base.Folder;
 import nl.arba.ada.client.api.addon.base.RootFolder;
 import nl.arba.ada.client.api.exceptions.ClassNotDeletedException;
+import nl.arba.ada.client.api.search.PropertyFilter;
+import nl.arba.ada.client.api.search.Search;
 import nl.arba.ada.client.api.security.Everyone;
 import nl.arba.ada.client.api.security.GrantedRight;
 import nl.arba.ada.client.api.security.Right;
@@ -53,7 +55,16 @@ public class TestFolders {
     @Test
     public void cmis() throws Exception {
         Store cmis = domain.getStore("cmis");
-        //Folder[] root = cmis.getRootFolders();
+        Folder[] root = cmis.getRootFolders();
+        AdaClass folderClass = cmis.getAdaClass("Folder");
+        Property parentFolder = folderClass.getProperty("ParentFolder");
+        Search search = Search.create(cmis.getAdaClass("Folder"));
+        search.addFilter(PropertyFilter.createNullFilter("ParentFolder", parentFolder.getType()));
+        search.addFilter(PropertyFilter.createEqualFilter("Name", folderClass.getProperty("Name").getType(), "Testfolder"));
+        search.addProperty("Name");
+        AdaObject[] objects = domain.search(cmis, search);
+        System.out.println(objects);
+        /*
         Folder parent = Folder.create(cmis.getObject("792b8acf-48f0-11ee-915b-98f2b3f20cf4"));
         Folder[] subfolders = parent.getSubFolders();
         System.out.println(subfolders.length);
@@ -65,6 +76,6 @@ public class TestFolders {
         vergaderdossier.setObjectProperty("ParentFolder", parent.getId());
         System.out.println(vergaderdossier.createAddRequest());
         cmis.createObject(vergaderdossier);
+         */
     }
-
 }

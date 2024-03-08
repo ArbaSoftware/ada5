@@ -1,14 +1,18 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
+<?import javafx.scene.control.Button?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.TextField?>
 <?import javafx.scene.layout.AnchorPane?>
 
-<AnchorPane prefHeight="101.0" prefWidth="493.0" xmlns="http://javafx.com/javafx/20.0.1" xmlns:fx="http://javafx.com/fxml/1">
+<AnchorPane prefHeight="137.0" prefWidth="493.0" xmlns="http://javafx.com/javafx/20.0.1" xmlns:fx="http://javafx.com/fxml/1">
    <children>
       <Label layoutX="26.0" layoutY="24.0" prefHeight="16.0" prefWidth="152.0" text="%mimetypedetails.extension.label" />
       <TextField fx:id="txtExtension" layoutX="189.0" layoutY="20.0" prefHeight="24.0" prefWidth="108.0" />
       <Label layoutX="26.0" layoutY="60.0" prefHeight="16.0" prefWidth="152.0" text="%mimetypedetails.mimetype.label" />
       <TextField fx:id="txtMimetype" layoutX="189.0" layoutY="56.0" prefHeight="24.0" prefWidth="289.0" />
+      <Button fx:id="btnChooseFile" layoutX="447.0" layoutY="91.0" mnemonicParsing="false" text="..." />
+      <Label layoutX="26.0" layoutY="96.0" text="%mimetypedetails.file" />
+      <Label fx:id="lblSelectedFile" layoutX="189.0" layoutY="95.0" prefHeight="16.0" prefWidth="249.0" text="%mimetypedetails.nofile" />
    </children>
 </AnchorPane>

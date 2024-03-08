@@ -59,12 +59,19 @@
                 $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
                 $readRight = $conn->query("select level from rights where systemright='read'");
                 if ($readRight && $readRight->num_rows == 1) {
-                    $storeresult = $conn->query("select hasStoreRight('" . $id . "','" . $this->userId . "','" . $this->identityProviderId . "'," . $readRight->fetch_object()->level . ") hasright from stores where id = '" . $id . "'");
-                    if ($storeresult && $storeresult->num_rows == 1) {
-                        if ($storeresult->fetch_object()->hasright == 1)
-                            return true;
-                        else
-                            return false;
+                    $storeidresult = $conn->query("select id from stores where id = '". $id . "' or name = '" . $id . "'");
+                    if ($storeidresult->num_rows == 1) {
+                        $id = $storeidresult->fetch_object()->id;
+                        $storeresult = $conn->query("select hasStoreRight('" . $id . "','" . $this->userId . "','" . $this->identityProviderId . "'," . $readRight->fetch_object()->level . ") hasright from stores where (id = '" . $id . "' or name = '" . $id . "')");
+                        if ($storeresult && $storeresult->num_rows == 1) {
+                            if ($storeresult->fetch_object()->hasright == 1)
+                                return true;
+                            else
+                                return false;
+                        }
+                    }
+                    else {
+                        return false;
                     }
                 }
                 else {
@@ -81,7 +88,7 @@
                 $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
                 $readRight = $conn->query("select level from rights where systemright='read'");
                 if ($right = $readRight->fetch_object()) {
-                    $storeresult = $conn->query("select id, name, datecreated, creator, creatoridentityproviderid, lastmodifier, lastmodifieddate, lastmodifieridentityproviderid from stores where hasStoreRight(id, '" . $this->userId . "','" . $this->identityProviderId . "'," . $right->level . ") and id = '" . $id . "'");
+                    $storeresult = $conn->query("select id, name, datecreated, creator, creatoridentityproviderid, lastmodifier, lastmodifieddate, lastmodifieridentityproviderid from stores where hasStoreRight(id, '" . $this->userId . "','" . $this->identityProviderId . "'," . $right->level . ") and (id = '" . $id . "' or name = '" . $id . "')");
                     if ($storeresult) {
                         if ($row = $storeresult->fetch_object()) {
                             $store = new Store($row->id, $row->name);
@@ -1125,7 +1132,15 @@
                         }
                         $query .= " from objects o" . $from;
                         $filterindex = 1;
-                        $where = "o.storeid = '" . $storeid . "' and o.classid = '" . $class->getId() . "' and hasObjectRight(o.id, '" . $this->userId . "','" . $this->identityProviderId . "'," . $right->level . ")";
+                        $classIds = $this->getChildClasses($conn, $class->getId());
+
+                        $where = "o.storeid = '" . $storeid . "' and o.classid in (";
+                        $classidprefix = "";
+                        foreach( $classIds as $classId) {
+                            $where = $where . $classidprefix . "'". $classId . "'";
+                            $classidprefix = ',';
+                        }
+                        $where .= ") and hasObjectRight(o.id, '" . $this->userId . "','" . $this->identityProviderId . "'," . $right->level . ")";
                         $errors = [];
                         foreach($search->filters as $filter) {
                             $property = $filter->property;
@@ -1148,6 +1163,14 @@
                             else if ($operator == 'equals') {
                                 $query .= " left outer join objectproperties f" . $filterindex . " on (o.id = f" . $filterindex . ".objectid and f". $filterindex . ".propertyid = '" . $propertyId . "')";
                                 if ($propertyType == 'object') {
+                                    if (isset($filter->value) && gettype($filter->value) == 'string') {
+                                        $where .= " and f" . $filterindex . ".string_value = '" . $filter->value . "'";
+                                    }
+                                    else {
+                                        $errors[sizeof($errors)] = "Invalid filter value for property '" . $property . "' (" . $filter->value . ")";
+                                    }
+                                }
+                                else if ($propertyType == 'string') {
                                     if (gettype($filter->value) == 'string') {
                                         $where .= " and f" . $filterindex . ".string_value = '" . $filter->value . "'";
                                     }
@@ -1192,7 +1215,37 @@
                         $json = "[";
                         $prefix = "";
                         foreach($foundObjects as $object) {
-                            $json .= $prefix . $object->toJson();
+                            $json .= $prefix;
+                            if (isset($search->tree)) {
+                                $jsonObject = json_decode($object->toJson());
+                                $childrenSearch = "{\"class\":\"" . $search->class . "\"";
+                                $childrenSearch .= ",\"filters\":[";
+                                $filterPrefix = ""; 
+                                foreach($search->treefilters as $treefilter) {
+                                    $childrenSearch .= $filterPrefix;
+                                    $childrenSearch .= "{";
+                                    $childrenSearch .= "\"property\":\"" . $treefilter->property . "\",";
+                                    $childrenSearch .= "\"operator\":\"" . $treefilter->operator . "\",";
+                                    $childrenSearch .= "\"value\":\"" . str_replace("{treeitem}.id", $object->getId(), $treefilter->value) . "\"";
+                                    $childrenSearch .= "}";
+                                    $filterPrefix = ",";
+                                }
+                                $childrenSearch .= "],";
+                                $childrenSearch .= "\"properties\":[";
+                                $propertyPrefix = "";
+                                foreach($search->properties as $treeproperty) {
+                                    $childrenSearch .= $propertyPrefix . "\"". $treeproperty . "\"";
+                                    $propertyPrefix = ",";
+                                }
+                                $childrenSearch .= "]";
+                                $childrenSearch .= ",\"tree\": true,";
+                                $childrenSearch .= "\"treefilters\":". json_encode($search->treefilters);
+                                $childrenSearch .= "}";
+                                $jsonObject->children = json_decode($this->search($storeidorname, json_decode($childrenSearch)));
+                                $json .= json_encode($jsonObject);
+                            }
+                            else
+                                $json .= $object->toJson();
                             $prefix = ",";
                         }
                         $json .= "]";
@@ -1212,6 +1265,19 @@
             }
         }
         finally {}
+    }
+
+    private function getChildClasses($conn, $classid) {
+        $ids = [];
+        $ids[0] = $classid;
+        $classids = $conn->query("select id from classes where parentclassid = '" . $classid . "'");
+        while ($row = $classids->fetch_object()) {
+            $childids = $this->getChildClasses($conn, $row->id);
+            foreach($childids as $childid) {
+                $ids[sizeof($ids)] = $childid;
+            }
+        }
+        return $ids;
     }
 
     public function canGetContent($storeid, $objectid) {
@@ -1800,7 +1866,7 @@
             $prefix = "";
             foreach($allowedObjectIds as $objectId) {
                 $json .= $prefix . "{\"id\":\"" . $objectId . "\",";
-                $classdetails = $conn->query("select c.id, c.name from classes c inner join objects o on o.classid = c.id where o.id = '" . $objectId . "'");
+                $classdetails = $conn->query("select c.id, c.name, c.contentclass from classes c inner join objects o on o.classid = c.id where o.id = '" . $objectId . "'");
                 $classobject = $classdetails->fetch_object();
                 $json .= "\"class\":{\"id\":\"". $classobject->id . "\",\"name\":\"" . $classobject->name . "\"},\"properties\":[";
                 $propertiesQuery = "select op.propertyid, op.string_value, op.date_value, cp.type, cp.name from objectproperties op inner join classproperties cp on cp.id = op.propertyid where op.objectid = '" . $objectId . "' and cp.name in (";
@@ -1822,7 +1888,14 @@
                     $json .= "}";
                     $firstProperty = false;
                 }
-                $json .= "]}";
+                $json .= "]";
+                if ($classobject->contentclass) {
+                    $content = $conn->query("select mimetype from content where objectid = '" . $objectId . "' order by majorversion desc, minorversion desc limit 1");
+                    if ($content) {
+                        $json .= ",\"mimetype\":\"" . $content->fetch_object()->mimetype . "\"";
+                    }
+                }
+                $json .= "}";
                 $prefix = ",";
             }
             $json .= "]";
@@ -2033,11 +2106,15 @@ public function canGetDomainRights() {
 public function getMimetypes() {
     try {
         $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
-        $mimetypes = $conn->query("select mimetype, extension from mimetype");
+        $mimetypes = $conn->query("select mimetype, extension, icon, iconfilename from mimetype");
         $json = "[";
         while ($mimetype = $mimetypes->fetch_object()) {
             $json .= ($json == "[" ? "": ",");
-            $json .= "{\"mimetype\":\"" . $mimetype->mimetype . "\", \"extension\":\"" . $mimetype->extension . "\"}";
+            $json .= "{\"mimetype\":\"" . $mimetype->mimetype . "\", \"extension\":\"" . $mimetype->extension . "\"";
+            if (!is_null($mimetype->icon)) {
+                $json .= ",\"icon\":\"" . base64_encode($mimetype->icon) . "\",\"iconfilename\":\"" . $mimetype->iconfilename . "\"";
+            }
+            $json .= "}";
         }
         $json .= "]";
         return $json;
@@ -2071,12 +2148,15 @@ public function canCreateMimetype() {
 public function createMimetype($request) {
     try {
         $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
-        return $conn->query("insert into mimetype(mimetype,extension) values ('" . $request->mimetype . "','" . $request->extension . "')");
+        $stmt = $conn->prepare("insert into mimetype(mimetype,extension,iconfilename,icon) values ('" . $request->mimetype . "','" . $request->extension . "','" . $request->iconfilename . "',?)");
+        $data = base64_decode($request->iconcontent);
+        $stmt->bind_param('s', $data);
+        $stmt->execute();
+        echo mysqli_error($conn);
     }
     finally {
         $conn->close();
     }
 }
-
 
 }

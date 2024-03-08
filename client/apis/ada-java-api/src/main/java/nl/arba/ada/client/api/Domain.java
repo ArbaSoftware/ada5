@@ -783,11 +783,15 @@ public class Domain {
         }
     }
 
-    public void addMimetype(String extension, String mimetype) throws ApiException {
+    public void addMimetype(String extension, String mimetype, String iconfilename, byte[] iconcontent) throws ApiException {
         try {
             HashMap jsonSource = new HashMap();
             jsonSource.put("extension", extension);
             jsonSource.put("mimetype", mimetype);
+            jsonSource.put("iconfilename", iconfilename);
+            jsonSource.put("iconcontent", Base64.getEncoder().encodeToString(iconcontent));
+            System.out.println("Content: " + mapper.writeValueAsString(jsonSource));
+            String json = mapper.writeValueAsString(jsonSource);
             doPost(baseUrl + "/domain/mimetype", mapper.writeValueAsString(jsonSource));
             System.out.println("Mimetype added");
         }

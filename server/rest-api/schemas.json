@@ -205,6 +205,15 @@
                 "type": "string",
                 "required": true
             },
+            "tree": {
+                "type": "boolean",
+                "requred": false
+            },
+            "treefilters": {
+                "type": "arrayofobjects",
+                "required": false,
+                "schema": "propertyfilter"
+            },
             "filters": {
                 "type": "arrayofobjects",
                 "required": true,
@@ -294,6 +303,14 @@
             },
             "extension": {
                 "type": "string", 
+                "required": true
+            },
+            "iconfilename": {
+                "type": "string",
+                "required": true
+            },
+            "iconcontent": {
+                "type": "string",
                 "required": true
             }
         }

@@ -8,12 +8,18 @@ import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
 import javafx.scene.control.*;
+import javafx.stage.FileChooser;
 import nl.arba.ada.client.adaclient.App;
 import nl.arba.ada.client.adaclient.utils.InternationalizationUtils;
 import nl.arba.ada.client.api.Domain;
 import nl.arba.ada.client.api.exceptions.ApiException;
+import nl.arba.ada.client.api.util.StreamUtils;
 
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
 import java.net.URL;
+import java.util.Base64;
 import java.util.ResourceBundle;
 
 public class MimetypeDetails extends Dialog implements Initializable {
@@ -23,6 +29,11 @@ public class MimetypeDetails extends Dialog implements Initializable {
     private TextField txtMimetype;
     private Button btnOk;
     private Domain domain;
+    @FXML
+    private Label lblSelectedFile;
+    @FXML
+    private Button btnChooseFile;
+    private File iconFile = null;
 
     public MimetypeDetails(Domain domain) {
         super();
@@ -42,14 +53,27 @@ public class MimetypeDetails extends Dialog implements Initializable {
                 @Override
                 public void handle(ActionEvent actionEvent) {
                     try {
-                        domain.addMimetype(txtExtension.getText(), txtMimetype.getText());
+                        domain.addMimetype(txtExtension.getText(), txtMimetype.getText(), iconFile.getName(), readFileToBytes(iconFile));
                     }
-                    catch (ApiException exception) {
-
+                    catch (Exception exception) {
+                        exception.printStackTrace();
                     }
                 }
             });
             btnOk.setDisable(true);
+            btnChooseFile.setOnAction(new EventHandler<ActionEvent>() {
+                @Override
+                public void handle(ActionEvent actionEvent) {
+                    FileChooser chooser = new FileChooser();
+                    File chosenFile = chooser.showOpenDialog(App.getStage());
+                    if (chosenFile != null) {
+                        lblSelectedFile.setText(chosenFile.getAbsolutePath());
+                        lblSelectedFile.setTooltip(new Tooltip(chosenFile.getAbsolutePath()));
+                        iconFile = chosenFile;
+                        evaluateOk();
+                    }
+                }
+            });
         }
         catch (Exception err) {
             err.printStackTrace();
@@ -78,6 +102,20 @@ public class MimetypeDetails extends Dialog implements Initializable {
     }
 
     private void evaluateOk() {
-        btnOk.setDisable(txtExtension.getText().isEmpty() || txtMimetype.getText().isEmpty());
+        btnOk.setDisable(txtExtension.getText().isEmpty() || txtMimetype.getText().isEmpty() || iconFile == null);
+    }
+
+    private byte[] readFileToBytes(File input) throws Exception {
+        try (ByteArrayOutputStream bos = new ByteArrayOutputStream(); FileInputStream fis = new FileInputStream(input)) {
+            int readed = 0;
+            byte[] buffer = new byte[1024];
+            while (readed >= 0) {
+                readed = fis.read(buffer);
+                if (readed > 0)
+                    bos.write(buffer, 0, readed);
+            }
+
+            return bos.toByteArray();
+        }
     }
 }

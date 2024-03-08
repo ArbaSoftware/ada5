@@ -15,6 +15,8 @@ import org.apache.hc.core5.http.io.HttpClientResponseHandler;
 import org.apache.hc.core5.http.io.entity.StringEntity;
 import org.apache.hc.core5.http.message.BasicClassicHttpResponse;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Base64;
@@ -50,7 +52,10 @@ public class HttpUtils {
         get.setHeader("Authorization", authorizationheader);
         ResponseState response = execute(get);
         if (response.getCode() == 200) {
-            return response.getStream();
+            String result = StreamUtils.streamToString(response.getStream());
+            System.out.println(result);
+            return new ByteArrayInputStream(result.getBytes());
+            //return response.getStream();
         }
         else {
             System.out.println(StreamUtils.streamToString(response.getStream()));
