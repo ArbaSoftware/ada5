@@ -57,6 +57,10 @@
                                 <source>${basedir}/model</source>
                                 <target>/var/www/html/ada/model</target>
                             </artifact>
+                            <artifact>
+                                <source>${basedir}/resources/settings.php</source>
+                                <target>/var/www/html/ada/settings.php</target>
+                            </artifact>
                         </artifacts>
                         <network>host</network>
                     </build>
@@ -68,6 +72,12 @@
                                 <imageport>80</imageport>
                             </port>
                         </ports>
+                        <volumes>
+                            <volume>
+                                <hostpath>/var/arba/docker/volumes/ada</hostpath>
+                                <imagepath>/content</imagepath>
+                            </volume>
+                        </volumes>
                     </run>
                 </configuration>
                 <executions>
