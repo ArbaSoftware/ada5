@@ -5,7 +5,7 @@
     include('auth.php');
     include('settings.php');
 
-    $auth = new Auth();
+    $auth = new Auth($_settings);
     if (!$user = $auth->isAuthorized()) {
         header("HTTP/1.1 401 Unauthorized");
         exit;
