@@ -21,8 +21,8 @@
             else {
                 $this->contentDir = $contentdir;
             }
-            if (!is_dir($this->contentDir))
-                mkdir($this->contentDir, 0777, true);
+            //if (!is_dir($this->contentDir))
+            //    mkdir($this->contentDir, 0777, true);
         }
         
         public function getStores() {
