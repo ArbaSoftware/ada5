@@ -1286,15 +1286,16 @@
             $readRight = $conn->query("select level from rights where systemright='getcontent'");
             if ($readRight && $readRight->num_rows == 1) {
                 $right = $readRight->fetch_object();
-                $rows = $conn->query("select id, hasObjectRight(id, '" . $this->userId . ",'" . $this->identityProviderId . "'," . $right->level . ") hasright from objects where id = '" . $objectid . "' and storeid = '" . $storeid . "'");
+                $rows = $conn->query("select id, hasObjectRight(id, '" . $this->userId . "','" . $this->identityProviderId . "'," . $right->level . ") hasright from objects where id = '" . $objectid . "' and storeid = '" . $storeid . "'");
                 if ($rows && $rows->num_rows == 1) {
                     return $rows->fetch_object()->hasright == 1;
                 }
                 else
                     return false;
             }
-            else
+            else {
                 return false;
+            }
        }
        finally {
            $conn->close();
