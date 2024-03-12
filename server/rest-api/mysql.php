@@ -688,7 +688,7 @@
         public function deleteObject($storeid, $objectid) {
             try {
                 $conn = mysqli_connect($this->host, $this->user, $this->password, $this->dbname);
-                $contents = $conn->query("select c.id, c.localdir from content c inner join objects o on (o.id = c.objectid and o.storeid = '" . $storeid . "' and o.objectid = '" . $objectid . "')");
+                $contents = $conn->query("select c.id, c.localdir from content c inner join objects o on (o.id = c.objectid and o.storeid = '" . $storeid . "' and o.id = '" . $objectid . "')");
                 if ($contents) {
                     while ($content = $contents->fetch_object()) {
                         $file = $content->localdir. "/" . $content->id;
@@ -930,6 +930,7 @@
                                 $contentfile = fopen($saveDir . "/" . $contentId, "w");
                                 fwrite($contentfile, base64_decode($request->content->content));
                                 fclose($contentfile);
+                                chmod($saveDir . "/" . $contentId, 777);
                                 if ($request->content->minorversion) {
                                     $majorversion = 0;
                                     $minorversion = 1;
